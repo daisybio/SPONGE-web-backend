@@ -27,7 +27,7 @@ data <- data.frame(run_Id, gene_ID1, gene_ID2, sponge_effects$p.adj, sponge_effe
 colnames(data) <- c("run_id", "gene_ID1", "gene_ID2", "p_value", "mscore", "correlation")
 
 #insert data into database
-dbWriteTable(con, name = "interactions_genegene", value = data[1:10,], overwrite = FALSE, append = TRUE, row.names = FALSE)
+dbWriteTable(con, name = "interactions_genegene", value = data, overwrite = FALSE, append = TRUE, row.names = FALSE)
 
 #disconnect from db
 dbDisconnect(con)

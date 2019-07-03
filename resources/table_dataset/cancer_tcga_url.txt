@@ -5,7 +5,6 @@ sarcoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-SARC
 ovarian serous cystadenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-OV
 thymoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-THYM
 brain lower grade glioma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-LGG
-pancan	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-PADD
 pheochromocytoma & paraganglioma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-PCPG
 liver hepatocellular carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-LIHC
 pancreatic adenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-PAAD
@@ -20,3 +19,5 @@ prostate adenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-
 testicular germ cell tumor	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-TGCT
 stomach adenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-STAD
 lung squamous cell carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-LUSC
+esophageal carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-ESCA
+cervical & endocervical cancer	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-CESC

@@ -121,9 +121,9 @@ CREATE TABLE Network_analysis(
 network_analysis_ID int NOT NULL AUTO_INCREMENT,
 gene_ID int NOT NULL,
 run_ID int NOT NULL,
-eigenvektor decimal(10,8),
-betweeness decimal(10,8),
-node_degree decimal(10,8),
+eigenvektor decimal(65,8),
+betweeness decimal(65,8),
+node_degree decimal(65,8),
 PRIMARY KEY(network_analysis_ID),
 FOREIGN KEY(gene_ID) REFERENCES Gene(gene_ID),
 FOREIGN KEY(run_ID) REFERENCES Run(run_ID)

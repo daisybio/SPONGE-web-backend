@@ -62,6 +62,52 @@ paths:
                     description: URL to dataset annotation
                 xml:
                   name: dataset
+  /dataset/runInformation:
+    get:
+      operationId: dataset.read_runInformation
+      tags:
+      - Dataset
+      summary: Read all run informations about the dataset of interest
+      description: Read all run informations about the dataset of interest
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successfully read all run informations about the dataset of interest
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    run:
+                      type: string
+                      description: holds all the information about the run
+                    #target_databases:
+                    #  type: string
+                    #  description: holds all the information about the used target databases (targetScan, etc.)
+                    #selected_genes:
+                    #  type: string
+                    #  description: holds all the information about the genes that were selected (to be considered in this run)
+            application/xml:
+              schema:
+                type: array
+                items:
+                  properties:
+                    run:
+                      type: string
+                      description: holds all the information about the run
+                    #target_databases:
+                    #  type: string
+                    #  description: holds all the information about the used target databases (targetScan, etc.)
+                    #selected_genes:
+                    #  type: string
+                    #  description: holds all the information about the genes that were selected (to be considered in this run)
   /ceRNANetwork/ceRNAInteraction/findSpecific:
     get:
       operationId: geneInteraction.read_all_to_one_gene
@@ -107,7 +153,7 @@ paths:
         - name: pValueDirection
           in: query
           required: false
-          description: direction (<, > or =) in which the pValue cutoff should go
+          description: direction (<=, >=) in which the pValue cutoff should go
           schema:
             type: string
             enum:
@@ -123,7 +169,7 @@ paths:
         - name: mscoreDirection
           in: query
           required: false
-          description: direction (<, > or =) in which the mscore cutoff should go
+          description: direction (<=, >=) in which the mscore cutoff should go
           schema:
             type: string
             enum:
@@ -139,13 +185,36 @@ paths:
         - name: correlationDirection
           in: query
           required: false
-          description: direction (<, > or =) in which the correlation cutoff should go
+          description: direction (<=, >=) in which the correlation cutoff should go
           schema:
             type: string
             enum:
               - <
               - ">"
             default: <
+        - name: sorting
+          in: query
+          required: false
+          description: how the results of the db query should be sorted
+          schema:
+            type: string
+            enum:
+            - pValue
+            - mscore
+            - correlation
+        - name: descending
+          in: query
+          required: false
+          description: should the results be sorted in descending or ascending order
+          schema:
+            type: boolean
+            default: true
+        - name: top
+          in: query
+          description: show just the top x elements of the query
+          required: false
+          schema:
+            type: integer
         - name: information
           in: query
           description: defines if each gene should contain all available information or not (if False just ensg_nr will be shown)
@@ -235,7 +304,7 @@ paths:
       - name: pValueDirection
         in: query
         required: false
-        description: direction (<, > or =) in which the pValue cutoff should go
+        description: direction (<=, >=) in which the pValue cutoff should go
         schema:
           type: string
           enum:
@@ -251,7 +320,7 @@ paths:
       - name: mscoreDirection
         in: query
         required: false
-        description: direction (<, > or =) in which the mscore cutoff should go
+        description: direction (<=, >=) in which the mscore cutoff should go
         schema:
           type: string
           enum:
@@ -267,13 +336,36 @@ paths:
       - name: correlationDirection
         in: query
         required: false
-        description: direction (<, > or =) in which the correlation cutoff should go
+        description: direction (<=, >=) in which the correlation cutoff should go
         schema:
           type: string
           enum:
           - <
           - ">"
           default: <
+      - name: sorting
+        in: query
+        required: false
+        description: how the results of the db query should be sorted (!!Attention!! doing this will lead to a long waiting time)
+        schema:
+          type: string
+          enum:
+          - pValue
+          - mscore
+          - correlation
+      - name: descending
+        in: query
+        required: false
+        description: should the results be sorted in descending or ascending order
+        schema:
+          type: boolean
+          default: true
+      - name: top
+        in: query
+        description: show just the top x elements of the query
+        required: false
+        schema:
+          type: integer
       - name: information
         in: query
         description: defines if each gene should contain all available information or not (if False just ensg_nr will be shown)
@@ -372,6 +464,29 @@ paths:
         required: false
         schema:
           type: number
+      - name: sorting
+        in: query
+        required: false
+        description: how the results of the db query should be sorted
+        schema:
+          type: string
+          enum:
+          - betweenness
+          - degree
+          - eigenvector
+      - name: descending
+        in: query
+        required: false
+        description: should the results be sorted in descending or ascending order
+        schema:
+          type: boolean
+          default: true
+      - name: top
+        in: query
+        description: show just the top x elements of the query
+        required: false
+        schema:
+          type: integer
       responses:
         "200":
           description: Read all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
@@ -416,7 +531,101 @@ paths:
                     eigenvector:
                       type: number
                       description: eigenvector of the ceRNA in the network
-  /ceRNANetwork/miRNAInteraction/findSpecific:
+  /ceRNANetwork/ceRNAInteraction/findSpecificInteraction:
+    get:
+      operationId: geneInteraction.read_specific_interaction
+      tags:
+      - ceRNANetwork
+      summary: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+      description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: false
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289, ENSG00000152284, ENSG00000185033) (this or gene_symbol is needed to get results)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR, TCF7L1, SEMA4B) (this or ensg_number is needed to get results)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+      responses:
+        "200":
+          description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene_ID:
+                      type: integer
+                      description: internal database ID as primary key
+                    run_ID:
+                      type: integer
+                      description: internal database ID for different runs with SPONGE in
+                        the same expression values for one disease
+                    gene_ID1:
+                      type: string
+                      description: one of the two interacting ceRNA
+                    gene_ID2:
+                      type: string
+                      description: the other part of the ceRNA interaction
+                    p_value:
+                      type: number
+                      description: adjusted pValue of the ceRNA interaction
+                    mscore:
+                      type: number
+                      description: mscore of the ceRNA interaction
+                    correlation:
+                      type: number
+                      description: correlation of the ceRNA interaction
+            application/xml:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene_ID:
+                      type: integer
+                      description: internal database ID as primary key
+                    run_ID:
+                      type: integer
+                      description: internal database ID for different runs with SPONGE in
+                        the same expression values for one disease
+                    gene_ID1:
+                      type: string
+                      description: one of the two interacting ceRNA
+                    gene_ID2:
+                      type: string
+                      description: the other part of the ceRNA interaction
+                    p_value:
+                      type: number
+                      description: adjusted pValue of the ceRNA interaction
+                    mscore:
+                      type: number
+                      description: mscore of the ceRNA interaction
+                    correlation:
+                      type: number
+                      description: correlation of the ceRNA interaction
+
+
   /ceRNANetwork/miRNAInteraction/findSpecific:
     get:
       operationId: geneInteraction.read_all_to_one_mirna
@@ -453,6 +662,12 @@ paths:
             minItems: 0
           explode: false
           style: form
+        - name: top
+          in: query
+          description: show just the top x elements of the query
+          required: false
+          schema:
+            type: integer
         - name: information
           in: query
           description: long or short information variant for mirna?
@@ -513,6 +728,27 @@ paths:
             required: false
             schema:
               type: integer
+          - name: sorting
+            in: query
+            required: false
+            description: how the results of the db query should be sorted
+            schema:
+              type: string
+              enum:
+              - occurences
+          - name: descending
+            in: query
+            required: false
+            description: should the results be sorted in descending or ascending order
+            schema:
+              type: boolean
+              default: true
+          - name: top
+            in: query
+            description: show just the top x elements of the query
+            required: false
+            schema:
+              type: integer
           - name: information
             in: query
             description: long or short information variant for mirna?
@@ -535,6 +771,99 @@ paths:
                   oneOf:
                   - "$ref": "#/components/schemas/miRNAInteractionFindAllFull"
                   - "$ref": "#/components/schemas/miRNAInteractionFindAllShort"
+  /ceRNANetwork/miRNAInteraction/findSpecificForceRNAInteraction:
+    get:
+      operationId: geneInteraction.read_mirna_for_specific_interaction
+      tags:
+      - ceRNANetwork
+      description: Returns all miRNAs thar contribute to all interactions between the given identifications (ensg_number or gene_symbol)
+      summary: Returns all miRNAs thar contribute to all interactions between the given identifications (ensg_number or gene_symbol)
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney papillary cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest(e.g. ENSG00000152284, ENSG00000185033) (this or gene_symbol is needed to get results)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. TCF7L1, SEMA4B) (this or ensg_number is needed to get results)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+      responses:
+        "200":
+          description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene_ID:
+                      type: integer
+                      description: internal database ID as primary key
+                    run_ID:
+                      type: integer
+                      description: internal database ID for different runs with SPONGE in
+                        the same expression values for one disease
+                    gene_ID1:
+                      type: string
+                      description: one of the two interacting ceRNA
+                    gene_ID2:
+                      type: string
+                      description: the other part of the ceRNA interaction
+                    p_value:
+                      type: number
+                      description: adjusted pValue of the ceRNA interaction
+                    mscore:
+                      type: number
+                      description: mscore of the ceRNA interaction
+                    correlation:
+                      type: number
+                      description: correlation of the ceRNA interaction
+            application/xml:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene_ID:
+                      type: integer
+                      description: internal database ID as primary key
+                    run_ID:
+                      type: integer
+                      description: internal database ID for different runs with SPONGE in
+                        the same expression values for one disease
+                    gene_ID1:
+                      type: string
+                      description: one of the two interacting ceRNA
+                    gene_ID2:
+                      type: string
+                      description: the other part of the ceRNA interaction
+                    p_value:
+                      type: number
+                      description: adjusted pValue of the ceRNA interaction
+                    mscore:
+                      type: number
+                      description: mscore of the ceRNA interaction
+                    correlation:
+                      type: number
+                      description: correlation of the ceRNA interaction
 
 components:
   schemas:

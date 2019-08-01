@@ -3,7 +3,6 @@ Main module of the server file
 """
 
 # 3rd party moudles
-from flask import render_template
 
 # local modules
 import config

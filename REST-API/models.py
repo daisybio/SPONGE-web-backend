@@ -15,9 +15,44 @@ class Dataset(db.Model):
 class Run(db.Model):
     __tablename__ = "run"
     run_ID = db.Column(db.Integer, primary_key=True)
-    dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
 
+    dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
     dataset = relationship("Dataset", foreign_keys=[dataset_ID])
+
+    variance_cutoff = db.Column(db.Integer)
+    f_test = db.Column(db.Integer)
+    f_test_p_adj_threshold = db.Column(db.Float)
+    coefficient_threshold = db.Column(db.Float)
+    coefficient_direction = db.Column(db.String(32))
+    min_corr = db.Column(db.Float)
+    number_of_datasets = db.Column(db.Integer)
+    number_of_samples = db.Column(db.Integer)
+    ks = db.Column(db.String(32))
+    m_max = db.Column(db.Integer)
+    log_level = db.Column(db.String(32))
+
+
+class SelectedGenes(db.Model):
+    __tablename__ = "selected_genes"
+    selected_genes_ID = db.Column(db.Integer, primary_key=True)
+
+    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
+    run = relationship("Run", foreign_keys=[run_ID])
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+
+
+class TargetDatabases(db.Model):
+    __tablename__ = "target_databases"
+    td_ID = db.Column(db.Integer, primary_key=True)
+
+    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
+    run = relationship("Run", foreign_keys=[run_ID])
+
+    db_used = db.Column(db.String(32))
+    version = db.Column(db.String(32))
+    url = db.Column(db.String(32))
 
 class GeneInteraction(db.Model):
     __tablename__ = 'interactions_genegene'
@@ -95,6 +130,30 @@ class GeneSchema(ma.ModelSchema):
     class Meta:
         model = Gene
         sqla_session = db.session
+
+
+class SelectedGenesSchema(ma.ModelSchema):
+    class Meta:
+        model = SelectedGenes
+        sqla_session = db.session
+
+    run = ma.Nested(RunSchema)
+    gene = ma.Nested(GeneSchema, olny=("ensg_number"))
+
+
+class TargetDatabasesSchema(ma.ModelSchema):
+    class Meta:
+        model = TargetDatabases
+        sqla_session = db.session
+
+    run = ma.Nested(RunSchema)
+
+
+class AllRunInformationSchema(Schema):
+    run = fields.Nested(RunSchema)
+    target_databases = fields.Nested(TargetDatabasesSchema, only=("db_used", "url", "version"))
+    selected_genes = fields.Nested(SelectedGenesSchema, only="gene")
+
 
 class GeneInteractionLongSchema(ma.ModelSchema):
     class Meta:

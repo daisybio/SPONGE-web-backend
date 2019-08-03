@@ -108,13 +108,13 @@ paths:
                     #selected_genes:
                     #  type: string
                     #  description: holds all the information about the genes that were selected (to be considered in this run)
-  /ceRNANetwork/ceRNAInteraction/findSpecific:
+  /ceRNANetwork/ceRNAInteraction/findSpecificInteractions:
     get:
       operationId: geneInteraction.read_all_to_one_gene
       tags:
       - ceRNANetwork
-      summary: Read all ceRNANetwork interactions the gene of interest in the dataset of interest is involed in
-      description: Read all ceRNANetwork interactions the gene of interest in the dataset of interest is involed in
+      summary: Read all ceRNANetwork interactions of the gene of interest in the dataset of interest in which it is is involed
+      description: Read all ceRNANetwork interactions of the gene of interest in the dataset of interest in which it is involed
       parameters:
         - name: disease_name
           in: query

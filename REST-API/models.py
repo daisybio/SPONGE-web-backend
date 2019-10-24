@@ -67,7 +67,7 @@ class GeneInteraction(db.Model):
     gene2 = relationship("Gene", foreign_keys=[gene_ID2]
                          )
     p_value = db.Column(db.Float)
-    mscore = db.Column(db.Float)
+    mscor = db.Column(db.Float)
     correlation = db.Column(db.Float)
 
 class miRNAInteraction(db.Model):
@@ -114,6 +114,37 @@ class networkAnalysis(db.Model):
     node_degree = db.Column(db.Float)
 
 
+class GeneExpressionValues(db.Model):
+    __tablename__ = "expression_data_gene"
+    expr_ID = db.Column(db.Integer, primary_key=True)
+    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
+    run = relationship("Run", foreign_keys=[run_ID])
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+    exp_value = db.Column(db.Float)
+    sample_ID = db.Column(db.String(32))
+
+
+class MiRNAExpressionValues(db.Model):
+    __tablename__ = "expression_data_mirna"
+    expr_ID = db.Column(db.Integer, primary_key=True)
+    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
+    run = relationship("Run", foreign_keys=[run_ID])
+    miRNA_ID = db.Column(db.Integer, db.ForeignKey('mirna.miRNA_ID'), nullable=False)
+    mirna = relationship("miRNA", foreign_keys=[miRNA_ID])
+    expr_value = db.Column(db.Float)
+    sample_ID = db.Column(db.String(32))
+
+
+class OccurencesMiRNA(db.Model):
+    __tablename__ = "occurences_miRNA"
+    occurences_miRNA_ID = db.Column(db.Integer, primary_key=True)
+    miRNA_ID = db.Column(db.Integer, db.ForeignKey('mirna.miRNA_ID'), nullable=False)
+    mirna = relationship("miRNA", foreign_keys=[miRNA_ID])
+    occurences = db.Column(db.Integer)
+    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
+    run = relationship("Run", foreign_keys=[run_ID])
+
 class DatasetSchema(ma.ModelSchema):
     class Meta:
         model = Dataset
@@ -131,6 +162,18 @@ class GeneSchema(ma.ModelSchema):
         model = Gene
         sqla_session = db.session
 
+class GeneSchemaENSG(ma.ModelSchema):
+    class Meta:
+        model = Gene
+        sqla_session = db.session
+        fields = ["ensg_number"]
+
+
+class GeneSchemaSymbol(ma.ModelSchema):
+    class Meta:
+        model = Gene
+        sqla_session = db.session
+        fields = ["gene_symbol"]
 
 class SelectedGenesSchema(ma.ModelSchema):
     class Meta:
@@ -159,7 +202,6 @@ class GeneInteractionLongSchema(ma.ModelSchema):
     class Meta:
         model = GeneInteraction
         sqla_session = db.session
-        #include_fk = True
 
     run = ma.Nested(RunSchema, only=("run_ID"))
     gene1 = ma.Nested(GeneSchema, exclude=("gene_ID"))
@@ -169,7 +211,6 @@ class GeneInteractionShortSchema(ma.ModelSchema):
     class Meta:
         model = GeneInteraction
         sqla_session = db.session
-        #include_fk = True
 
     run = ma.Nested(RunSchema, only=("run_ID"))
     gene1 = ma.Nested(GeneSchema, only=("ensg_number"))
@@ -197,6 +238,18 @@ class miRNASchema(ma.ModelSchema):
     class Meta:
         model = miRNA
         sqla_session = db.session
+
+class miRNASchemaHS(ma.ModelSchema):
+    class Meta:
+        model = miRNA
+        sqla_session = db.session
+        fields = ["hs_nr"]
+
+class miRNASchemaMimat(ma.ModelSchema):
+    class Meta:
+        model = miRNA
+        sqla_session = db.session
+        fields = ["mir_ID"]
 
 class RunForMirnaSchema(ma.ModelSchema):
     class Meta:
@@ -230,29 +283,6 @@ class miRNAInteractionShortSchema(ma.ModelSchema):
     interactions_genegene = ma.Nested(GeneInteractionDatasetForMiRNSchema,only=("run", "gene1","gene2"))
     mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))
 
-class miRNAInteractionAllSeachLongSchema(Schema):
-    class Meta:
-        strict = True
-
-    mir_ID = fields.String()
-    hs_nr = fields.String()
-    id_type = fields.String()
-    seq = fields.String()
-    count = fields.Integer()
-    run_ID = fields.Integer()
-    disease_name = fields.String()
-
-class miRNAInteractionAllSeachShortSchema(Schema):
-    class Meta:
-        strict = True
-
-    mir_ID = fields.String()
-    hs_nr = fields.String()
-    count = fields.Integer()
-    run_ID = fields.Integer()
-    disease_name = fields.String()
-
-
 class networkAnalysisSchema(ma.ModelSchema):
     class Meta:
         model = networkAnalysis
@@ -260,3 +290,30 @@ class networkAnalysisSchema(ma.ModelSchema):
 
     run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
     gene = ma.Nested(GeneSchema, only=("gene_ID", "ensg_number", "gene_symbol"))
+
+
+class geneExpressionSchema(ma.ModelSchema):
+    class Meta:
+        model = GeneExpressionValues
+        sqla_session = db.session
+
+    run = ma.Nested(RunSchema, only=("dataset"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number"))
+
+
+class miRNAExpressionSchema(ma.ModelSchema):
+    class Meta:
+        model = MiRNAExpressionValues
+        sqla_session = db.session
+
+    run = ma.Nested(RunSchema, only=("dataset"))
+    mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))
+
+
+class occurencesMiRNASchema(ma.ModelSchema):
+    class Meta:
+        model = OccurencesMiRNA
+        sqla_session = db.session
+
+    run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
+    mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))

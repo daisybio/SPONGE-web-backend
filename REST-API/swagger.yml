@@ -624,8 +624,6 @@ paths:
                     correlation:
                       type: number
                       description: correlation of the ceRNA interaction
-
-
   /ceRNANetwork/miRNAInteraction/findSpecific:
     get:
       operationId: geneInteraction.read_all_to_one_mirna
@@ -902,12 +900,6 @@ components:
           hs_nr:
             type: string
             description: hs_number of the miRNA
-          id_type:
-            type: string
-            description: type of the miRNA (e.g. mature or stem loop)
-          seq:
-            type: string
-            description: Sequence of the miRNA
           run_ID:
             type: integer
             description: run

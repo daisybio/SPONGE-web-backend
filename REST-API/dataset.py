@@ -1,11 +1,11 @@
-from flask import (
-    abort,
-)
+from multiprocessing import Process
+
+from flask import abort
 
 import models
 
 
-def read(disease_name = None):
+def read(disease_name=None):
     """
        This function responds to a request for /sponge/dataset/?disease_name={disease_name}
        with one matching entry to the specifed diesease_name
@@ -24,13 +24,10 @@ def read(disease_name = None):
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
-        print(data)
-
     # Did we find a dataset?
     if len(data) > 0:
         # Serialize the data for the response
-        dataset_schema = models.DatasetSchema(many=True)
-        return dataset_schema.dump(data).data
+        return models.DatasetSchema(many=True).dump(data).data
     else:
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
 
@@ -43,15 +40,6 @@ def read_runInformation(disease_name=None):
     :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)
     :return: all available runs + information for disease of interest
     """
-
-    # Get the dataset requested
-    # data = db.session.query(models.Run,models.TargetDatabases, models.SelectedGenes) \
-    #     .join(models.Dataset, models.Run.dataset_ID == models.Dataset.dataset_ID) \
-    #     .outerjoin(models.SelectedGenes, models.Run.run_ID == models.SelectedGenes.run_ID) \
-    #     .outerjoin(models.TargetDatabases, models.Run.run_ID == models.TargetDatabases.run_ID) \
-    #     .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-    #     .group_by(models.Run.run_ID, models.SelectedGenes.selected_genes_ID, models.TargetDatabases.td_ID) \
-    #     .all()
 
     data = models.Run.query \
         .join(models.Dataset, models.Run.dataset_ID == models.Dataset.dataset_ID) \

@@ -1,0 +1,920 @@
+openapi: 3.0.0
+info:
+  description: This is the swagger file that goes with our server code for the sponge REST-API
+  version: 2.0.0
+  title: SPONGE REST-API documentation
+paths:
+  /debug:
+    get:
+      operationId: debugger.debug
+      tags:
+      - bla
+      summary: bla
+      description: bla
+      responses:
+        "200":
+          description: Successfully read dataset from dataset data operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataset_ID:
+                    type: integer
+                    description: Id of the dataset
+  /dataset:
+    get:
+      operationId: dataset.read
+      tags:
+      - Dataset
+      summary: Read one dataset
+      description: Read one dataset
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successfully read dataset from dataset data operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataset_ID:
+                    type: integer
+                    description: Id of the dataset
+                  disease_name:
+                    type: string
+                    description: Name of the diseae
+                  data_origin:
+                    type: string
+                    description: Dataset origin (database name, etc.)
+                  disease_type:
+                    type: string
+                    description: Type of the disease
+                  download_url:
+                    type: string
+                    description: URL to dataset annotation
+  /dataset/runInformation:
+    get:
+      operationId: dataset.read_runInformation
+      tags:
+      - Dataset
+      summary: Read all run informations about the dataset of interest
+      description: Read all run informations about the dataset of interest
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successfully read all run informations about the dataset of interest
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    run:
+                      type: string
+                      description: holds all the information about the run
+                    #target_databases:
+                    #  type: string
+                    #  description: holds all the information about the used target databases (targetScan, etc.)
+                    #selected_genes:
+                    #  type: string
+                    #  description: holds all the information about the genes that were selected (to be considered in this run)
+  /ceRNAInteraction/findAll:
+    get:
+      operationId: geneInteraction.read_all_genes
+      tags:
+      - ceRNANetwork
+      summary: Read all ceRNANetwork interactions the gene of interest in the dataset of interest is involed in
+      description: Read all ceRNANetwork interactions the gene of interest in the dataset of interest is involed in
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: false
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_type
+        in: query
+        description: Defines the type of gene of interest
+        required: false
+        schema:
+          type: string
+          enum:
+          - 3prime_overlapping_ncRNA
+          - antisense
+          - antisense_RNA
+          - bidirectional_promoter_lncRNA
+          - IG_C_gene
+          - IG_C_pseudogene
+          - IG_V_gene
+          - IG_V_pseudogene
+          - lincRNA
+          - macro_lncRNA
+          - miRNA
+          - misc_RNA
+          - Mt_rRNA
+          - polymorphic_pseudogene
+          - processed_pseudogene
+          - processed_transcript
+          - protein_coding
+          - pseudogene
+          - ribozyme
+          - rRNA
+          - rRNA_pseudogene
+          - scaRNA
+          - scRNA
+          - sense_intronic
+          - sense_overlapping
+          - snoRNA
+          - snRNA
+          - TEC
+          - TR_C_gene
+          - TR_V_gene
+          - TR_V_pseudogene
+          - transcribed_processed_pseudogene
+          - transcribed_unitary_pseudogene
+          - transcribed_unprocessed_pseudogene
+          - translated_processed_pseudogene
+          - unitary_pseudogene
+          - unprocessed_pseudogene
+          - vaultRNA
+      - name: pValue
+        in: query
+        required: false
+        description: cutoff of the pValue
+        schema:
+          type: number
+      - name: pValueDirection
+        in: query
+        required: false
+        description: direction (<=, >=) in which the pValue cutoff should go
+        schema:
+          type: string
+          enum:
+          - <
+          - ">"
+          default: <
+      - name: mscor
+        in: query
+        required: false
+        description: cutoff of the mscor
+        schema:
+          type: number
+      - name: mscorDirection
+        in: query
+        required: false
+        description: direction (<=, >=) in which the mscor cutoff should go
+        schema:
+          type: string
+          enum:
+          - <
+          - ">"
+          default: <
+      - name: correlation
+        in: query
+        required: false
+        description: cutoff of the correlation
+        schema:
+          type: number
+      - name: correlationDirection
+        in: query
+        required: false
+        description: direction (<=, >=) in which the correlation cutoff should go
+        schema:
+          type: string
+          enum:
+          - <
+          - ">"
+          default: <
+      - name: sorting
+        in: query
+        required: false
+        description: how the results of the db query should be sorted
+        schema:
+          type: string
+          enum:
+          - pValue
+          - mscor
+          - correlation
+      - name: descending
+        in: query
+        required: false
+        description: should the results be sorted in descending or ascending order
+        schema:
+          type: boolean
+          default: true
+      - name: limit
+        in: query
+        description: Number of results that should be shown
+        required: false
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        description: startpoint from where results should be shown
+        required: false
+        schema:
+          type: integer
+      - name: information
+        in: query
+        description: defines if each gene should contain all available information or not (if False just ensg_nr will be shown)
+        required: false
+        schema:
+          type: boolean
+          default: true
+      responses:
+        "200":
+          description: Read all ceRNA interactions where gene of interesest in
+            the searched disease (if provided) is involved in
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene_ID:
+                      type: integer
+                      description: internal database ID as primary key
+                    run_ID:
+                      type: integer
+                      description: internal database ID for different runs with SPONGE in
+                        the same expression values for one disease
+                    gene_ID1:
+                      type: string
+                      description: one of the two interacting ceRNA
+                    gene_ID2:
+                      type: string
+                      description: the other part of the ceRNA interaction
+                    p_value:
+                      type: number
+                      description: adjusted pValue of the ceRNA interaction
+                    mscor:
+                      type: number
+                      description: mscor of the ceRNA interaction
+                    correlation:
+                      type: number
+                      description: correlation of the ceRNA interaction
+  /ceRNAInteraction/findSpecific:
+    get:
+      operationId: geneInteraction.read_specific_interaction
+      tags:
+      - ceRNANetwork
+      summary: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+      description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: false
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289, ENSG00000152284, ENSG00000185033) (this or gene_symbol is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR, TCF7L1, SEMA4B) (this or ensg_number is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+      - name: limit
+        in: query
+        description: Number of results that should be shown
+        required: false
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        description: Startpoint from where results should be shown
+        required: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene_ID:
+                      type: integer
+                      description: internal database ID as primary key
+                    run_ID:
+                      type: integer
+                      description: internal database ID for different runs with SPONGE in
+                        the same expression values for one disease
+                    gene_ID1:
+                      type: string
+                      description: one of the two interacting ceRNA
+                    gene_ID2:
+                      type: string
+                      description: the other part of the ceRNA interaction
+                    p_value:
+                      type: number
+                      description: adjusted pValue of the ceRNA interaction
+                    mscor:
+                      type: number
+                      description: mscor of the ceRNA interaction
+                    correlation:
+                      type: number
+                      description: correlation of the ceRNA interaction
+  /findceRNA:
+    get:
+      operationId: geneInteraction.read_all_gene_network_analysis
+      tags:
+      - ceRNANetwork
+      summary: Read all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
+      description: Read all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      - name: gene_type
+        in: query
+        description: Defines the type of gene of interest
+        required: false
+        schema:
+          type: string
+          enum:
+          - 3prime_overlapping_ncRNA
+          - antisense
+          - antisense_RNA
+          - bidirectional_promoter_lncRNA
+          - IG_C_gene
+          - IG_C_pseudogene
+          - IG_V_gene
+          - IG_V_pseudogene
+          - lincRNA
+          - macro_lncRNA
+          - miRNA
+          - misc_RNA
+          - Mt_rRNA
+          - polymorphic_pseudogene
+          - processed_pseudogene
+          - processed_transcript
+          - protein_coding
+          - pseudogene
+          - ribozyme
+          - rRNA
+          - rRNA_pseudogene
+          - scaRNA
+          - scRNA
+          - sense_intronic
+          - sense_overlapping
+          - snoRNA
+          - snRNA
+          - TEC
+          - TR_C_gene
+          - TR_V_gene
+          - TR_V_pseudogene
+          - transcribed_processed_pseudogene
+          - transcribed_unitary_pseudogene
+          - transcribed_unprocessed_pseudogene
+          - translated_processed_pseudogene
+          - unitary_pseudogene
+          - unprocessed_pseudogene
+          - vaultRNA
+      - name: betweenness
+        in: query
+        description: cutoff of the betweenness (lower bound)
+        required: false
+        schema:
+          type: number
+      - name: degree
+        in: query
+        description: cutoff of the degree (lower bound)
+        required: false
+        schema:
+          type: number
+      - name: eigenvector
+        in: query
+        description: cutoff of the eigenvektor (lower bound)
+        required: false
+        schema:
+          type: number
+      - name: sorting
+        in: query
+        required: false
+        description: how the results of the db query should be sorted
+        schema:
+          type: string
+          enum:
+          - betweenness
+          - degree
+          - eigenvector
+      - name: descending
+        in: query
+        required: false
+        description: should the results be sorted in descending or ascending order
+        schema:
+          type: boolean
+          default: true
+      - name: limit
+        in: query
+        description: Number of results that should be shown
+        required: false
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        description: Startpoint from where results should be shown
+        required: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Read all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    run:
+                      type: string
+                      description: information about the run
+                    gene:
+                      type: string
+                      description: information about the ceRNA that satisfies all filters
+                    betweeness:
+                      type: number
+                      description: betweenness of the ceRNA in the network
+                    node_degree:
+                      type: number
+                      description: degree of the ceRNA in the network
+                    eigenvector:
+                      type: number
+                      description: eigenvector of the ceRNA in the network
+  /miRNAInteraction/findSpecific:
+    get:
+      operationId: geneInteraction.read_all_to_one_mirna
+      tags:
+      - ceRNANetwork
+      summary: Read all ceRNA interactions where miRNA(s) of interest contribute to
+      description: Read all ceRNA interactions where miRNA(s) of interest contribute to
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: false
+        schema:
+          type: string
+      - name: mimat_number
+        in: query
+        description: A comma-separated list if mimat_id(s) of the miRNA of interest (e.g. MIMAT0000076, MIMAT0000261) (this or the hs_number(s) is/are needed)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: hs_number
+        in: query
+        description: A comma-separated list if hs_number(s) of the miRNA of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p) (this or the mimat_id(s) is/are needed)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: limit
+        in: query
+        description: Number of results that should be shown
+        required: false
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        description: Startpoint from where results should be shown
+        required: false
+        schema:
+          type: integer
+      - name: information
+        in: query
+        description: Long or short information variant for mirna?
+        required: false
+        schema:
+          type: boolean
+          default: true
+      responses:
+        "200":
+          description: Read all ceRNA interactions where miRNA of interesest in
+            the searched disease (if provided) contributes to
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interacting_miRNAs_ID:
+                      type: integer
+                      description: internal database ID as primary key
+                    interactions_genegene:
+                      type: string
+                      description: ceRNA interaction the miRNA contributes to
+                    miRNA:
+                      type: string
+                      description: information about the miRNA of interest
+  /miRNAInteraction/getOccurence:
+    get:
+      operationId: geneInteraction.read_all_mirna
+      tags:
+      - ceRNANetwork
+      summary: Read all mirna involved in disease of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions)
+      description: Read all mirna involved in disease of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions)
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      - name: mimat_number
+        in: query
+        description: A comma-separated list if mimat_id(s) of the miRNA of interest (e.g. MIMAT0000076, MIMAT0000261) (this or the hs_number(s) is/are needed)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: hs_number
+        in: query
+        description: A comma-separated list if hs_number(s) of the miRNA of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p) (this or the mimat_id(s) is/are needed)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: occurences
+        in: query
+        description: how often a miRNA should contribute to a ceRNA interaction to be returned
+        required: false
+        schema:
+          type: integer
+      - name: sorting
+        in: query
+        required: false
+        description: how the results of the db query should be sorted
+        schema:
+          type: string
+          enum:
+          - occurences
+      - name: descending
+        in: query
+        required: false
+        description: should the results be sorted in descending or ascending order
+        schema:
+          type: boolean
+          default: true
+      - name: limit
+        in: query
+        description: Number of results that should be shown
+        required: false
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        description: Startpoint from where results should be shown
+        required: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Read all ceRNA interactions where miRNA of interesest in
+            the searched disease (if provided) contributes to (output model can be seen under "schemas/miRNAInteractionFindAllFull" for information = true and "schemas/miRNAInteractionFindAllShort" for information=false)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    mir_ID:
+                      type: string
+                      description: mir_ID of the miRNA
+                    hs_nr:
+                      type: string
+                      description: hs_number of the miRNA
+                    run_ID:
+                      type: integer
+                      description: run
+                    disease_name:
+                      type: string
+                      description: disease_name of the dataset
+                    occurences:
+                      type: integer
+                      description: Occurences of the miRNA
+  /miRNAInteraction/findceRNA:
+    get:
+      operationId: geneInteraction.read_mirna_for_specific_interaction
+      tags:
+      - ceRNANetwork
+      description: Returns all miRNAs thar contribute to all interactions between the given identifications (ensg_number or gene_symbol)
+      summary: Returns all miRNAs thar contribute to all interactions between the given identifications (ensg_number or gene_symbol)
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney papillary cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest(e.g. ENSG00000152284, ENSG00000185033) (this or gene_symbol is needed to get results)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. TCF7L1, SEMA4B) (this or ensg_number is needed to get results)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_type
+        in: query
+        description: Defines the type of gene of interest
+        required: false
+        schema:
+          type: string
+          enum:
+          - 3prime_overlapping_ncRNA
+          - antisense
+          - antisense_RNA
+          - bidirectional_promoter_lncRNA
+          - IG_C_gene
+          - IG_C_pseudogene
+          - IG_V_gene
+          - IG_V_pseudogene
+          - lincRNA
+          - macro_lncRNA
+          - miRNA
+          - misc_RNA
+          - Mt_rRNA
+          - polymorphic_pseudogene
+          - processed_pseudogene
+          - processed_transcript
+          - protein_coding
+          - pseudogene
+          - ribozyme
+          - rRNA
+          - rRNA_pseudogene
+          - scaRNA
+          - scRNA
+          - sense_intronic
+          - sense_overlapping
+          - snoRNA
+          - snRNA
+          - TEC
+          - TR_C_gene
+          - TR_V_gene
+          - TR_V_pseudogene
+          - transcribed_processed_pseudogene
+          - transcribed_unitary_pseudogene
+          - transcribed_unprocessed_pseudogene
+          - translated_processed_pseudogene
+          - unitary_pseudogene
+          - unprocessed_pseudogene
+          - vaultRNA
+      responses:
+        "200":
+          description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene_ID:
+                      type: integer
+                      description: internal database ID as primary key
+                    run_ID:
+                      type: integer
+                      description: internal database ID for different runs with SPONGE in
+                        the same expression values for one disease
+                    gene_ID1:
+                      type: string
+                      description: one of the two interacting ceRNA
+                    gene_ID2:
+                      type: string
+                      description: the other part of the ceRNA interaction
+                    p_value:
+                      type: number
+                      description: adjusted pValue of the ceRNA interaction
+                    mscor:
+                      type: number
+                      description: mscor of the ceRNA interaction
+                    correlation:
+                      type: number
+                      description: correlation of the ceRNA interaction
+  /exprValue/getceRNA:
+    get:
+      operationId: expressionValues.get_gene_expr
+      tags:
+      - ExpressionValues
+      summary: Get all expression values for ceRNA of interest
+      description: Get all expression values for ceRNA of interest
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all expression values for ceRNA of interest
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    expr_ID:
+                      type: integer
+                      description: internal database primary key
+                    gene:
+                      type: string
+                      description: information about the ceRNA
+                    expr_value:
+                      type: number
+                      description: Specific expression value for unique ceRNA and sample_ID
+                    sample_ID:
+                      type: string
+                      description: ID of the specific sample
+  /exprValue/getmirNA:
+    get:
+      operationId: expressionValues.get_mirna_expr
+      tags:
+      - ExpressionValues
+      summary: Get all expression values for miRNA of interest
+      description: Get all expression values for miRNA of interest
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      - name: mimat_number
+        in: query
+        description: A comma-separated list if mimat_id(s) of the miRNA of interest (e.g. MIMAT0000076, MIMAT0000261) (this or the hs_number(s) is/are needed)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: hs_number
+        in: query
+        description: A comma-separated list if hs_number(s) of the miRNA of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p) (this or the mimat_id(s) is/are needed)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all expression values for ceRNA of interest
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    expr_ID:
+                      type: integer
+                      description: internal database primary key
+                    mirna:
+                      type: string
+                      description: information about the miRNA
+                    expr_value:
+                      type: number
+                      description: Specific expression value for unique miRNA and sample_ID
+                    sample_ID:
+                      type: string
+                      description: ID of the specific sample
+  /stringSearch:
+    get:
+      operationId: externalInformation.getAutocomplete
+      tags:
+      - ExternalInformation
+      summary: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
+      description: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
+      parameters:
+      - name: searchString
+        in: query
+        description: Prefix of a gene name/ensg number or mirna identification
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Retrieve all possible matchings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    autocompleteSuggestion:
+                      type: string
+                      description: One possible autocompletion for the searchString
+servers:
+- url: /sponge

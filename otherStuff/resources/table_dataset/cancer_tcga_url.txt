@@ -1,0 +1,23 @@
+head and neck squamous cell carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-HNSC
+breast invasive carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-BRCA
+kidney clear cell carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-CCSK
+sarcoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-SARC
+ovarian serous cystadenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-OV
+thymoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-THYM
+brain lower grade glioma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-LGG
+pheochromocytoma & paraganglioma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-PCPG
+liver hepatocellular carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-LIHC
+pancreatic adenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-PAAD
+pancancer	BaumbachLab	cancer	Analysis over all cancer types
+colon adenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-COAD
+kidney papillary cell carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-KIRP
+lung adenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-LUAD
+uterine corpus endometrioid carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-UCEC
+thyroid carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-THCA
+bladder urothelial carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-BLCA
+prostate adenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-PRAD
+testicular germ cell tumor	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-TGCT
+stomach adenocarcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-STAD
+lung squamous cell carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-LUSC
+esophageal carcinoma	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-ESCA
+cervical & endocervical cancer	TCGA	cancer	https://portal.gdc.cancer.gov/projects/TCGA-CESC

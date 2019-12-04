@@ -1,7 +1,6 @@
 import sqlalchemy as sa
 from flask import abort
 from sqlalchemy import desc
-
 import models
 
 
@@ -84,7 +83,6 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
     if mscor is not None:
         if mscorDirection == "<":
             queries.append(models.GeneInteraction.mscor < mscor)
-            print(models.GeneInteraction.mscor < mscor)
         else:
             queries.append(models.GeneInteraction.mscor > mscor)
     if correlation is not None:
@@ -417,7 +415,11 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
         .slice(offset, offset + limit) \
         .all()
 
-    return models.occurencesMiRNASchema(many=True).dump(interaction_result).data
+    if len(interaction_result) > 0:
+        # Serialize the data for the response depending on parameter all
+        return models.occurencesMiRNASchema(many=True).dump(interaction_result).data
+    else:
+        abort(404, "No information with given parameters found")
 
 def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None):
     """

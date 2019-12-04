@@ -117,19 +117,19 @@ class networkAnalysis(db.Model):
 class GeneExpressionValues(db.Model):
     __tablename__ = "expression_data_gene"
     expr_ID = db.Column(db.Integer, primary_key=True)
-    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
-    run = relationship("Run", foreign_keys=[run_ID])
+    dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
+    dataset = relationship("Dataset", foreign_keys=[dataset_ID])
     gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
     gene = relationship("Gene", foreign_keys=[gene_ID])
-    exp_value = db.Column(db.Float)
+    expr_value = db.Column(db.Float)
     sample_ID = db.Column(db.String(32))
 
 
 class MiRNAExpressionValues(db.Model):
     __tablename__ = "expression_data_mirna"
     expr_ID = db.Column(db.Integer, primary_key=True)
-    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
-    run = relationship("Run", foreign_keys=[run_ID])
+    dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
+    dataset = relationship("Dataset", foreign_keys=[dataset_ID])
     miRNA_ID = db.Column(db.Integer, db.ForeignKey('mirna.miRNA_ID'), nullable=False)
     mirna = relationship("miRNA", foreign_keys=[miRNA_ID])
     expr_value = db.Column(db.Float)
@@ -144,6 +144,37 @@ class OccurencesMiRNA(db.Model):
     occurences = db.Column(db.Integer)
     run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
     run = relationship("Run", foreign_keys=[run_ID])
+
+class PatientInformation(db.Model):
+    __tablename__ = "patient_information"
+    patient_information_ID =  db.Column(db.Integer, primary_key=True)
+    dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
+    dataset = relationship("Dataset", foreign_keys=[dataset_ID])
+    sample_ID = db.Column(db.String(32))
+    disease_status = db.Column(db.Integer)
+    survival_time = db.Column(db.Integer)
+
+class SurvivalRate(db.Model):
+    __tablename__ = "survival_rate"
+    survival_rate_ID = db.Column(db.Integer, primary_key=True)
+    dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
+    dataset = relationship("Dataset", foreign_keys=[dataset_ID])
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+    patient_information_ID = db.Column(db.Integer, db.ForeignKey('patient_information.patient_information_ID'), nullable=False)
+    patient_information = relationship("PatientInformation", foreign_keys=[patient_information_ID])
+    overexpression = db.Column(db.Integer)
+
+class SurvivalPValue(db.Model):
+    __tablename__ = "survival_pValue"
+    survival_pValue_ID = db.Column(db.Integer, primary_key=True)
+    dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
+    dataset = relationship("Dataset", foreign_keys=[dataset_ID])
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+    pValue = db.Column(db.Float)
+
+
 
 class DatasetSchema(ma.ModelSchema):
     class Meta:
@@ -297,7 +328,7 @@ class geneExpressionSchema(ma.ModelSchema):
         model = GeneExpressionValues
         sqla_session = db.session
 
-    run = ma.Nested(RunSchema, only=("dataset"))
+    dataset = ma.Nested(DatasetSchema, only=("disease_name"))
     gene = ma.Nested(GeneSchema, only=("ensg_number"))
 
 
@@ -306,7 +337,7 @@ class miRNAExpressionSchema(ma.ModelSchema):
         model = MiRNAExpressionValues
         sqla_session = db.session
 
-    run = ma.Nested(RunSchema, only=("dataset"))
+    dataset = ma.Nested(DatasetSchema, only=("disease_name"))
     mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))
 
 
@@ -317,3 +348,26 @@ class occurencesMiRNASchema(ma.ModelSchema):
 
     run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
     mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))
+
+class PatientInformationSchema(ma.ModelSchema):
+    class Meta:
+        model = PatientInformation
+        sqla_session = db.session
+        
+    dataset = ma.Nested(DatasetSchema, only=("disease_name"))
+
+class SurvivalRateSchema(ma.ModelSchema):
+    class Meta:
+        model = SurvivalRate
+        sql_session = db.session
+
+    dataset = ma.Nested(DatasetSchema, only=("disease_name"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number"))
+    patient_information = ma.Nested(PatientInformationSchema, only=("sample_ID"))
+
+class SurvivalPValueSchema(ma.ModelSchema):
+    class Meta:
+        model = SurvivalPValue
+        sql_session = db.session
+    dataset = ma.Nested(DatasetSchema, only=("disease_name"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number"))

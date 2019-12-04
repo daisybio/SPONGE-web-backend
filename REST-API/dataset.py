@@ -1,7 +1,5 @@
-from multiprocessing import Process
-
 from flask import abort
-
+from config import app
 import models
 
 
@@ -46,12 +44,8 @@ def read_runInformation(disease_name=None):
         .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
         .all()
 
-    print(data)
-
     if len(data) > 0:
         # Serialize the data for the response
-        # dataset_schema = models.AllRunInformationSchema(many=True)
-        # return dataset_schema.dump([{'run': x[0], 'target_databases': x[1], "selected_genes": x[2]} for x in data]).data
         return models.RunSchema(many=True).dump(data).data
     else:
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))

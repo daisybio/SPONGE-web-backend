@@ -1,7 +1,5 @@
 from flask import abort
-
 import models
-
 
 def getAutocomplete(searchString):
     """

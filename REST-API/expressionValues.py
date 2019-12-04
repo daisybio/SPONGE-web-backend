@@ -2,7 +2,6 @@ from flask import abort
 
 import models
 
-
 def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None):
     """
     :param disease_name: disease_name of interest
@@ -40,15 +39,15 @@ def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None):
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        dataset = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
-    if len(run) > 0:
-        run_IDs = [i.run_ID for i in run]
-        queries.append(models.GeneExpressionValues.run_ID.in_(run_IDs))
-    else:
-        abort(404, "No dataset with given disease_name found")
+        if len(dataset) > 0:
+            dataset_IDs = [i.dataset_ID for i in dataset]
+            queries.append(models.GeneExpressionValues.dataset_ID.in_(dataset_IDs))
+        else:
+            abort(404, "No dataset with given disease_name found")
 
     result = models.GeneExpressionValues.query \
         .filter(*queries) \
@@ -97,15 +96,15 @@ def get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None):
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        dataset = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
-    if len(run) > 0:
-        run_IDs = [i.run_ID for i in run]
-        queries.append(models.MiRNAExpressionValues.run_ID.in_(run_IDs))
-    else:
-        abort(404, "No dataset with given disease_name found")
+        if len(dataset) > 0:
+            dataset_IDs = [i.dataset_ID for i in dataset]
+            queries.append(models.MiRNAExpressionValues.dataset_ID.in_(dataset_IDs))
+        else:
+            abort(404, "No dataset with given disease_name found")
 
     result = models.MiRNAExpressionValues.query \
         .filter(*queries) \

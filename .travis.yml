@@ -7,6 +7,9 @@ services:
 branches:
   only:
   - master
+  
+env:
+  - SPONGE_DB_URI=mysql://rooot:@localhost/sponge
 
 before_script:
   - mysql -u root --password="" < TestCases/travis_sponge.sql

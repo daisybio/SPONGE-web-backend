@@ -9,11 +9,11 @@ branches:
   - master
 
 before_script:
-  - mysql -u root --password="" < TestCases/travis_sponge.sql
+  - mysql -u root --password="" < REST-API/TestCases/travis_sponge.sql
 
 install:
-  - pip install -r requirements.txt
+  - pip install -r REST-API/requirements.txt
 
 script:
-  - python -m unittest discover TestCases
+  - python -m unittest discover REST-API/TestCases
   - make travis

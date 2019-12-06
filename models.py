@@ -363,7 +363,7 @@ class SurvivalRateSchema(ma.ModelSchema):
 
     dataset = ma.Nested(DatasetSchema, only=("disease_name"))
     gene = ma.Nested(GeneSchema, only=("ensg_number"))
-    patient_information = ma.Nested(PatientInformationSchema, only=("sample_ID"))
+    patient_information = ma.Nested(PatientInformationSchema, only=("sample_ID", "disease_status", "survival_time"))
 
 class SurvivalPValueSchema(ma.ModelSchema):
     class Meta:

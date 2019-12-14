@@ -375,8 +375,6 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
         mirna = models.miRNA.query \
             .filter(models.miRNA.hs_nr.in_(hs_number)) \
             .all()
-    else:
-        abort(404, "No miRNA identifier is given. Please provide one.")
 
     # save queries
     queries = []

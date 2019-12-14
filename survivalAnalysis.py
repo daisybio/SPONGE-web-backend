@@ -36,7 +36,7 @@ def get_patient_information(disease_name=None, sample_ID=None):
             abort(404, "No dataset with given disease_name found")
 
     if (sample_ID is not None):
-        queries = [models.PatientInformation.sample_ID.in_(sample_ID)]
+        queries.append(models.PatientInformation.sample_ID.in_(sample_ID))
 
     result = models.PatientInformation.query \
         .filter(*queries) \

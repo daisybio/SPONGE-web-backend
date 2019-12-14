@@ -2,7 +2,7 @@ PORTS = 5000:5000
 VERSION = latest
 
 IMAGE_NAME = biomedbigdata/sponge-web-backend
-CONTAINER_NAME = spongeapp
+CONTAINER_NAME = sponge-web-backend
 CONTAINER_INSTANCE = default
 
 build: 

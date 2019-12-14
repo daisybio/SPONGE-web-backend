@@ -20,10 +20,8 @@ def get_patient_information(disease_name=None, sample_ID=None):
     #else:
     #    abort(404, "No samples found for given IDs)")
 
-    ## save all needed queries to get correct results
-    #queries = [models.PatientInformation.sample_ID.in_(sample_IDs)]
-
-    # if specific disease_name is given:
+    # save all needed queries to get correct results
+    queries = []
     if disease_name is not None:
         dataset = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \

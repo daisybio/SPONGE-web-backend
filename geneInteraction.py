@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 from flask import abort
-from sqlalchemy import desc
+from sqlalchemy import desc,exists
 import models
 
 
@@ -272,6 +272,51 @@ def read_all_gene_network_analysis(disease_name=None, gene_type=None, betweennes
     else:
         abort(404, "Not data found that satisfies the given filters")
 
+from config import session
+def testGeneInteraction(ensg_number = None, gene_symbol=None):
+    """
+    :param ensg_number: ensg number of the gene of interest
+    :param gene_symbol: gene symbol of the gene of interest
+    :return: lists of all cancer types gene of interest has at least one interaction in the corresponding ceRNA II network
+    """
+
+    # test if any of the two identification possibilites is given
+    if ensg_number is None and gene_symbol is None:
+        abort(404, "One of the two possible identification numbers must be provided")
+
+    #test if not both identification possibilites are given
+    if ensg_number is not None and gene_symbol is not None:
+        abort(404,
+              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+
+    gene = []
+    # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
+    if ensg_number is not None:
+        gene = models.Gene.query \
+            .filter(models.Gene.ensg_number == ensg_number) \
+            .all()
+    elif gene_symbol is not None:
+        gene = models.Gene.query \
+            .filter(models.Gene.gene_symbol == gene_symbol) \
+            .all()
+
+    if len(gene) > 0:
+        gene_ID = [i.gene_ID for i in gene]
+    else:
+        abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
+
+    #test for each dataset if the gene(s) of interest are included in the ceRNA network
+    run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
+
+    result = []
+    for r in run:
+        tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+                                      " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+        check = {"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
+        result.append(check)
+
+    schema = models.checkGeneInteractionProCancer(many=True)
+    return schema.dump(result).data
 
 def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, limit=15000, offset=0,
                           information=True):

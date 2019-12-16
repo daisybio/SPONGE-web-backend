@@ -113,6 +113,44 @@ paths:
                     variance_cutoff:
                         type: string
                         description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Paramter name in SPONGE method is var.threshold)         
+  /ceRNAInteraction/checkGeneInteraction:
+    get:
+      operationId: geneInteraction.testGeneInteraction
+      tags:
+        - ceRNANetwork
+      summary: Tests for specific gene  if has at least one interaction in each cancer type/dataset.
+      description: Tests for specific gene (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
+      parameters:
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg number(s) of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
+        required: false
+        schema:
+          type: string
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene(s) of interest (e.g. SEPT7P1,TIGAR).
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Tests for specific gene (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    include:
+                      type: integer
+                      description: Result of the test. 0 means the gene is not included in the corresponding ceRNA interaction network. 1 mean the gene is a part of the ceRNA network.
+                    disease_name:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    run_ID:
+                      type: integer
+                      description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
   /ceRNAInteraction/findAll:
     get:
       operationId: geneInteraction.read_all_genes

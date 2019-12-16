@@ -1,10 +1,9 @@
 import os
 import connexion
+import sqlalchemy as sa
 from flask_cors import CORS
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
-from logging.config import dictConfig
-from flask.logging import default_handler
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -19,6 +18,16 @@ CORS(app)
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SPONGE_DB_URI")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# an Engine, which the Session will use for connection
+# resources
+some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"))
+
+# create a configured "Session" class
+Session = sa.orm.sessionmaker(bind=some_engine)
+
+# create a Session
+session = Session()
 
 @app.after_request
 def add_header(response):

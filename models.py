@@ -371,3 +371,11 @@ class SurvivalPValueSchema(ma.ModelSchema):
         sql_session = db.session
     dataset = ma.Nested(DatasetSchema, only=("disease_name"))
     gene = ma.Nested(GeneSchema, only=("ensg_number"))
+
+class checkGeneInteractionProCancer(ma.ModelSchema):
+    class Meta:
+        strict = True
+
+    disease_name = fields.String()
+    run_ID = fields.Integer()
+    include = fields.Integer()

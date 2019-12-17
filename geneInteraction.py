@@ -6,7 +6,7 @@ import models
 
 def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=None,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
-                   sorting=None, descending=True, limit=15000, offset=0, information=True):
+                   sorting=None, descending=True, limit=100, offset=0, information=True):
     """
     This function responds to a request for /sponge/ceRNAInteraction/findAll
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved
@@ -28,8 +28,9 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
     :return: all interactions given gene is involved
     """
     # test limit
-    if limit > 15000:
+    if limit > 1000:
         abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+
     # test if just one of the possible identifiers is given
     if ensg_number is not None and (gene_symbol is not None or gene_type is not None) or (
             gene_symbol is not None and gene_type is not None):
@@ -128,7 +129,7 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         abort(404, "No information with given parameters found")
 
 
-def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, limit=15000, offset=0):
+def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, limit=100, offset=0):
     """
       This function responds to a request for /sponge/ceRNAInteraction/findSpecific
       and returns all interactions between the given identifications (ensg_number or gene_symbol)
@@ -141,7 +142,7 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
       """
 
     # test limit
-    if limit > 15000:
+    if limit > 1000:
         abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
 
     # test if any of the two identification possibilites is given
@@ -196,7 +197,7 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
 
 
 def read_all_gene_network_analysis(disease_name=None, gene_type=None, betweenness=None, degree=None, eigenvector=None,
-                                   sorting=None, descending=True, limit=15000, offset=0):
+                                   sorting=None, descending=True, limit=100, offset=0):
     """
     This function responds to a request for /sponge/ceRNANetwork/ceRNAInteraction/findAll/networkAnalysis
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved and satisfies the given filters
@@ -212,7 +213,7 @@ def read_all_gene_network_analysis(disease_name=None, gene_type=None, betweennes
     """
 
     # test limit
-    if limit > 15000:
+    if limit > 1000:
         abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
 
     # save all needed queries to get correct results
@@ -318,7 +319,7 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
     schema = models.checkGeneInteractionProCancer(many=True)
     return schema.dump(result).data
 
-def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, limit=15000, offset=0,
+def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, limit=100, offset=0,
                           information=True):
     """
     :param disease_name: disease_name of interest
@@ -331,7 +332,7 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
     """
 
     # test limit
-    if limit > 15000:
+    if limit > 1000:
         abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
 
     if mimat_number is None and hs_number is None:
@@ -390,7 +391,7 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
 
 
 def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occurences=None, sorting=None, descending=None,
-                   limit=15000, offset=0):
+                   limit=100, offset=0):
     """
     :param disease_name: disease_name of interest
     :param mimat_number: comma-separated list of mimat_id(s) of miRNA of interest
@@ -404,7 +405,7 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
     """
 
     # test limit
-    if limit > 15000:
+    if limit > 1000:
         abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
 
     if mimat_number is not None and hs_number is not None:

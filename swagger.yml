@@ -299,10 +299,11 @@ paths:
           default: true
       - name: limit
         in: query
-        description: Number of results that should be shown.
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
         required: false
         schema:
           type: integer
+          default: 100
       - name: offset
         in: query
         description: Starting point from where results should be shown.
@@ -345,7 +346,7 @@ paths:
                         ensg_number:
                           type: string
                           description: Ensg number of the gene.
-                        gene_ID: 
+                        gene_ID:
                           type: integer
                           description: Internal database ID of the gene.
                         gene_symbol:
@@ -373,7 +374,7 @@ paths:
                         ensg_number:
                           type: string
                           description: Ensg number of the gene.
-                        gene_ID: 
+                        gene_ID:
                           type: integer
                           description: Internal database ID of the gene.
                         gene_symbol:
@@ -407,13 +408,13 @@ paths:
                             disease_name:
                                 type: string
                                 description: Name of the cancer type/dataset.
-                          required: 
+                          required:
                             - dataset_Id
                             - disease_name
                         run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
-                      required: 
+                      required:
                         - dataset
                         - run_ID
   /ceRNAInteraction/findSpecific:
@@ -453,10 +454,11 @@ paths:
         explode: false
       - name: limit
         in: query
-        description: Number of results that should be shown.
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
         required: false
         schema:
           type: integer
+          default: 100
       - name: offset
         in: query
         description: Starting point from where results should be shown.
@@ -608,10 +610,11 @@ paths:
           default: true
       - name: limit
         in: query
-        description: Number of results that should be shown.
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
         required: false
         schema:
           type: integer
+          default: 100
       - name: offset
         in: query
         description: Starting point from where results should be shown.
@@ -640,7 +643,7 @@ paths:
                         ensg_number:
                           type: string
                           description: Ensg number of the gene.
-                        gene_ID: 
+                        gene_ID:
                           type: integer
                           description: Internal database ID of the gene.
                         gene_symbol:
@@ -652,7 +655,7 @@ paths:
                         - gene_symbol
                     network_analysis_ID:
                       type: integer
-                      description: Internal database ID. 
+                      description: Internal database ID.
                     node_degree:
                       type: number
                       description: Degree of the corresponding gene (considered as node) in the specific network.
@@ -716,10 +719,11 @@ paths:
         style: form
       - name: limit
         in: query
-        description: Number of results that should be shown.
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
         required: false
         schema:
           type: integer
+          default: 100
       - name: offset
         in: query
         description: Starting point from where results should be shown.
@@ -754,32 +758,32 @@ paths:
                           type: object
                           description: One of the two interacting ceRNAs.
                           properties:
-                            ensg_number: 
+                            ensg_number:
                               type: string
                               description: Ensg from Ensemble number of the gene.
                             gene_symbol:
                               type: string
                               description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
-                          required: 
+                          required:
                             - ensg_number
                             - gene_symbol
                         gene2:
                           type: object
                           description: The other part of the ceRNA interaction.
                           properties:
-                            ensg_number: 
+                            ensg_number:
                               type: string
                               description: Ensg from Ensemble number of the gene.
                             gene_symbol:
                               type: string
                               description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
-                          required: 
+                          required:
                             - ensg_number
                             - gene_symbol
                       required:
                         - gene1
                         - gene2
-                    run: 
+                    run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:
@@ -798,7 +802,7 @@ paths:
                       properties:
                         hs_nr:
                           type: string
-                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database. 
+                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
                         id_type:
                           type: string
                           description: Mature, etc miRNA?
@@ -811,7 +815,7 @@ paths:
                         seq:
                           type: string
                           description: Sequence of the miRNA.
-                      required: 
+                      required:
                         - hs_nr
                         - mir_ID
   /miRNAInteraction/getOccurence:
@@ -852,7 +856,7 @@ paths:
         style: form
       - name: occurences
         in: query
-        description: Threshold of amount of contributions a miRNA should have to be considered. 
+        description: Threshold of amount of contributions a miRNA should have to be considered.
         required: false
         schema:
           type: integer
@@ -873,10 +877,11 @@ paths:
           default: true
       - name: limit
         in: query
-        description: Number of results that should be shown.
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
         required: false
         schema:
           type: integer
+          default: 100
       - name: offset
         in: query
         description: Starting point from where results should be shown.

@@ -4,7 +4,7 @@ from flask import abort
 import sqlalchemy as sa
 from werkzeug.exceptions import HTTPException
 
-def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=None,
+def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
                    sorting=None, descending=True, limit=15000, offset=0, information=True):
     """

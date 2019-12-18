@@ -123,13 +123,13 @@ paths:
       parameters:
       - name: ensg_number
         in: query
-        description: A comma-separated list of ensg number(s) of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
+        description: Ensg number of the gene of interest (e.g. ENSG00000259090).
         required: false
         schema:
           type: string
       - name: gene_symbol
         in: query
-        description: A comma-separated list of gene symbol(s) of the gene(s) of interest (e.g. SEPT7P1,TIGAR).
+        description: Symbol of the gene of interest (e.g. SEPT7P1).
         required: false
         schema:
           type: string

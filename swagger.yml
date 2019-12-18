@@ -142,12 +142,15 @@ paths:
                 type: array
                 items:
                   properties:
-                    include:
-                      type: integer
-                      description: Result of the test. 0 means the gene is not included in the corresponding ceRNA interaction network. 1 mean the gene is a part of the ceRNA network.
+                    data_origin:
+                      type: string
+                      description: Origin of the dataset.
                     disease_name:
                       type: string
                       description: Name of the cancer type/dataset.
+                    include:
+                      type: integer
+                      description: Result of the test. 0 means the gene is not included in the corresponding ceRNA interaction network. 1 mean the gene is a part of the ceRNA network.
                     run_ID:
                       type: integer
                       description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
@@ -402,6 +405,9 @@ paths:
                         dataset:
                           type: object
                           properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
                             dataset_ID:
                                 type: integer
                                 description: Internal databse ID of the cancer type/dataset.
@@ -499,6 +505,9 @@ paths:
                         dataset:
                           type: object
                           properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
                             dataset_ID:
                                 type: integer
                                 description: Internal databse ID of the cancer type/dataset.
@@ -666,6 +675,9 @@ paths:
                         dataset:
                           type: object
                           properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
                             dataset_ID:
                               type: integer
                               description: Internal databse ID of the cancer type/dataset.
@@ -924,6 +936,9 @@ paths:
                         dataset:
                           type: object
                           properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
                             dataset_ID:
                               type: integer
                               description: Internal databse ID of the cancer type/dataset.

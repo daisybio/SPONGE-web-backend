@@ -42,6 +42,7 @@ def getAutocomplete(searchString):
         else:
             abort(404, "No gene symbol found for the given String")
 
+
 def getGeneInformation(ensg_number = None, gene_symbol = None):
     """
     :param ensg_number:

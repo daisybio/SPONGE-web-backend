@@ -305,6 +305,7 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
         gene_ID = [i.gene_ID for i in gene]
     else:
         abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
+        abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
     #test for each dataset if the gene(s) of interest are included in the ceRNA network
     run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
@@ -313,7 +314,7 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
     for r in run:
         tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
                                       " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
-        check = {"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
+        check = {"data_origin": r.data_origin,"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
         result.append(check)
 
     schema = models.checkGeneInteractionProCancer(many=True)

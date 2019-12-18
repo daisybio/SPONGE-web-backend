@@ -186,7 +186,7 @@ class RunSchema(ma.ModelSchema):
         model = Run
         sqla_session = db.session
 
-    dataset = ma.Nested(DatasetSchema, only=("dataset_ID", "disease_name"))
+    dataset = ma.Nested(DatasetSchema, only=("dataset_ID", "disease_name", "data_origin"))
 
 class GeneSchema(ma.ModelSchema):
     class Meta:
@@ -360,6 +360,7 @@ class SurvivalRateSchema(ma.ModelSchema):
     class Meta:
         model = SurvivalRate
         sql_session = db.session
+        sql_session = db.session
 
     dataset = ma.Nested(DatasetSchema, only=("disease_name"))
     gene = ma.Nested(GeneSchema, only=("ensg_number"))
@@ -376,6 +377,7 @@ class checkGeneInteractionProCancer(ma.ModelSchema):
     class Meta:
         strict = True
 
+    data_origin = fields.String()
     disease_name = fields.String()
     run_ID = fields.Integer()
     include = fields.Integer()

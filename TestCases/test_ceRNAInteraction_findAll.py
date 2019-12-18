@@ -139,7 +139,7 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_all_genes(disease_name="foobar"), 404)
+            self.assertEqual(geneInteraction.read_all_genes(disease_name="foobar", pValue = None), 404)
 
     def test_abort_error_limit(self):
         app.config["TESTING"] = True
@@ -147,7 +147,7 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_all_genes(disease_name="foobar", limit = 20000), 404)
+            self.assertEqual(geneInteraction.read_all_genes(disease_name="foobar", limit = 20000, pValue = None), 404)
 
     def test_abort_error_ensg(self):
         app.config["TESTING"] = True
@@ -155,7 +155,7 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_all_genes(ensg_number=["ENSGfoobar"]), 404)
+            self.assertEqual(geneInteraction.read_all_genes(ensg_number=["ENSGfoobar"], pValue = None), 404)
 
     def test_abort_error_gene_symbol(self):
         app.config["TESTING"] = True
@@ -163,7 +163,7 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_all_genes(gene_symbol=["foobar"]), 404)
+            self.assertEqual(geneInteraction.read_all_genes(gene_symbol=["foobar"], pValue = None), 404)
 
     def test_abort_error_ensg_and_gene_symbol(self):
         app.config["TESTING"] = True
@@ -171,7 +171,7 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_all_genes(ensg_number=["ENSGfoobar"],gene_symbol=["foobar"]), 404)
+            self.assertEqual(geneInteraction.read_all_genes(ensg_number=["ENSGfoobar"],gene_symbol=["foobar"], pValue = None), 404)
 
     def test_abort_error_gene_type(self):
         app.config["TESTING"] = True
@@ -179,7 +179,7 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_all_genes(gene_type="foobar"), 404)
+            self.assertEqual(geneInteraction.read_all_genes(gene_type="foobar", pValue = None), 404)
 
     def test_abort_error_no_data(self):
         app.config["TESTING"] = True
@@ -187,18 +187,18 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_all_genes(disease_name="bladder urothelial carcinoma", ensg_number=['ENSG00000023041']), 404)
+            self.assertEqual(geneInteraction.read_all_genes(disease_name="bladder urothelial carcinoma", ensg_number=['ENSG00000023041'], pValue = None), 404)
 
     def test_findAll_disease_and_ensg(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', ensg_number=['ENSG00000172137','ENSG00000078237'], limit=50)
+        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', ensg_number=['ENSG00000172137','ENSG00000078237'], limit=50, pValue = None)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50)
+                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -207,7 +207,7 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', gene_symbol=['CALB2','TIGAR'], limit=50)
+        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', gene_symbol=['CALB2','TIGAR'], limit=50, pValue = None)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
@@ -220,7 +220,7 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', gene_type="protein_coding", limit=50)
+        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', gene_type="protein_coding", limit=50, pValue = None)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
@@ -324,12 +324,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation")
+                                            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation", pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation")
+                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -339,12 +339,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation")
+                                            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation", pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation")
+                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -354,12 +354,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation")
+                                            gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation",pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation")
+                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation",pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -369,12 +369,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation")
+                                            gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation",pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation")
+                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation",pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -384,12 +384,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                           gene_type="protein_coding", limit=50, correlation=0.2, correlationDirection="<", sorting="correlation")
+                                           gene_type="protein_coding", limit=50, correlation=0.2, correlationDirection="<", sorting="correlation",pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, correlation=0.2, correlationDirection="<", sorting="correlation")
+                                                      gene_type="protein_coding", limit=50, correlation=0.2, correlationDirection="<", sorting="correlation",pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -399,12 +399,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_type="protein_coding", limit=50, correlation=0.1, correlationDirection=">", sorting="correlation")
+                                            gene_type="protein_coding", limit=50, correlation=0.1, correlationDirection=">", sorting="correlation",pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, correlation=0.1, correlationDirection=">", sorting="correlation")
+                                                      gene_type="protein_coding", limit=50, correlation=0.1, correlationDirection=">", sorting="correlation",pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -414,12 +414,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor")
+                                            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor",pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor")
+                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -429,12 +429,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor")
+                                            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor")
+                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -444,12 +444,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor")
+                                            gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor", pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor")
+                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -459,12 +459,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor")
+                                            gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor")
+                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -474,12 +474,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                           gene_type="protein_coding", limit=50, mscor=0.02, mscorDirection="<", sorting="mscor")
+                                           gene_type="protein_coding", limit=50, mscor=0.02, mscorDirection="<", sorting="mscor", pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, mscor=0.02, mscorDirection="<", sorting="mscor")
+                                                      gene_type="protein_coding", limit=50, mscor=0.02, mscorDirection="<", sorting="mscor", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -489,11 +489,11 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_type="protein_coding", limit=50, mscor=0.01, mscorDirection=">", sorting="mscor")
+                                            gene_type="protein_coding", limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
 
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, mscor=0.01, mscorDirection=">", sorting="mscor")
+                                                      gene_type="protein_coding", limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)

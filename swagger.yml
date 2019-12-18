@@ -1428,12 +1428,9 @@ paths:
                         survival_time:
                           type: integer
                           description: Time of survival in days.
-                        required:
-                        - disease_status
-                        - sample_ID
-                      overexpression:
-                        type: integer
-                        description: Information about expression value of the gene (0 = underexpression, gene expression <= mean gene expression over all samples, 1 = overexpression, gene expression >= mean gene expression over all samples)
+                        overexpression:
+                          type: integer
+                          description: Information about expression value of the gene (0 = underexpression, gene expression <= mean gene expression over all samples, 1 = overexpression, gene expression >= mean gene expression over all samples)
 
   /survivalAnalysis/getPValues:
     get:

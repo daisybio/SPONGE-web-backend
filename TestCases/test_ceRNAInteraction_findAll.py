@@ -211,7 +211,7 @@ class TestDataset(unittest.TestCase):
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50)
+                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -224,7 +224,7 @@ class TestDataset(unittest.TestCase):
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50)
+                                                      gene_type="protein_coding", limit=50, pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 

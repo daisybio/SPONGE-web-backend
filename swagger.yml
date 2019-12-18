@@ -112,7 +112,7 @@ paths:
                         description: Internal database ID of the specific parameter setting (=run).
                     variance_cutoff:
                         type: string
-                        description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Paramter name in SPONGE method is var.threshold)         
+                        description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Paramter name in SPONGE method is var.threshold)
   /ceRNAInteraction/checkGeneInteraction:
     get:
       operationId: geneInteraction.testGeneInteraction
@@ -157,7 +157,7 @@ paths:
       tags:
       - ceRNANetwork
       summary: Get all ceRNA interactions the gene(s) of interest is/are involed in.
-      description: Get all ceRNA interactions by given identifications (ensg_number, gene_symbol or gene_type), specific cancer type/dataset or different filter possibilities according different statistical values (e.g. FDR adjusted p-value). 
+      description: Get all ceRNA interactions by given identifications (ensg_number, gene_symbol or gene_type), specific cancer type/dataset or different filter possibilities according different statistical values (e.g. FDR adjusted p-value).
       parameters:
       - name: disease_name
         in: query
@@ -1040,7 +1040,7 @@ paths:
                           type: object
                           description: One of the two interacting ceRNAs.
                           properties:
-                            ensg_number: 
+                            ensg_number:
                               type: string
                               description: Ensg from Ensemble number of the gene.
                             gene_symbol:
@@ -1053,7 +1053,7 @@ paths:
                           type: object
                           description: The other part of the ceRNA interaction.
                           properties:
-                            ensg_number: 
+                            ensg_number:
                               type: string
                               description: Ensg from Ensemble number of the gene.
                             gene_symbol:
@@ -1065,7 +1065,7 @@ paths:
                       required:
                         - gene1
                         - gene2
-                    run: 
+                    run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:
@@ -1247,6 +1247,70 @@ paths:
                     autocompleteSuggestion:
                       type: string
                       description: One possible autocompletion for the searchString
+  /getGeneInformation:
+    get:
+      operationId: externalInformation.getGeneInformation
+      tags:
+        - ExternalInformation
+      summary: Get all available information about the gene of iterest.
+      description: Convert ensg_number in gene_symbol or the way around. Be aware, that not all genes have a gene symbol provided.
+      parameters:
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. SEPT7P1,TIGAR).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all available information about the gene of iterest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    chromosome_name:
+                      type: integer
+                      description: Name of the chromosome the gene is located on.
+                    description:
+                      type: string
+                      description: Anntotation from Ensemble of the gene.
+                    end_pos:
+                      type: integer
+                      description: Endposition of the gene.
+                    ensg_number:
+                      type: string
+                      description: Ensg number of the gene.
+                    gene_ID:
+                      type: integer
+                      description: Internal database ID of the gene.
+                    gene_symbol:
+                      type: string
+                      description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                    gene_type:
+                      type: string
+                      description: The gene type includes both status (e.g. known) and biotype (e.g. protein coding).
+                    start_pos:
+                      type: integer
+                      description: Starting position of the gene.
+
   /survivalAnalysis/sampleInformation:
     get:
       operationId: survivalAnalysis.get_patient_information

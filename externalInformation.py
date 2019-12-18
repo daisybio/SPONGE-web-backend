@@ -9,36 +9,36 @@ def getAutocomplete(searchString):
     """
 
     if searchString.startswith("ENSG") or searchString.startswith("ensg"):
-        data = models.Gene.query.with_entities(models.Gene.ensg_number) \
+        data = models.Gene.query.with_entities(models.Gene.ensg_number, models.Gene.gene_symbol) \
             .filter(models.Gene.ensg_number.ilike(searchString + "%")) \
             .all()
         print(data)
         if len(data) > 0:
-            return models.GeneSchemaENSG(many=True).dump(data).data
+            return models.GeneSchemaShort(many=True).dump(data).data
         else:
             abort(404, "No ensg number found for the given String")
     elif searchString.startswith("HSA") or searchString.startswith("hsa"):
-        data = models.miRNA.query.with_entities(models.miRNA.hs_nr) \
+        data = models.miRNA.query.with_entities(models.miRNA.mir_ID, models.miRNA.hs_nr) \
             .filter(models.miRNA.hs_nr.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.miRNASchemaHS(many=True).dump(data).data
+            return models.miRNASchemaShort(many=True).dump(data).data
         else:
             abort(404, "No hsa number found for the given String")
     elif searchString.startswith("MIMAT") or searchString.startswith("mimat"):
-        data = models.miRNA.query.with_entities(models.miRNA.mir_ID) \
+        data = models.miRNA.query.with_entities(models.miRNA.mir_ID, models.miRNA.hs_nr) \
             .filter(models.miRNA.mir_ID.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.miRNASchemaMimat(many=True).dump(data).data
+            return models.miRNASchemaShort(many=True).dump(data).data
         else:
             abort(404, "No mimat number found for the given String")
     else:
-        data = models.Gene.query.with_entities(models.Gene.gene_symbol) \
+        data = models.Gene.query.with_entities(models.Gene.ensg_number, models.Gene.gene_symbol) \
             .filter(models.Gene.gene_symbol.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.GeneSchemaSymbol(many=True).dump(data).data
+            return models.GeneSchemaShort(many=True).dump(data).data
         else:
             abort(404, "No gene symbol found for the given String")
 

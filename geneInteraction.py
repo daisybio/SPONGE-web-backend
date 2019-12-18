@@ -4,7 +4,7 @@ from sqlalchemy import desc,exists
 import models
 
 
-def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=None,
+def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue = 0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
                    sorting=None, descending=True, limit=100, offset=0, information=True):
     """
@@ -196,15 +196,15 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
         abort(404, "No information with given parameters found")
 
 
-def read_all_gene_network_analysis(disease_name=None, gene_type=None, betweenness=None, degree=None, eigenvector=None,
+def read_all_gene_network_analysis(disease_name=None, gene_type=None, minBetweenness=None, minNodeDegree=None, minEigenvector=None,
                                    sorting=None, descending=True, limit=100, offset=0):
     """
     This function responds to a request for /sponge/ceRNANetwork/ceRNAInteraction/findAll/networkAnalysis
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved and satisfies the given filters
     :param disease_name: isease_name of interest
-    :param betweenness: betweenness cutoff (>)
-    :param degree: degree cutoff (>)
-    :param eigenvector: eigenvector cutoff (>)
+    :param minBetweenness: betweenness cutoff (>)
+    :param minNodeDegree: degree cutoff (>)
+    :param minEigenvector: eigenvector cutoff (>)
     :param sorting: how the results of the db query should be sorted
     :param descending: should the results be sorted in descending or ascending order
     :param limit: number of results that shouls be shown
@@ -232,12 +232,12 @@ def read_all_gene_network_analysis(disease_name=None, gene_type=None, betweennes
             abort(404, "No dataset with given disease_name found")
 
     # filter further depending on given statistics cutoffs
-    if betweenness is not None:
-        queries.append(models.networkAnalysis.betweeness > betweenness)
-    if degree is not None:
-        queries.append(models.networkAnalysis.node_degree > degree)
-    if eigenvector is not None:
-        queries.append(models.networkAnalysis.eigenvector > eigenvector)
+    if minBetweenness is not None:
+        queries.append(models.networkAnalysis.betweeness > minBetweenness)
+    if minNodeDegree is not None:
+        queries.append(models.networkAnalysis.node_degree > minNodeDegree)
+    if minEigenvector is not None:
+        queries.append(models.networkAnalysis.eigenvector > minEigenvector)
     if gene_type is not None:
         queries.append(models.Gene.gene_type == gene_type)
 
@@ -305,7 +305,6 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
         gene_ID = [i.gene_ID for i in gene]
     else:
         abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
-        abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
     #test for each dataset if the gene(s) of interest are included in the ceRNA network
     run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
@@ -314,7 +313,19 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
     for r in run:
         tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
                                       " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
-        check = {"data_origin": r.data_origin,"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
+
+        if (tmp[0] == 1):
+            check = {"data_origin": r.data_origin,"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
+        else:
+            tmp2  = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+                                      " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+            if (tmp2[0] == 1):
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+                         "include": 1}
+            else:
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+                         "include": 0}
+
         result.append(check)
 
     schema = models.checkGeneInteractionProCancer(many=True)

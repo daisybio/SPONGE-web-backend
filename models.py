@@ -192,19 +192,13 @@ class GeneSchema(ma.ModelSchema):
     class Meta:
         model = Gene
         sqla_session = db.session
+        fields = ["chromosome_name", "description", "end_pos", "ensg_number", "gene_symbol", "gene_type", "start_pos"]
 
-class GeneSchemaENSG(ma.ModelSchema):
+class GeneSchemaShort(ma.ModelSchema):
     class Meta:
         model = Gene
         sqla_session = db.session
-        fields = ["ensg_number"]
-
-
-class GeneSchemaSymbol(ma.ModelSchema):
-    class Meta:
-        model = Gene
-        sqla_session = db.session
-        fields = ["gene_symbol"]
+        fields = ["ensg_number","gene_symbol"]
 
 class SelectedGenesSchema(ma.ModelSchema):
     class Meta:
@@ -251,36 +245,33 @@ class GeneInteractionDatasetLongSchema(ma.ModelSchema):
     class Meta:
         model = GeneInteraction
         sqla_session = db.session
+        fields = ["correlation", "mscor", "p_value", "run", "gene1", "gene2"]
 
     run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
-    gene1 = ma.Nested(GeneSchema, exclude=("gene_ID"))
-    gene2 = ma.Nested(GeneSchema, exclude=("gene_ID"))
+    gene1 = ma.Nested(GeneSchema)
+    gene2 = ma.Nested(GeneSchema)
 
 class GeneInteractionDatasetShortSchema(ma.ModelSchema):
     class Meta:
         model = GeneInteraction
         sqla_session = db.session
+        fields = ["correlation", "mscor", "p_value", "run", "gene1", "gene2"]
 
     run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
-    gene1 = ma.Nested(GeneSchema, only=("ensg_number"))
-    gene2 = ma.Nested(GeneSchema, only=("ensg_number"))
+    gene1 = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
+    gene2 = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
 
 class miRNASchema(ma.ModelSchema):
     class Meta:
         model = miRNA
         sqla_session = db.session
+        fields = ["hs_nr", "id_type", "mir_ID", "seq"]
 
-class miRNASchemaHS(ma.ModelSchema):
+class miRNASchemaShort(ma.ModelSchema):
     class Meta:
         model = miRNA
         sqla_session = db.session
-        fields = ["hs_nr"]
-
-class miRNASchemaMimat(ma.ModelSchema):
-    class Meta:
-        model = miRNA
-        sqla_session = db.session
-        fields = ["mir_ID"]
+        fields = ["hs_nr","mir_ID"]
 
 class RunForMirnaSchema(ma.ModelSchema):
     class Meta:
@@ -302,14 +293,16 @@ class miRNAInteractionLongSchema(ma.ModelSchema):
     class Meta:
         model = miRNAInteraction
         sqla_session = db.session
+        fields = ["interactions_genegene", "mirna"]
 
-    interactions_genegene = ma.Nested(GeneInteractionDatasetForMiRNSchema,only=("run", "gene1","gene2"))
+    interactions_genegene = ma.Nested(GeneInteractionDatasetForMiRNSchema,only=("run", "gene1", "gene2"))
     mirna = ma.Nested(miRNASchema)
 
 class miRNAInteractionShortSchema(ma.ModelSchema):
     class Meta:
         model = miRNAInteraction
         sqla_session = db.session
+        fields = ["interactions_genegene", "mirna"]
 
     interactions_genegene = ma.Nested(GeneInteractionDatasetForMiRNSchema,only=("run", "gene1","gene2"))
     mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))
@@ -318,33 +311,36 @@ class networkAnalysisSchema(ma.ModelSchema):
     class Meta:
         model = networkAnalysis
         sqla_session = db.session
+        fields = ["betweeness", "eigenvector", "gene", "node_degree", "run"]
 
     run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
-    gene = ma.Nested(GeneSchema, only=("gene_ID", "ensg_number", "gene_symbol"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
 
 
 class geneExpressionSchema(ma.ModelSchema):
     class Meta:
         model = GeneExpressionValues
         sqla_session = db.session
+        fields = ["dataset", "expr_value", "gene", "sample_ID"]
 
     dataset = ma.Nested(DatasetSchema, only=("disease_name"))
-    gene = ma.Nested(GeneSchema, only=("ensg_number"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
 
 
 class miRNAExpressionSchema(ma.ModelSchema):
     class Meta:
         model = MiRNAExpressionValues
         sqla_session = db.session
+        fields = ["dataset", "expr_value", "mirna", "sample_ID"]
 
     dataset = ma.Nested(DatasetSchema, only=("disease_name"))
     mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))
-
 
 class occurencesMiRNASchema(ma.ModelSchema):
     class Meta:
         model = OccurencesMiRNA
         sqla_session = db.session
+        fields = ["mirna", "occurences", "run"]
 
     run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
     mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))
@@ -353,6 +349,7 @@ class PatientInformationSchema(ma.ModelSchema):
     class Meta:
         model = PatientInformation
         sqla_session = db.session
+        fields = ["dataset", "sample_ID", "disease_status", "survival_time"]
         
     dataset = ma.Nested(DatasetSchema, only=("disease_name"))
 
@@ -360,18 +357,20 @@ class SurvivalRateSchema(ma.ModelSchema):
     class Meta:
         model = SurvivalRate
         sql_session = db.session
-        sql_session = db.session
+        fields = ["dataset", "gene", "overexpression", "patient_information"]
 
     dataset = ma.Nested(DatasetSchema, only=("disease_name"))
-    gene = ma.Nested(GeneSchema, only=("ensg_number"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
     patient_information = ma.Nested(PatientInformationSchema, only=("sample_ID", "disease_status", "survival_time"))
 
 class SurvivalPValueSchema(ma.ModelSchema):
     class Meta:
         model = SurvivalPValue
         sql_session = db.session
+        fields = ["dataset", "gene", "pValue"]
+
     dataset = ma.Nested(DatasetSchema, only=("disease_name"))
-    gene = ma.Nested(GeneSchema, only=("ensg_number"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
 
 class checkGeneInteractionProCancer(ma.ModelSchema):
     class Meta:

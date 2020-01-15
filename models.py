@@ -174,7 +174,18 @@ class SurvivalPValue(db.Model):
     gene = relationship("Gene", foreign_keys=[gene_ID])
     pValue = db.Column(db.Float)
 
+class GeneCount(db.Model):
+    __tablename__ = "gene_counts"
+    gene_count_ID = db.Column(db.Integer, primary_key=True)
 
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+
+    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
+    run = relationship("Run", foreign_keys=[run_ID])
+
+    count_all = db.Column(db.Integer)
+    count_sign = db.Column(db.Integer)
 
 class DatasetSchema(ma.ModelSchema):
     class Meta:
@@ -380,3 +391,12 @@ class checkGeneInteractionProCancer(ma.ModelSchema):
     disease_name = fields.String()
     run_ID = fields.Integer()
     include = fields.Integer()
+
+class GeneCountSchema(ma.ModelSchema):
+    class Meta:
+        model = GeneCount
+        sql_session = db.session
+        fields = ["run", "gene", "count_all", "count_sign"]
+
+    run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))

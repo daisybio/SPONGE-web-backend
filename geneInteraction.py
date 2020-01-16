@@ -589,17 +589,23 @@ def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCoun
         gene = models.Gene.query \
             .filter(models.Gene.ensg_number.in_(ensg_number)) \
             .all()
+
+        if len(gene) > 0:
+            gene_ID = [i.gene_ID for i in gene]
+            queries.append(models.GeneCount.gene_ID.in_(gene_ID))
+        else:
+            abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
     # if gene_symbol is given to specify gene(s), get the intern gene_ID(primary_key) for requested gene_symbol(gene_ID)
     elif gene_symbol is not None:
         gene = models.Gene.query \
             .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
             .all()
 
-    if len(gene) > 0:
-        gene_ID = [i.gene_ID for i in gene]
-        queries.append(models.GeneCount.gene_ID.in_(gene_ID))
-    else:
-        abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
+        if len(gene) > 0:
+            gene_ID = [i.gene_ID for i in gene]
+            queries.append(models.GeneCount.gene_ID.in_(gene_ID))
+        else:
+            abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
     #add count filter if provided
     if minCountAll is not None:

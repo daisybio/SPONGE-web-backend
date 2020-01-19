@@ -196,12 +196,15 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
         abort(404, "No information with given parameters found")
 
 
-def read_all_gene_network_analysis(disease_name=None, gene_type=None, minBetweenness=None, minNodeDegree=None, minEigenvector=None,
+def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, minBetweenness=None, minNodeDegree=None, minEigenvector=None,
                                    sorting=None, descending=True, limit=100, offset=0):
     """
-    This function responds to a request for /sponge/ceRNANetwork/ceRNAInteraction/findAll/networkAnalysis
+    This function responds to a request for /sponge/findceRNA
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved and satisfies the given filters
     :param disease_name: isease_name of interest
+    :param gene_type: defines the type of gene of interest
+    :param ensg_number: esng number of the genes of interest
+    :param gene_symbol: gene symbol of the genes of interest
     :param minBetweenness: betweenness cutoff (>)
     :param minNodeDegree: degree cutoff (>)
     :param minEigenvector: eigenvector cutoff (>)
@@ -230,6 +233,31 @@ def read_all_gene_network_analysis(disease_name=None, gene_type=None, minBetween
             queries.append(models.networkAnalysis.run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
+
+    if ensg_number is not None and gene_symbol is not None:
+        abort(404,
+              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+
+    gene = []
+    # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
+    if ensg_number is not None:
+        gene = models.Gene.query \
+            .filter(models.Gene.ensg_number.in_(ensg_number)) \
+            .all()
+        if len(gene) > 0:
+            gene_IDs = [i.gene_ID for i in gene]
+            queries.append(models.networkAnalysis.gene_ID.in_(gene_IDs))
+        else:
+            abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+    elif gene_symbol is not None:
+        gene = models.Gene.query \
+            .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
+            .all()
+        if len(gene) > 0:
+            gene_IDs = [i.gene_ID for i in gene]
+            queries.append(models.networkAnalysis.gene_ID.in_(gene_IDs))
+        else:
+            abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
 
     # filter further depending on given statistics cutoffs
     if minBetweenness is not None:

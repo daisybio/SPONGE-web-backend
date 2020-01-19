@@ -526,6 +526,27 @@ paths:
         required: true
         schema:
           type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg number(s) of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289) (this or gene_symbol is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR) (this or ensg_number is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
       - name: gene_type
         in: query
         description: Defines the type of gene of interest (only one possibility choosable).

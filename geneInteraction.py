@@ -1,8 +1,8 @@
 import sqlalchemy as sa
 from flask import abort
-from sqlalchemy import desc,exists
+from sqlalchemy import desc
 import models
-
+from config import session
 
 def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue = 0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
@@ -37,6 +37,21 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         abort(404,
               "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol or gene type)")
 
+    queries_1 = []
+    queries_2 = []
+    # if specific disease_name is given:
+    if disease_name is not None:
+        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+            .all()
+
+        if len(run) > 0:
+            run_IDs = [i.run_ID for i in run]
+            queries_1.append(models.GeneInteraction.run_ID.in_(run_IDs))
+            queries_2.append(models.GeneInteraction.run_ID.in_(run_IDs))
+        else:
+            abort(404, "No dataset with given disease_name found")
+
     gene = []
     # if ensg_numer is given to specify gene(s), get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
     if ensg_number is not None:
@@ -54,43 +69,36 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
             .all()
 
     # save all needed queries to get correct results
-    queries = []
     if ensg_number is not None or gene_symbol is not None or gene_type is not None:
         if len(gene) > 0:
             gene_IDs = [i.gene_ID for i in gene]
-            queries.append(
-                sa.or_(models.GeneInteraction.gene_ID1.in_(gene_IDs), models.GeneInteraction.gene_ID2.in_(gene_IDs)))
+            queries_1.append(models.GeneInteraction.gene_ID1.in_(gene_IDs))
+            queries_2.append(models.GeneInteraction.gene_ID2.in_(gene_IDs))
         else:
             abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
-
-    # if specific disease_name is given:
-    if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
-
-        if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
-            queries.append(models.GeneInteraction.run_ID.in_(run_IDs))
-        else:
-            abort(404, "No dataset with given disease_name found")
 
     # filter further depending on given statistics cutoffs
     if pValue is not None:
         if pValueDirection == "<":
-            queries.append(models.GeneInteraction.p_value < pValue)
+            queries_1.append(models.GeneInteraction.p_value < pValue)
+            queries_2.append(models.GeneInteraction.p_value < pValue)
         else:
-            queries.append(models.GeneInteraction.p_value > pValue)
+            queries_1.append(models.GeneInteraction.p_value > pValue)
+            queries_2.append(models.GeneInteraction.p_value > pValue)
     if mscor is not None:
         if mscorDirection == "<":
-            queries.append(models.GeneInteraction.mscor < mscor)
+            queries_1.append(models.GeneInteraction.mscor < mscor)
+            queries_2.append(models.GeneInteraction.mscor < mscor)
         else:
-            queries.append(models.GeneInteraction.mscor > mscor)
+            queries_1.append(models.GeneInteraction.mscor > mscor)
+            queries_2.append(models.GeneInteraction.mscor > mscor)
     if correlation is not None:
         if correlationDirection == "<":
-            queries.append(models.GeneInteraction.correlation < correlation)
+            queries_1.append(models.GeneInteraction.correlation < correlation)
+            queries_2.append(models.GeneInteraction.correlation < correlation)
         else:
-            queries.append(models.GeneInteraction.correlation > correlation)
+            queries_1.append(models.GeneInteraction.correlation > correlation)
+            queries_2.append(models.GeneInteraction.correlation > correlation)
 
     # add all sorting if given:
     sort = []
@@ -111,11 +119,33 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
             else:
                 sort.append(models.GeneInteraction.correlation.asc())
 
-    interaction_result = models.GeneInteraction.query \
-        .filter(*queries) \
+
+    interaction_result = []
+    tmp = models.GeneInteraction.query \
+        .filter(*queries_1) \
         .order_by(*sort) \
         .slice(offset, offset + limit) \
         .all()
+
+    if len(tmp) > 0:
+        interaction_result.append(tmp)
+
+    tmp = models.GeneInteraction.query \
+        .filter(*queries_2) \
+        .order_by(*sort) \
+        .slice(offset, offset + limit) \
+        .all()
+
+    if len(tmp) > 0:
+        interaction_result.append(tmp)
+
+
+    print("huhu", tmp)
+    print("huhu", interaction_result)
+
+    interaction_result = [val for sublist in interaction_result for val in sublist]
+    print("huhu", interaction_result)
+
 
     if len(interaction_result) > 0:
         if information:
@@ -301,7 +331,6 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
     else:
         abort(404, "Not data found that satisfies the given filters")
 
-from config import session
 def testGeneInteraction(ensg_number = None, gene_symbol=None):
     """
     :param ensg_number: ensg number of the gene of interest

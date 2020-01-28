@@ -139,13 +139,7 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
     if len(tmp) > 0:
         interaction_result.append(tmp)
 
-
-    print("huhu", tmp)
-    print("huhu", interaction_result)
-
     interaction_result = [val for sublist in interaction_result for val in sublist]
-    print("huhu", interaction_result)
-
 
     if len(interaction_result) > 0:
         if information:

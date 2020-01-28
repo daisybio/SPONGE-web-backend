@@ -1,0 +1,82 @@
+version: '2'
+
+services:
+    mysql:
+        image: mysql:latest
+        container_name: sponge-db
+        ports:
+            - "3600:3600"
+        volumes:
+            - "./sponge-mysql-2:/docker-entrypoint-initdb.d"
+        environment:
+            - MYSQL_ROOT_PASSWORD=a6/4qpQYx]QA
+            - MYSQL_DATABASE=sponge
+        networks:
+            - back-tier
+            
+###########################################
+            
+    sponge-web-backend:
+        image: biomedbigdata/sponge-web-backend
+        container_name: sponge-web-backend
+        restart: always
+        environment:
+            - SPONGE_DB_URI=mysql://root:a6/4qpQYx]QA@10.162.163.20/sponge #hier könnte es sein, dass man die Adresse von alfred noch auf localhost oder zu ändern muss, um auf den "neuen" DB container zuzugreifen -> testen!
+              #deploy:
+              #resources:
+              # limits:
+              #     memory: 64g
+              # reservations:
+              #     memory: 32g
+                
+        ports:
+            - "5000:5000"
+        networks:
+            - front-tier
+            - back-tier
+
+###########################################
+        
+    sponge-web-frontend:
+        image: biomedbigdata/sponge-web-frontend
+        container_name: sponge-web-frontend
+        restart: always
+        ports:
+            - "4200:80"
+        networks:
+            - front-tier
+
+###########################################
+    sponge-web-ftp:
+        image: stilliard/pure-ftpd
+        container_name: sponge-web-ftp
+        ports:
+            - "21:21"
+            - "30000-30009:30000-30009"
+        environment:
+            PUBLICHOST: "10.162.163.20"
+            FTP_USER_NAME: exbiomeduser
+            FTP_USER_PASS: nfef8guer
+            FTP_USER_HOME: /home/exbiomeduser
+        volumes: # remember to replace /folder_on_disk/ with the path to where you want to store the files on the host machine
+            - "/nfs/home/students/epachl/NEAP/createCSV_FTP/csvs_FTP:/home/exbiomeduser"
+           # - "/nfs/home/students/epachl/NEAP/createCSV_FTP/csvs_FTP:/etc/sponge-web-ftp/passwd"
+           # - "/nfs/home/students/epachl/NEAP/createCSV_FTP/csvs_FTP:/etc/pure-ftpd/nfef8guer!hiuh12377"
+        restart: always
+        networks:
+             - front-tier   
+             - back-tier
+
+###########################################
+
+    watchtower:
+        image: containrrr/watchtower
+        container_name: watchtower
+        restart: always
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+        command: --debug true --cleanup true sponge-web-backend sponge-web-frontend -i 60
+                             
+networks:
+    front-tier:
+    back-tier:

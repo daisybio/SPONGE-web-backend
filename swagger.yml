@@ -450,6 +450,23 @@ paths:
             type: string
           minItems: 0
         explode: false
+      - name: pValue
+        in: query
+        required: false
+        description: Threshold of the FDR adjusted p-value. Default is 0.05.
+        schema:
+          type: number
+          default: 0.05
+      - name: pValueDirection
+        in: query
+        required: false
+        description: Direction of the FDR adjusted p-value threshold (<=, >=).
+        schema:
+          type: string
+          enum:
+          - <
+          - ">"
+          default: <
       - name: limit
         in: query
         description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.

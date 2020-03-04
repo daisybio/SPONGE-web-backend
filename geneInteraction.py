@@ -153,7 +153,8 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         abort(404, "No information with given parameters found")
 
 
-def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, limit=100, offset=0):
+def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, pValue = 0.05,
+                   pValueDirection="<", limit=100, offset=0):
     """
       This function responds to a request for /sponge/ceRNAInteraction/findSpecific
       and returns all interactions between the given identifications (ensg_number or gene_symbol)
@@ -207,6 +208,13 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
             queries.append(models.GeneInteraction.run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
+
+    # filter further depending on given statistics cutoffs
+    if pValue is not None:
+        if pValueDirection == "<":
+            queries.append(models.GeneInteraction.p_value < pValue)
+        else:
+            queries.append(models.GeneInteraction.p_value > pValue)
 
     interaction_result = models.GeneInteraction.query \
         .filter(*queries) \

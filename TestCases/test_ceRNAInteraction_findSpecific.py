@@ -4,7 +4,8 @@ from flask import abort
 import sqlalchemy as sa
 from werkzeug.exceptions import HTTPException
 
-def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, limit=15000, offset=0):
+def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, pValue = 0.05,
+                   pValueDirection="<", limit=100, offset=0):
     """
       This function responds to a request for /sponge/ceRNAInteraction/findSpecific
       and returns all interactions between the given identifications (ensg_number or gene_symbol)
@@ -17,7 +18,7 @@ def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_sym
       """
 
     # test limit
-    if limit > 15000:
+    if limit > 1000:
         abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
 
     # test if any of the two identification possibilites is given
@@ -59,6 +60,13 @@ def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_sym
         else:
             abort(404, "No dataset with given disease_name found")
 
+    # filter further depending on given statistics cutoffs
+    if pValue is not None:
+        if pValueDirection == "<":
+            queries.append(models.GeneInteraction.p_value < pValue)
+        else:
+            queries.append(models.GeneInteraction.p_value > pValue)
+
     interaction_result = models.GeneInteraction.query \
         .filter(*queries) \
         .slice(offset, offset + limit) \
@@ -69,6 +77,7 @@ def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_sym
         return models.GeneInteractionDatasetShortSchema(many=True).dump(interaction_result).data
     else:
         abort(404, "No information with given parameters found")
+
 
 ########################################################################################################################
 """Test Cases for Endpoint /ceRNAInteraction/findSpecific"""
@@ -128,11 +137,11 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_specific_interaction(disease_name='bladder urothelial carcinoma', ensg_number=['ENSG00000172137','ENSG00000078237'], limit=50)
+        mock_response = test_read_specific_interaction(disease_name='bladder urothelial carcinoma', ensg_number=['ENSG00000172137','ENSG00000078237'], limit=50, pValue=1)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_specific_interaction(disease_name='bladder urothelial carcinoma',
-                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50)
+                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, pValue=1)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -141,10 +150,10 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_specific_interaction(disease_name='bladder urothelial carcinoma', gene_symbol=['CALB2','TIGAR'], limit=50)
+        mock_response = test_read_specific_interaction(disease_name='bladder urothelial carcinoma', gene_symbol=['CALB2','TIGAR'], limit=50, pValue=1)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_specific_interaction(disease_name='bladder urothelial carcinoma',
-                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50)
+                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, pValue=1)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)

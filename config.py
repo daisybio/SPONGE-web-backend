@@ -18,6 +18,7 @@ CORS(app)
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SPONGE_DB_URI")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SERVER_NAME'] = os.getenv("SPONGE_API_URI")
 
 
 # an Engine, which the Session will use for connection

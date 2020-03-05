@@ -19,6 +19,7 @@ app.config['SQLALCHEMY_ECHO'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SPONGE_DB_URI")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+
 # an Engine, which the Session will use for connection
 # resources
 some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"))

@@ -536,7 +536,9 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
     else:
         abort(404, "No information with given parameters found")
 
-def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None):
+
+from copy import deepcopy
+def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, between=False):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNA
     and returns all miRNAs thar contribute to all interactions between the given identifications (ensg_number or gene_symbol)
@@ -544,6 +546,9 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
     :param ensg_number: esng number of the genes of interest
     :param gene_symbol: gene symbol of the genes of interest
     :param gene_type: defines the type of gene of interest
+    :param between: If false, all interactions where one of the interaction partners fits the given genes of interest
+                    will be considered.
+                    If true, just interactions between the genes of interest will be considered.
 
     :return: all miRNAs contributing to the interactions between genes of interest
     """
@@ -554,6 +559,7 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
               "More than one identification paramter is given. Please choose one out of (ensg number, gene symbol or gene type)")
 
     queries = []
+    queries2 = []
     # if specific disease_name is given:
     if disease_name is not None:
         run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
@@ -563,6 +569,8 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
         if len(run) > 0:
             run_IDs = [i.run_ID for i in run]
             queries.append(models.GeneInteraction.run_ID.in_(run_IDs))
+            queries2.append(models.GeneInteraction.run_ID.in_(run_IDs))
+
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -586,11 +594,33 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
     # get requires interaction_ID from database
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
-        queries.append(
-            sa.and_(models.GeneInteraction.gene_ID1.in_(gene_IDs), models.GeneInteraction.gene_ID2.in_(gene_IDs)))
-        interactions = models.GeneInteraction.query \
-            .filter(*queries) \
-            .all()
+        interactions = []
+        if between:
+            queries.append(
+                sa.and_(models.GeneInteraction.gene_ID1.in_(gene_IDs), models.GeneInteraction.gene_ID2.in_(gene_IDs)))
+            interactions = models.GeneInteraction.query \
+                .filter(*queries) \
+                .all()
+        if not between:
+            queries.append(models.GeneInteraction.gene_ID1.in_(gene_IDs))
+            queries2.append(models.GeneInteraction.gene_ID2.in_(gene_IDs))
+
+            tmp = models.GeneInteraction.query \
+                .filter(*queries) \
+                .all()
+
+            if len(tmp) > 0:
+                interactions.append(tmp)
+
+            tmp = models.GeneInteraction.query \
+                .filter(*queries2) \
+                .all()
+
+            if len(tmp) > 0:
+                interactions.append(tmp)
+
+            interactions = [val for sublist in interactions for val in sublist]
+
         if len(interactions) > 0:
             interaction_IDs = [i.interactions_genegene_ID for i in interactions]
         else:

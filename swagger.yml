@@ -1134,6 +1134,13 @@ paths:
           - unitary_pseudogene
           - unprocessed_pseudogene
           - vaultRNA
+      - name: between
+        in: query
+        description: If false, all interactions where one of the interaction partners fits the given genes of interestwill be considered.If true, just interactions between the genes of interest will be considered.
+        required: true
+        schema:
+          type: boolean
+          default: false
       responses:
         "200":
           description: Returns all interactions between the given identifications (ensg_number or gene_symbol)

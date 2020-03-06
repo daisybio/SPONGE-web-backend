@@ -153,7 +153,7 @@ paths:
                       description: Result of the test. 0 means the gene is not included in the corresponding ceRNA interaction network. 1 mean the gene is a part of the ceRNA network.
                     run_ID:
                       type: integer
-                      description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
+                      description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
   /ceRNAInteraction/findAll:
     get:
       operationId: geneInteraction.read_all_genes
@@ -411,7 +411,7 @@ paths:
                             - disease_name
                         run_ID:
                           type: integer
-                          description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
                         - run_ID
@@ -525,7 +525,7 @@ paths:
                             - disease_name
                         run_ID:
                           type: integer
-                          description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
                         - run_ID
@@ -709,7 +709,7 @@ paths:
                             - disease_name
                         run_ID:
                           type: integer
-                          description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
                         - run_ID
@@ -791,7 +791,7 @@ paths:
                           description: Name of the cancer type/dataset.
                         run_ID:
                           type: integer
-                          description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
                         - run_ID
@@ -909,7 +909,7 @@ paths:
                           description: Name of the cancer type/dataset.
                         run_ID:
                           type: integer
-                          description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
                         - run_ID
@@ -1049,7 +1049,7 @@ paths:
                             - disease_name
                         run_ID:
                           type: integer
-                          description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
                         - run_ID
@@ -1192,7 +1192,7 @@ paths:
                           description: Name of the cancer type/dataset.
                         run_ID:
                           type: integer
-                          description: Internal database ID for different runs with SPONGE in the same expression values for one cancer_type/dataset.
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
                         - run_ID
@@ -1429,6 +1429,37 @@ paths:
                     start_pos:
                       type: integer
                       description: Starting position of the gene.
+  /getOverallCounts:
+    get:
+      operationId: externalInformation.getOverallCount
+      tags:
+      - ExternalInformation
+      summary: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
+      description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
+      responses:
+        "200":
+          description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    count_interactions:
+                      type: integer
+                      description: Amount of all interactions in the specific dataset.
+                    count_interactions_sign:
+                      type: integer
+                      description: Amount of all significant interactions in the specific dataset.
+                    count_shared_miRNAs:
+                      type: integer
+                      description: Amount of shared miRNA  in the specific dataset.
+                    run_ID:
+                      type: integer
+                      description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                    disease_name:
+                      type: string
+                      description: Name of the cancer type/dataset.
 
   /survivalAnalysis/sampleInformation:
     get:

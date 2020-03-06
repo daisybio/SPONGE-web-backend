@@ -1,5 +1,7 @@
 from flask import abort
 import models
+from config import session
+
 
 def getAutocomplete(searchString):
     """
@@ -43,7 +45,7 @@ def getAutocomplete(searchString):
             abort(404, "No gene symbol found for the given String")
 
 
-def getGeneInformation(ensg_number = None, gene_symbol = None):
+def getGeneInformation(ensg_number=None, gene_symbol=None):
     """
     :param ensg_number:
     :param gene_symbol:
@@ -80,6 +82,24 @@ def getGeneInformation(ensg_number = None, gene_symbol = None):
             abort(404, "No gene found with: " + gene_symbol)
 
 
+def getOverallCount():
+    """
+    Function return current statistic about database - amount of shared miRNA, significant and insignificant
+     interactions per dataset
+    :return: Current statistic about database
+    """
 
+    # test for each dataset if the gene(s) of interest are included in the ceRNA network
+    count = session.execute(
+        "select * "
+        " from (select sum(count_all) as count_interactions, sum(count_sign) as count_interactions_sign, run_ID "
+            "from gene_counts group by run_ID) as t1 "
+        "join "
+        "(select sum(occurences) as count_shared_miRNAs, run_ID from occurences_miRNA group by run_ID) as t2 "
+        "using(run_ID) "
+        "join "
+        "(SELECT dataset.disease_name, run.run_ID from dataset join run where dataset.dataset_ID = run.dataset_ID) as t3 "
+        "using(run_ID);").fetchall()
 
-
+    schema = models.OverallCountSchema(many=True)
+    return schema.dump(count).data

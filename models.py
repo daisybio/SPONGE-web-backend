@@ -400,3 +400,13 @@ class GeneCountSchema(ma.ModelSchema):
 
     run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
     gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
+
+class OverallCountSchema(ma.ModelSchema):
+    class Meta:
+        strict = True
+
+    count_interactions = fields.Integer()
+    count_interactions_sign = fields.Integer()
+    run_ID = fields.Integer()
+    disease_name = fields.String()
+    count_shared_miRNAs = fields.Integer()

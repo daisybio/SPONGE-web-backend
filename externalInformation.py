@@ -92,7 +92,7 @@ def getOverallCount():
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
     count = session.execute(
         "select * "
-        " from (select sum(count_all) as count_interactions, sum(count_sign) as count_interactions_sign, run_ID "
+        " from (select sum(count_all)/2 as count_interactions, sum(count_sign)/2 as count_interactions_sign, run_ID "
             "from gene_counts group by run_ID) as t1 "
         "join "
         "(select sum(occurences) as count_shared_miRNAs, run_ID from occurences_miRNA group by run_ID) as t2 "

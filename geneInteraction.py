@@ -373,37 +373,32 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
     else:
         abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
-    try:
-        #test for each dataset if the gene(s) of interest are included in the ceRNA network
-        run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
+    #test for each dataset if the gene(s) of interest are included in the ceRNA network
+    run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
 
-        session.commit()
+    session.commit()
 
 
-        result = []
-        for r in run:
-            tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+    result = []
+    for r in run:
+        tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
                                           " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
 
-            if (tmp[0] == 1):
-                check = {"data_origin": r.data_origin,"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
-            else:
-                tmp2  = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+        if (tmp[0] == 1):
+            check = {"data_origin": r.data_origin,"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
+        else:
+            tmp2  = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
                                           " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
-                if (tmp2[0] == 1):
-                    check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+            if (tmp2[0] == 1):
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
                              "include": 1}
-                else:
-                    check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+            else:
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
                              "include": 0}
 
-            result.append(check)
+        result.append(check)
 
-    except:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+    session.close()
 
     schema = models.checkGeneInteractionProCancer(many=True)
     return schema.dump(result).data

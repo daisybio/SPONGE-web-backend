@@ -100,8 +100,7 @@ def getOverallCount():
     session = Session()
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
 
-    try:
-        count = session.execute(
+    count = session.execute(
             "select * "
             " from (select sum(count_all)/2 as count_interactions, sum(count_sign)/2 as count_interactions_sign, run_ID "
                 "from gene_counts group by run_ID) as t1 "
@@ -111,12 +110,8 @@ def getOverallCount():
             "join "
             "(SELECT dataset.disease_name, run.run_ID from dataset join run where dataset.dataset_ID = run.dataset_ID) as t3 "
             "using(run_ID);").fetchall()
-        session.commit()
-    except:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+
+    session.close()
 
     schema = models.OverallCountSchema(many=True)
     return schema.dump(count).data

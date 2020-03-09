@@ -3,7 +3,8 @@ from flask import abort
 from sqlalchemy import desc
 import models
 
-def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue = 0.05,
+
+def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
                    sorting=None, descending=True, limit=100, offset=0, information=True):
     """
@@ -118,27 +119,30 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
             else:
                 sort.append(models.GeneInteraction.correlation.asc())
 
-
     interaction_result = []
     tmp = models.GeneInteraction.query \
         .filter(*queries_1) \
         .order_by(*sort) \
-        .limit(limit) \
+        .union(models.GeneInteraction.query
+               .filter(*queries_2)
+               .order_by(*sort)) \
+        .slice(offset, offset + limit) \
         .all()
 
     if len(tmp) > 0:
         interaction_result.append(tmp)
 
-    tmp = models.GeneInteraction.query \
-        .filter(*queries_2) \
-        .order_by(*sort) \
-        .limit(limit) \
-        .all()
+    # tmp = models.GeneInteraction.query \
+    #     .filter(*queries_2) \
+    #     .order_by(*sort) \
+    #     .slice(offset, offset + limit) \
+    #     .all()
+    #
+    # if len(tmp) > 0:
+    #     interaction_result.append(tmp)
 
-    if len(tmp) > 0:
-        interaction_result.append(tmp)
 
-    interaction_result = [val for sublist in interaction_result for val in sublist][offset:offset+limit]
+    interaction_result = [val for sublist in interaction_result for val in sublist]
 
     if len(interaction_result) > 0:
         if information:
@@ -152,8 +156,8 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         abort(404, "No information with given parameters found")
 
 
-def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, pValue = 0.05,
-                   pValueDirection="<", limit=100, offset=0):
+def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, pValue=0.05,
+                              pValueDirection="<", limit=100, offset=0):
     """
       This function responds to a request for /sponge/ceRNAInteraction/findSpecific
       and returns all interactions between the given identifications (ensg_number or gene_symbol)
@@ -227,7 +231,8 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
         abort(404, "No information with given parameters found")
 
 
-def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, minBetweenness=None, minNodeDegree=None, minEigenvector=None,
+def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None,
+                                   minBetweenness=None, minNodeDegree=None, minEigenvector=None,
                                    sorting=None, descending=True, limit=100, offset=0):
     """
     This function responds to a request for /sponge/findceRNA
@@ -332,8 +337,11 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
     else:
         abort(404, "Not data found that satisfies the given filters")
 
+
 import os
-def testGeneInteraction(ensg_number = None, gene_symbol=None):
+
+
+def testGeneInteraction(ensg_number=None, gene_symbol=None):
     """
     :param ensg_number: ensg number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
@@ -352,7 +360,7 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
     if ensg_number is None and gene_symbol is None:
         abort(404, "One of the two possible identification numbers must be provided")
 
-    #test if not both identification possibilites are given
+    # test if not both identification possibilites are given
     if ensg_number is not None and gene_symbol is not None:
         abort(404,
               "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
@@ -373,25 +381,26 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
     else:
         abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
-    #test for each dataset if the gene(s) of interest are included in the ceRNA network
+    # test for each dataset if the gene(s) of interest are included in the ceRNA network
     run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
 
     result = []
     for r in run:
         tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
-                                          " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+                              " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
 
         if (tmp[0] == 1):
-            check = {"data_origin": r.data_origin,"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
+            check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+                     "include": tmp[0]}
         else:
-            tmp2  = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
-                                          " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+            tmp2 = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+                                   " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
             if (tmp2[0] == 1):
                 check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
-                             "include": 1}
+                         "include": 1}
             else:
                 check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
-                             "include": 0}
+                         "include": 0}
 
         result.append(check)
 
@@ -399,6 +408,7 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
 
     schema = models.checkGeneInteractionProCancer(many=True)
     return schema.dump(result).data
+
 
 def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, limit=100, offset=0,
                           information=True):
@@ -547,7 +557,8 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
         abort(404, "No information with given parameters found")
 
 
-def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, between=False):
+def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None,
+                                        between=False):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNA
     and returns all miRNAs thar contribute to all interactions between the given identifications (ensg_number or gene_symbol)
@@ -637,7 +648,6 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
     else:
         abort(404, "No gene found for given identifiers.")
 
-
     # get all wished mirnas
     if len(interaction_IDs) > 0:
         interaction_result = models.miRNAInteraction.query \
@@ -651,7 +661,7 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
             abort(404, "No data found with input parameter")
 
 
-def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCountAll = None, minCountSign=None):
+def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCountAll=None, minCountSign=None):
     """
     This function responds to a request for /geneCounts
     and returns gene(s) of interest with respective counts in disease of interest.
@@ -666,7 +676,8 @@ def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCoun
 
     # test if any of the two identification possibilities is given or disease_name is specified
     if ensg_number is None and gene_symbol is None and disease_name is None:
-        abort(404, "One of the two possible identification numbers must be provided or the disease_name must be specified.")
+        abort(404,
+              "One of the two possible identification numbers must be provided or the disease_name must be specified.")
 
     # test if not both identification possibilites are given
     if ensg_number is not None and gene_symbol is not None:
@@ -710,15 +721,15 @@ def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCoun
         else:
             abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
-    #add count filter if provided
+    # add count filter if provided
     if minCountAll is not None:
         queries.append(models.GeneCount.count_all >= minCountAll)
     if minCountSign is not None:
         queries.append(models.GeneCount.count_sign >= minCountSign)
 
-    #get results
+    # get results
     result = models.GeneCount.query \
-        .filter(*queries)\
+        .filter(*queries) \
         .all()
 
     if len(result) > 0:

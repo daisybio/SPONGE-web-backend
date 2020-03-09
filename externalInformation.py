@@ -1,6 +1,5 @@
 from flask import abort
 import models
-from config import session
 
 
 def getAutocomplete(searchString):
@@ -44,6 +43,8 @@ def getAutocomplete(searchString):
         else:
             abort(404, "No gene symbol found for the given String")
 
+import sqlalchemy as sa
+import os
 
 def getGeneInformation(ensg_number=None, gene_symbol=None):
     """
@@ -89,17 +90,33 @@ def getOverallCount():
     :return: Current statistic about database
     """
 
+    # an Engine, which the Session will use for connection resources
+    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"))
+
+    # create a configured "Session" class
+    Session = sa.orm.sessionmaker(bind=some_engine)
+
+    # create a Session
+    session = Session()
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
-    count = session.execute(
-        "select * "
-        " from (select sum(count_all)/2 as count_interactions, sum(count_sign)/2 as count_interactions_sign, run_ID "
-            "from gene_counts group by run_ID) as t1 "
-        "join "
-        "(select sum(occurences) as count_shared_miRNAs, run_ID from occurences_miRNA group by run_ID) as t2 "
-        "using(run_ID) "
-        "join "
-        "(SELECT dataset.disease_name, run.run_ID from dataset join run where dataset.dataset_ID = run.dataset_ID) as t3 "
-        "using(run_ID);").fetchall()
+
+    try:
+        count = session.execute(
+            "select * "
+            " from (select sum(count_all)/2 as count_interactions, sum(count_sign)/2 as count_interactions_sign, run_ID "
+                "from gene_counts group by run_ID) as t1 "
+            "join "
+            "(select sum(occurences) as count_shared_miRNAs, run_ID from occurences_miRNA group by run_ID) as t2 "
+            "using(run_ID) "
+            "join "
+            "(SELECT dataset.disease_name, run.run_ID from dataset join run where dataset.dataset_ID = run.dataset_ID) as t3 "
+            "using(run_ID);").fetchall()
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
     schema = models.OverallCountSchema(many=True)
     return schema.dump(count).data

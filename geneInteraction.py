@@ -2,7 +2,6 @@ import sqlalchemy as sa
 from flask import abort
 from sqlalchemy import desc
 import models
-from config import session
 
 def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue = 0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
@@ -333,12 +332,21 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
     else:
         abort(404, "Not data found that satisfies the given filters")
 
+import os
 def testGeneInteraction(ensg_number = None, gene_symbol=None):
     """
     :param ensg_number: ensg number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
     :return: lists of all cancer types gene of interest has at least one interaction in the corresponding ceRNA II network
     """
+    # an Engine, which the Session will use for connection resources
+    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"))
+
+    # create a configured "Session" class
+    Session = sa.orm.sessionmaker(bind=some_engine)
+
+    # create a Session
+    session = Session()
 
     # test if any of the two identification possibilites is given
     if ensg_number is None and gene_symbol is None:
@@ -365,27 +373,37 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
     else:
         abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
-    #test for each dataset if the gene(s) of interest are included in the ceRNA network
-    run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
+    try:
+        #test for each dataset if the gene(s) of interest are included in the ceRNA network
+        run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
 
-    result = []
-    for r in run:
-        tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
-                                      " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+        session.commit()
 
-        if (tmp[0] == 1):
-            check = {"data_origin": r.data_origin,"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
-        else:
-            tmp2  = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
-                                      " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
-            if (tmp2[0] == 1):
-                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
-                         "include": 1}
+
+        result = []
+        for r in run:
+            tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+                                          " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+
+            if (tmp[0] == 1):
+                check = {"data_origin": r.data_origin,"disease_name" : r.disease_name, "run_ID" : r.run_ID, "include" : tmp[0] }
             else:
-                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
-                         "include": 0}
+                tmp2  = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+                                          " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+                if (tmp2[0] == 1):
+                    check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+                             "include": 1}
+                else:
+                    check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+                             "include": 0}
 
-        result.append(check)
+            result.append(check)
+
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
     schema = models.checkGeneInteractionProCancer(many=True)
     return schema.dump(result).data
@@ -537,7 +555,6 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
         abort(404, "No information with given parameters found")
 
 
-from copy import deepcopy
 def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, between=False):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNA

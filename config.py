@@ -20,17 +20,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SPONGE_DB_URI")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #app.config['SERVER_NAME'] = os.getenv("SPONGE_API_URI")
 
-
-# an Engine, which the Session will use for connection
-# resources
-some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"))
-
-# create a configured "Session" class
-Session = sa.orm.sessionmaker(bind=some_engine)
-
-# create a Session
-session = Session()
-
 @app.after_request
 def add_header(response):
     #response.cache_control.no_store = True

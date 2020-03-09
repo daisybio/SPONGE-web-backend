@@ -120,27 +120,25 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
 
 
     interaction_result = []
-    limit1 = limit/2
     tmp = models.GeneInteraction.query \
         .filter(*queries_1) \
         .order_by(*sort) \
-        .slice(offset, offset + limit1) \
+        .limit(limit) \
         .all()
 
     if len(tmp) > 0:
         interaction_result.append(tmp)
 
-    limit2 = limit - limit1
     tmp = models.GeneInteraction.query \
         .filter(*queries_2) \
         .order_by(*sort) \
-        .slice(offset, offset + limit2) \
+        .limit(limit) \
         .all()
 
     if len(tmp) > 0:
         interaction_result.append(tmp)
 
-    interaction_result = [val for sublist in interaction_result for val in sublist]
+    interaction_result = [val for sublist in interaction_result for val in sublist][offset:offset+limit]
 
     if len(interaction_result) > 0:
         if information:

@@ -91,7 +91,7 @@ def getOverallCount():
     """
 
     # an Engine, which the Session will use for connection resources
-    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"))
+    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
 
     # create a configured "Session" class
     Session = sa.orm.sessionmaker(bind=some_engine)
@@ -112,6 +112,7 @@ def getOverallCount():
             "using(run_ID);").fetchall()
 
     session.close()
+    some_engine.dispose()
 
     schema = models.OverallCountSchema(many=True)
     return schema.dump(count).data

@@ -376,9 +376,6 @@ def testGeneInteraction(ensg_number = None, gene_symbol=None):
     #test for each dataset if the gene(s) of interest are included in the ceRNA network
     run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
 
-    session.commit()
-
-
     result = []
     for r in run:
         tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +

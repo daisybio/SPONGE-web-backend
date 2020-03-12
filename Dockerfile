@@ -1,6 +1,6 @@
 from alpine:latest
 
-RUN apk add --no-cache python3-dev mariadb-connector-c-dev build-base \
+RUN apk add --no-cache python3-dev mariadb-connector-c-dev build-base linux-headers\
     && pip3 install --upgrade pip
 
 WORKDIR /server

@@ -3,8 +3,6 @@ info:
   description: This is the swagger file that goes with our server code for the sponge REST-API
   version: 2.0.0
   title: SPONGE REST-API documentation
-servers:
-  - url: https://exbio.wzw.tum.de/sponge-api
 paths:
   /dataset:
     get:
@@ -1662,4 +1660,4 @@ paths:
                       type: number
                       description: pValue of log rank test
 servers:
-- url: /
+  - url: /sponge-api

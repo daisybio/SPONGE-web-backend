@@ -3,7 +3,6 @@ from flask import abort
 from sqlalchemy import desc
 import models
 
-
 def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
                    sorting=None, descending=True, limit=100, offset=0, information=True):
@@ -80,25 +79,25 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
     # filter further depending on given statistics cutoffs
     if pValue is not None:
         if pValueDirection == "<":
-            queries_1.append(models.GeneInteraction.p_value < pValue)
-            queries_2.append(models.GeneInteraction.p_value < pValue)
+            queries_1.append(models.GeneInteraction.p_value <= pValue)
+            queries_2.append(models.GeneInteraction.p_value <= pValue)
         else:
-            queries_1.append(models.GeneInteraction.p_value > pValue)
-            queries_2.append(models.GeneInteraction.p_value > pValue)
+            queries_1.append(models.GeneInteraction.p_value >= pValue)
+            queries_2.append(models.GeneInteraction.p_value >= pValue)
     if mscor is not None:
         if mscorDirection == "<":
-            queries_1.append(models.GeneInteraction.mscor < mscor)
-            queries_2.append(models.GeneInteraction.mscor < mscor)
+            queries_1.append(models.GeneInteraction.mscor <= mscor)
+            queries_2.append(models.GeneInteraction.mscor <= mscor)
         else:
-            queries_1.append(models.GeneInteraction.mscor > mscor)
-            queries_2.append(models.GeneInteraction.mscor > mscor)
+            queries_1.append(models.GeneInteraction.mscor >= mscor)
+            queries_2.append(models.GeneInteraction.mscor >= mscor)
     if correlation is not None:
         if correlationDirection == "<":
-            queries_1.append(models.GeneInteraction.correlation < correlation)
-            queries_2.append(models.GeneInteraction.correlation < correlation)
+            queries_1.append(models.GeneInteraction.correlation <= correlation)
+            queries_2.append(models.GeneInteraction.correlation <= correlation)
         else:
-            queries_1.append(models.GeneInteraction.correlation > correlation)
-            queries_2.append(models.GeneInteraction.correlation > correlation)
+            queries_1.append(models.GeneInteraction.correlation >= correlation)
+            queries_2.append(models.GeneInteraction.correlation >= correlation)
 
     # add all sorting if given:
     sort = []
@@ -119,8 +118,8 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
             else:
                 sort.append(models.GeneInteraction.correlation.asc())
 
-    interaction_result = []
-    tmp = models.GeneInteraction.query \
+    #interaction_result = []
+    interaction_result = models.GeneInteraction.query \
         .filter(*queries_1) \
         .order_by(*sort) \
         .union(models.GeneInteraction.query
@@ -129,20 +128,12 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         .slice(offset, offset + limit) \
         .all()
 
-    if len(tmp) > 0:
-        interaction_result.append(tmp)
+    #if len(tmp) > 0:
+    #    interaction_result.append(tmp)
+    #else:
+    #    abort(404, "No information with given parameters found")
 
-    # tmp = models.GeneInteraction.query \
-    #     .filter(*queries_2) \
-    #     .order_by(*sort) \
-    #     .slice(offset, offset + limit) \
-    #     .all()
-    #
-    # if len(tmp) > 0:
-    #     interaction_result.append(tmp)
-
-
-    interaction_result = [val for sublist in interaction_result for val in sublist]
+    #interaction_result = [val for sublist in interaction_result for val in sublist]
 
     if len(interaction_result) > 0:
         if information:
@@ -154,6 +145,7 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         return schema.dump(interaction_result).data
     else:
         abort(404, "No information with given parameters found")
+
 
 
 def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, pValue=0.05,

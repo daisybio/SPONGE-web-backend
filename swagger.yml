@@ -1660,4 +1660,4 @@ paths:
                       type: number
                       description: pValue of log rank test
 servers:
-- url: /sponge
+- url: /sponge-api

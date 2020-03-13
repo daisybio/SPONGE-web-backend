@@ -1,6 +1,5 @@
 import os
 import connexion
-import sqlalchemy as sa
 from flask_cors import CORS
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
@@ -18,7 +17,6 @@ CORS(app)
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SPONGE_DB_URI")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-#app.config['SERVER_NAME'] = os.getenv("SPONGE_API_URI")
 
 @app.after_request
 def add_header(response):

@@ -6,7 +6,7 @@ from werkzeug.exceptions import HTTPException
 
 def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
-                   sorting=None, descending=True, limit=15000, offset=0, information=True):
+                   sorting=None, descending=True, limit=100, offset=0, information=True):
     """
     This function responds to a request for /sponge/ceRNAInteraction/findAll
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved
@@ -80,25 +80,25 @@ def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, g
     # filter further depending on given statistics cutoffs
     if pValue is not None:
         if pValueDirection == "<":
-            queries_1.append(models.GeneInteraction.p_value < pValue)
-            queries_2.append(models.GeneInteraction.p_value < pValue)
+            queries_1.append(models.GeneInteraction.p_value <= pValue)
+            queries_2.append(models.GeneInteraction.p_value <= pValue)
         else:
-            queries_1.append(models.GeneInteraction.p_value > pValue)
-            queries_2.append(models.GeneInteraction.p_value > pValue)
+            queries_1.append(models.GeneInteraction.p_value >= pValue)
+            queries_2.append(models.GeneInteraction.p_value >= pValue)
     if mscor is not None:
         if mscorDirection == "<":
-            queries_1.append(models.GeneInteraction.mscor < mscor)
-            queries_2.append(models.GeneInteraction.mscor < mscor)
+            queries_1.append(models.GeneInteraction.mscor <= mscor)
+            queries_2.append(models.GeneInteraction.mscor <= mscor)
         else:
-            queries_1.append(models.GeneInteraction.mscor > mscor)
-            queries_2.append(models.GeneInteraction.mscor > mscor)
+            queries_1.append(models.GeneInteraction.mscor >= mscor)
+            queries_2.append(models.GeneInteraction.mscor >= mscor)
     if correlation is not None:
         if correlationDirection == "<":
-            queries_1.append(models.GeneInteraction.correlation < correlation)
-            queries_2.append(models.GeneInteraction.correlation < correlation)
+            queries_1.append(models.GeneInteraction.correlation <= correlation)
+            queries_2.append(models.GeneInteraction.correlation <= correlation)
         else:
-            queries_1.append(models.GeneInteraction.correlation > correlation)
-            queries_2.append(models.GeneInteraction.correlation > correlation)
+            queries_1.append(models.GeneInteraction.correlation >= correlation)
+            queries_2.append(models.GeneInteraction.correlation >= correlation)
 
     # add all sorting if given:
     sort = []
@@ -119,27 +119,22 @@ def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, g
             else:
                 sort.append(models.GeneInteraction.correlation.asc())
 
-
-    interaction_result = []
-    tmp = models.GeneInteraction.query \
+    #interaction_result = []
+    interaction_result = models.GeneInteraction.query \
         .filter(*queries_1) \
         .order_by(*sort) \
+        .union(models.GeneInteraction.query
+               .filter(*queries_2)
+               .order_by(*sort)) \
         .slice(offset, offset + limit) \
         .all()
 
-    if len(tmp) > 0:
-        interaction_result.append(tmp)
+    #if len(tmp) > 0:
+    #    interaction_result.append(tmp)
+    #else:
+    #    abort(404, "No information with given parameters found")
 
-    tmp = models.GeneInteraction.query \
-        .filter(*queries_2) \
-        .order_by(*sort) \
-        .slice(offset, offset + limit) \
-        .all()
-
-    if len(tmp) > 0:
-        interaction_result.append(tmp)
-
-    interaction_result = [val for sublist in interaction_result for val in sublist]
+    #interaction_result = [val for sublist in interaction_result for val in sublist]
 
     if len(interaction_result) > 0:
         if information:
@@ -240,19 +235,6 @@ class TestDataset(unittest.TestCase):
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
-    def test_findAll_disease_and_gene_type(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', gene_type="protein_coding", limit=50, pValue = None)
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, pValue = None)
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
-
     def test_findAll_disease_and_ensg_pValue_smaller(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
@@ -313,35 +295,6 @@ class TestDataset(unittest.TestCase):
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
-    def test_findAll_disease_and_gene_type_pValue_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                           gene_type="protein_coding", limit=50, pValue=0.5, pValueDirection="<", sorting="pValue")
-
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, pValue=0.5, pValueDirection="<", sorting="pValue")
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
-
-    def test_findAll_disease_and_gene_type_pValue_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_type="protein_coding", limit=50, pValue=0.5, pValueDirection=">", sorting="pValue")
-
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, pValue=0.5, pValueDirection=">", sorting="pValue")
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_ensg_correlation_smaller(self):
         app.config["TESTING"] = True
@@ -403,35 +356,6 @@ class TestDataset(unittest.TestCase):
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
-    def test_findAll_disease_and_gene_type_correlation_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                           gene_type="protein_coding", limit=50, correlation=0.2, correlationDirection="<", sorting="correlation",pValue = None)
-
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, correlation=0.2, correlationDirection="<", sorting="correlation",pValue = None)
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
-
-    def test_findAll_disease_and_gene_type_correlation_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_type="protein_coding", limit=50, correlation=0.1, correlationDirection=">", sorting="correlation",pValue = None)
-
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, correlation=0.1, correlationDirection=">", sorting="correlation",pValue = None)
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_ensg_mscor_smaller(self):
         app.config["TESTING"] = True
@@ -490,35 +414,5 @@ class TestDataset(unittest.TestCase):
         # retrieve current API response to request
         api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
                                                       gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
-
-    def test_findAll_disease_and_gene_type_mscor_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                           gene_type="protein_coding", limit=50, mscor=0.02, mscorDirection="<", sorting="mscor", pValue = None)
-
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, mscor=0.02, mscorDirection="<", sorting="mscor", pValue = None)
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
-
-    def test_findAll_disease_and_gene_type_mscor_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        # retrieve correct database response to request
-        mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
-                                            gene_type="protein_coding", limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
-
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_all_genes(disease_name='bladder urothelial carcinoma',
-                                                      gene_type="protein_coding", limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)

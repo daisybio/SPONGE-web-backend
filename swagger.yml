@@ -1,0 +1,1663 @@
+openapi: 3.0.0
+info:
+  description: This is the swagger file that goes with our server code for the sponge REST-API
+  version: 2.0.0
+  title: SPONGE REST-API documentation
+paths:
+  /dataset:
+    get:
+      operationId: dataset.read
+      tags:
+      - Dataset
+      summary: Get information about all cancer types/datasets or specific one.
+      description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successfully read information about all cancer types/datasets or specific one from database.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataset_ID:
+                    type: integer
+                    description: Internal databse ID of the cancer type/dataset.
+                  disease_name:
+                    type: string
+                    description: Name of the camcer type/dataset.
+                  data_origin:
+                    type: string
+                    description: Cancer type/dataset origin (database name, etc.).
+                  disease_type:
+                    type: string
+                    description: Type of the disease (e.g. cancer).
+                  download_url:
+                    type: string
+                    description: URL to cancer type/dataset annotation.
+  /dataset/runInformation:
+    get:
+      operationId: dataset.read_runInformation
+      tags:
+      - Dataset
+      summary: Get all run information about the cancer type/dataset of interest.
+      description: Retrieve all used parameters of the SPONGE method to create published results for the cancer type/dataset of interest.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successfully read all used parameters for the dataset of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    coefficient_direction:
+                        type: string
+                        description: If "<", coefficient has to be lower than coefficient.threshold, if ">", coefficient has to be larger than threshold. If NULL, the absolute value of the coefficient has to be larger than the threshold.
+                    coefficient_threshold:
+                        type: string
+                        description: Threshold to cross for a regression coefficient to be called significant. Depends on the parameter coefficient.direction.
+                    dataset:
+                        type: object
+                        description: Information about the cancer type/dataset.
+                        properties:
+                          dataset_ID:
+                            type: integer
+                            description: Internal databse ID of the cancer type/dataset.
+                          disease_name:
+                            type: string
+                            description: Name of the cancer type/dataset.
+                        required:
+                          - dataset-ID
+                          - disease_name
+                    f_test:
+                        type: boolean
+                        description: If true (1), an F-test is performed on each model parameter to assess its importance for the model based on the RSS of the full model vs the RSS of the nested model without the miRNA in question.
+                    f_test_p_adj_threshold:
+                        type: number
+                        description: If F.test is TRUE (1), threshold to use for miRNAs to be included.
+                    ks:
+                        type: string
+                        description: A sequence of gene-gene correlation values for which null models are computed.
+                    log_level:
+                        type: string
+                        description: The log level, can be one of "info", "debug", "error".
+                    m_max:
+                        type: integer
+                        description: null models are build for each elt in ks for 1 to m_max miRNAs
+                    min_corr:
+                        type: number
+                        description: Consider only gene pairs with a minimum correlation specified here.
+                    number_of_datasets:
+                        type: integer
+                        description: The number of mscor coefficients to be sampled from each covariance matrix.
+                    number_of_samples:
+                        type: integer
+                        description: The number of samples available in the expression data.
+                    run_ID:
+                        type: integer
+                        description: Internal database ID of the specific parameter setting (=run).
+                    variance_cutoff:
+                        type: string
+                        description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Paramter name in SPONGE method is var.threshold)
+  /ceRNAInteraction/checkGeneInteraction:
+    get:
+      operationId: geneInteraction.testGeneInteraction
+      tags:
+        - ceRNANetwork
+      summary: Tests for specific gene  if has at least one interaction in each cancer type/dataset.
+      description: Tests for specific gene (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
+      parameters:
+      - name: ensg_number
+        in: query
+        description: Ensg number of the gene of interest (e.g. ENSG00000259090).
+        required: false
+        schema:
+          type: string
+      - name: gene_symbol
+        in: query
+        description: Symbol of the gene of interest (e.g. SEPT7P1).
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Tests for specific gene (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    data_origin:
+                      type: string
+                      description: Origin of the dataset.
+                    disease_name:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    include:
+                      type: integer
+                      description: Result of the test. 0 means the gene is not included in the corresponding ceRNA interaction network. 1 mean the gene is a part of the ceRNA network.
+                    run_ID:
+                      type: integer
+                      description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+  /ceRNAInteraction/findAll:
+    get:
+      operationId: geneInteraction.read_all_genes
+      tags:
+      - ceRNANetwork
+      summary: Get all ceRNA interactions the gene(s) of interest is/are involed in.
+      description: Get all ceRNA interactions by given identifications (ensg_number, gene_symbol or gene_type), specific cancer type/dataset or different filter possibilities according different statistical values (e.g. FDR adjusted p-value).
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: false
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg number(s) of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene(s) of interest (e.g. SEPT7P1,TIGAR).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_type
+        in: query
+        description: Defines the type of gene of interest (only one possibility choosable).
+        required: false
+        schema:
+          type: string
+          enum:
+          - 3prime_overlapping_ncRNA
+          - antisense
+          - antisense_RNA
+          - bidirectional_promoter_lncRNA
+          - IG_C_gene
+          - IG_C_pseudogene
+          - IG_V_gene
+          - IG_V_pseudogene
+          - lincRNA
+          - macro_lncRNA
+          - miRNA
+          - misc_RNA
+          - Mt_rRNA
+          - polymorphic_pseudogene
+          - processed_pseudogene
+          - processed_transcript
+          - protein_coding
+          - pseudogene
+          - ribozyme
+          - rRNA
+          - rRNA_pseudogene
+          - scaRNA
+          - scRNA
+          - sense_intronic
+          - sense_overlapping
+          - snoRNA
+          - snRNA
+          - TEC
+          - TR_C_gene
+          - TR_V_gene
+          - TR_V_pseudogene
+          - transcribed_processed_pseudogene
+          - transcribed_unitary_pseudogene
+          - transcribed_unprocessed_pseudogene
+          - translated_processed_pseudogene
+          - unitary_pseudogene
+          - unprocessed_pseudogene
+          - vaultRNA
+      - name: pValue
+        in: query
+        required: false
+        description: Threshold of the FDR adjusted p-value. Default is 0.05.
+        schema:
+          type: number
+          default: 0.05
+      - name: pValueDirection
+        in: query
+        required: false
+        description: Direction of the FDR adjusted p-value threshold (<=, >=).
+        schema:
+          type: string
+          enum:
+          - <
+          - ">"
+          default: <
+      - name: mscor
+        in: query
+        required: false
+        description: Threshold of the 'multiple sensitivity correlation' (mscor).
+        schema:
+          type: number
+      - name: mscorDirection
+        in: query
+        required: false
+        description: Direction of the mscor threshold (<=, >=).
+        schema:
+          type: string
+          enum:
+          - <
+          - ">"
+          default: <
+      - name: correlation
+        in: query
+        required: false
+        description: Threshold of the correlation.
+        schema:
+          type: number
+      - name: correlationDirection
+        in: query
+        required: false
+        description: Direction of the correlation threshold (<=, >=).
+        schema:
+          type: string
+          enum:
+          - <
+          - ">"
+          default: <
+      - name: sorting
+        in: query
+        required: false
+        description: Possibilities for sorting of the results.
+        schema:
+          type: string
+          enum:
+          - pValue
+          - mscor
+          - correlation
+      - name: descending
+        in: query
+        required: false
+        description: Descending (true) or ascending (false) ordering of the results.
+        schema:
+          type: boolean
+          default: true
+      - name: limit
+        in: query
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+        required: false
+        schema:
+          type: integer
+          default: 100
+      - name: offset
+        in: query
+        description: Starting point from where results should be shown.
+        required: false
+        schema:
+          type: integer
+      - name: information
+        in: query
+        description: All available information about genes displayed (true) or just ensg number (false).
+        required: false
+        schema:
+          type: boolean
+          default: true
+      responses:
+        "200":
+          description: Read all ceRNA interactions where gene of interesest in
+            the searched disease (if provided) is involved in
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    correlation:
+                      type: number
+                      description: Correlation of the corresponding ceRNA interaction.
+                    gene1:
+                      type: object
+                      description: One of the two interacting ceRNAs.
+                      properties:
+                        chromosome_name:
+                          type: integer
+                          description: Name of the chromosome the gene is located on.
+                        description:
+                          type: string
+                          description: Anntotation from Ensemble of the gene.
+                        end_pos:
+                          type: integer
+                          description: Endposition of the gene.
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                        gene_type:
+                          type: string
+                          description: The gene type includes both status (e.g. known) and biotype (e.g. protein coding).
+                        start_pos:
+                          type: integer
+                          description: Starting position of the gene.
+                    gene2:
+                      type: object
+                      description: The other part of the ceRNA interaction.
+                      properties:
+                        chromosome_name:
+                          type: integer
+                          description: Name of the chromosome the gene is located on.
+                        description:
+                          type: string
+                          description: Anntotation from Ensemble of the gene.
+                        end_pos:
+                          type: integer
+                          description: Endposition of the gene.
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                        gene_type:
+                          type: string
+                          description: The gene type includes both status (e.g. known) and biotype (e.g. protein coding).
+                        start_pos:
+                          type: integer
+                          description: Starting position of the gene.
+                    mscor:
+                      type: number
+                      description: Multiple senstivity correlation (mscor) of the corresponding ceRNA interaction.
+                    p_value:
+                      type: number
+                      description: FDR adjusted p-value of the corresponding ceRNA interaction.
+                    run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                                type: integer
+                                description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                                type: string
+                                description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_Id
+                            - disease_name
+                        run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - run_ID
+  /ceRNAInteraction/findSpecific:
+    get:
+      operationId: geneInteraction.read_specific_interaction
+      tags:
+      - ceRNANetwork
+      summary: Get all interactions between the given identifiers (ensg_number or gene_symbol).
+      description: Get all interactions between the given identifiers (ensg_number or gene_symbol).
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: false
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg number(s) of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289, ENSG00000152284, ENSG00000185033) (this or gene_symbol is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR, TCF7L1, SEMA4B) (this or ensg_number is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+      - name: pValue
+        in: query
+        required: false
+        description: Threshold of the FDR adjusted p-value. Default is 0.05.
+        schema:
+          type: number
+          default: 0.05
+      - name: pValueDirection
+        in: query
+        required: false
+        description: Direction of the FDR adjusted p-value threshold (<=, >=).
+        schema:
+          type: string
+          enum:
+          - <
+          - ">"
+          default: <
+      - name: limit
+        in: query
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+        required: false
+        schema:
+          type: integer
+          default: 100
+      - name: offset
+        in: query
+        description: Starting point from where results should be shown.
+        required: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Get all interactions between the given identifiers (ensg_number or gene_symbol) - if existing.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    correlation:
+                      type: number
+                      description: Correlation of the corresponding ceRNA interaction.
+                    gene1:
+                      type: string
+                      description: Ensg number of the first part of the ceRNA interaction.
+                    gene2:
+                      type: string
+                      description: Ensg number of the second part of the ceRNA interaction.
+                    mscor:
+                      type: number
+                      description: Multiple senstivity correlation (mscor) of the corresponding ceRNA interaction.
+                    p_value:
+                      type: number
+                      description: FDR adjusted p-value of the corresponding ceRNA interaction.
+                    run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                                type: integer
+                                description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                                type: string
+                                description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - run_ID
+  /findceRNA:
+    get:
+      operationId: geneInteraction.read_all_gene_network_analysis
+      tags:
+      - ceRNANetwork
+      summary: Get all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
+      description: Get all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg number(s) of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289) (this or gene_symbol is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR) (this or ensg_number is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+      - name: gene_type
+        in: query
+        description: Defines the type of gene of interest (only one possibility choosable).
+        required: false
+        schema:
+          type: string
+          enum:
+          - 3prime_overlapping_ncRNA
+          - antisense
+          - antisense_RNA
+          - bidirectional_promoter_lncRNA
+          - IG_C_gene
+          - IG_C_pseudogene
+          - IG_V_gene
+          - IG_V_pseudogene
+          - lincRNA
+          - macro_lncRNA
+          - miRNA
+          - misc_RNA
+          - Mt_rRNA
+          - polymorphic_pseudogene
+          - processed_pseudogene
+          - processed_transcript
+          - protein_coding
+          - pseudogene
+          - ribozyme
+          - rRNA
+          - rRNA_pseudogene
+          - scaRNA
+          - scRNA
+          - sense_intronic
+          - sense_overlapping
+          - snoRNA
+          - snRNA
+          - TEC
+          - TR_C_gene
+          - TR_V_gene
+          - TR_V_pseudogene
+          - transcribed_processed_pseudogene
+          - transcribed_unitary_pseudogene
+          - transcribed_unprocessed_pseudogene
+          - translated_processed_pseudogene
+          - unitary_pseudogene
+          - unprocessed_pseudogene
+          - vaultRNA
+      - name: minBetweenness
+        in: query
+        description: Threshold of the betweenness.
+        required: false
+        schema:
+          type: number
+      - name: minNodeDegree
+        in: query
+        description: Threshold of the degree.
+        required: false
+        schema:
+          type: number
+      - name: minEigenvector
+        in: query
+        description: Threshold of the eigenvektor.
+        required: false
+        schema:
+          type: number
+      - name: sorting
+        in: query
+        required: false
+        description: Possibilities for sorting of the results.
+        schema:
+          type: string
+          enum:
+          - betweenness
+          - degree
+          - eigenvector
+      - name: descending
+        in: query
+        required: false
+        description: Descending (true) or ascending (false) ordering of the results.
+        schema:
+          type: boolean
+          default: true
+      - name: limit
+        in: query
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+        required: false
+        schema:
+          type: integer
+          default: 100
+      - name: offset
+        in: query
+        description: Starting point from where results should be shown.
+        required: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Read all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    betweeness:
+                      type: number
+                      description: Betweenness of the corresponding gene (considered as node) in the specific network.
+                    eigenvector:
+                      type: number
+                      description: Eigenvector of the corresponding gene (considered as node) in the specific network.
+                    gene:
+                      type: object
+                      description: Information about the gene that satisfies all filters.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                      required:
+                        - ensg_number
+                        - gene_symbol
+                    node_degree:
+                      type: number
+                      description: Degree of the corresponding gene (considered as node) in the specific network.
+                    run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - run_ID
+  /getGeneCount:
+    get:
+      operationId: geneInteraction.getGeneCounts
+      tags:
+      - ceRNANetwork
+      summary: Get the number of times a gene of interest is involved in the complete network or just significant interactions.
+      description: Get the number of times a gene of interest is involved in the complete network or just significant interactions.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: false
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg number(s) of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289) (this or gene_symbol is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR) (this or ensg_number is required)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+      - name: minCountAll
+        in: query
+        description: Defines the minimal number of times a gene has to be involved in the complete network (e.g. the degree of the corresponding node must be greater than minCountAll).
+        required: false
+        schema:
+          type: integer
+      - name: minCountSign
+        in: query
+        description: Defines the minimal number of times a gene has to be involved in significant (p.adj < 0.05) interactions in the network.
+        required: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Get the number of times a gene of interest is involved in the complete network or just significant interactions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    gene:
+                      type: object
+                      description: One of the two interacting ceRNAs.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg from Ensemble number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                      required:
+                        - ensg_number
+                        - gene_symbol
+                    run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: string
+                          description: Name of the cancer type/dataset.
+                        run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - run_ID
+                    count_all:
+                      description: Number of times gene is involved in the complete network (equals to degree).
+                      type: string
+                    count_sign:
+                      description: Number of times gene is involved in significant (p.adj < 0.05) interactions of the netwrk.
+                      type: string
+  /miRNAInteraction/findSpecific:
+    get:
+      operationId: geneInteraction.read_all_to_one_mirna
+      tags:
+      - ceRNANetwork
+      summary: Get all ceRNA interactions where miRNA(s) of interest contribute to.
+      description: Get all ceRNA interactions where miRNA(s) of interest (different identifiers available - e.g. hs number or mimat number) contribute to.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: false
+        schema:
+          type: string
+      - name: mimat_number
+        in: query
+        description: A comma-separated list of mimat_id(s) of the miRNA(s) of interest (e.g. MIMAT0000076, MIMAT0000261) (this or the hs_number(s) is/are needed).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: hs_number
+        in: query
+        description: A comma-separated list of hs_number(s) of the miRNA(s) of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p) (this or the mimat_numbers(s) is/are needed).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: limit
+        in: query
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+        required: false
+        schema:
+          type: integer
+          default: 100
+      - name: offset
+        in: query
+        description: Starting point from where results should be shown.
+        required: false
+        schema:
+          type: integer
+      - name: information
+        in: query
+        description: Show all available information about the specific miRNA (true) or just the hs and mimat number (false).
+        required: false
+        schema:
+          type: boolean
+          default: true
+      responses:
+        "200":
+          description: Read all ceRNA interactions where miRNA of interesest in
+            the searched disease (if provided) contributes to.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene:
+                      type: object
+                      description: ceRNA interaction the miRNA contributes to.
+                      properties:
+                        gene1:
+                          type: object
+                          description: One of the two interacting ceRNAs.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg from Ensemble number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          required:
+                            - ensg_number
+                            - gene_symbol
+                        gene2:
+                          type: object
+                          description: The other part of the ceRNA interaction.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg from Ensemble number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          required:
+                            - ensg_number
+                            - gene_symbol
+                      required:
+                        - gene1
+                        - gene2
+                    run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: string
+                          description: Name of the cancer type/dataset.
+                        run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - run_ID
+                    miRNA:
+                      type: object
+                      description: Information about the miRNA(s) of interest - source is miRBase
+                      properties:
+                        hs_nr:
+                          type: string
+                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
+                        id_type:
+                          type: string
+                          description: Mature, etc miRNA?
+                        mir_ID:
+                          type: string
+                          description: The accession number is the only truly stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear.
+                        seq:
+                          type: string
+                          description: Sequence of the miRNA.
+                      required:
+                        - hs_nr
+                        - mir_ID
+  /miRNAInteraction/getOccurence:
+    get:
+      operationId: geneInteraction.read_all_mirna
+      tags:
+      - ceRNANetwork
+      summary: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
+      description: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: mimat_number
+        in: query
+        description: A comma-separated list of mimat_id(s) of the miRNA(s) of interest (e.g. MIMAT0000076, MIMAT0000261) (this or the hs_number(s) is/are needed).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: hs_number
+        in: query
+        description: A comma-separated list of hs_number(s) of the miRNA(s) of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p) (this or the mimat_number(s) is/are needed).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: occurences
+        in: query
+        description: Threshold of amount of contributions a miRNA should have to be considered.
+        required: false
+        schema:
+          type: integer
+      - name: sorting
+        in: query
+        required: false
+        description: Possibilities for sorting of the results.
+        schema:
+          type: string
+          enum:
+          - occurences
+      - name: descending
+        in: query
+        required: false
+        description: Descending (true) or ascending (false) ordering of the results.
+        schema:
+          type: boolean
+          default: true
+      - name: limit
+        in: query
+        description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+        required: false
+        schema:
+          type: integer
+          default: 100
+      - name: offset
+        in: query
+        description: Starting point from where results should be shown.
+        required: false
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: Read all ceRNA interactions where miRNA of interesest in
+            the searched disease (if provided) contributes to.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    mirna:
+                      type: object
+                      description: Information about the miRNA(s) of interest - source is miRBase
+                      properties:
+                        hs_nr:
+                          type: string
+                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
+                        mir_ID:
+                          type: string
+                          description: The accession number is the only truly stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear.
+                      required:
+                        - hs_nr
+                        - mir_ID
+                    occurences:
+                      type: integer
+                      description: Occurences of the miRNA.
+                    run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - run_ID
+  /miRNAInteraction/findceRNA:
+    get:
+      operationId: geneInteraction.read_mirna_for_specific_interaction
+      tags:
+      - ceRNANetwork
+      description: Get all miRNAs that contribute to all interactions between the given identifiers (ensg_number or gene_symbol).
+      summary: Get all miRNAs that contribute to all interactions between the given identifiers (ensg_number or gene_symbol).
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg number(s) of the gene(s) of interest(e.g. ENSG00000152284, ENSG00000185033) (this or gene_symbol is required).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR, TCF7L1, SEMA4B) (this or ensg_number is required).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_type
+        in: query
+        description: Defines the type of gene of interest (only one possibility choosable).
+        required: false
+        schema:
+          type: string
+          enum:
+          - 3prime_overlapping_ncRNA
+          - antisense
+          - antisense_RNA
+          - bidirectional_promoter_lncRNA
+          - IG_C_gene
+          - IG_C_pseudogene
+          - IG_V_gene
+          - IG_V_pseudogene
+          - lincRNA
+          - macro_lncRNA
+          - miRNA
+          - misc_RNA
+          - Mt_rRNA
+          - polymorphic_pseudogene
+          - processed_pseudogene
+          - processed_transcript
+          - protein_coding
+          - pseudogene
+          - ribozyme
+          - rRNA
+          - rRNA_pseudogene
+          - scaRNA
+          - scRNA
+          - sense_intronic
+          - sense_overlapping
+          - snoRNA
+          - snRNA
+          - TEC
+          - TR_C_gene
+          - TR_V_gene
+          - TR_V_pseudogene
+          - transcribed_processed_pseudogene
+          - transcribed_unitary_pseudogene
+          - transcribed_unprocessed_pseudogene
+          - translated_processed_pseudogene
+          - unitary_pseudogene
+          - unprocessed_pseudogene
+          - vaultRNA
+      - name: between
+        in: query
+        description: If false, all interactions where one of the interaction partners fits the given genes of interestwill be considered.If true, just interactions between the genes of interest will be considered.
+        required: true
+        schema:
+          type: boolean
+          default: false
+      responses:
+        "200":
+          description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    interactions_genegene:
+                      type: object
+                      description: ceRNA interaction the miRNA contributes to.
+                      properties:
+                        gene1:
+                          type: object
+                          description: One of the two interacting ceRNAs.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg from Ensemble number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          required:
+                            - ensg_number
+                            - gene_symbol
+                        gene2:
+                          type: object
+                          description: The other part of the ceRNA interaction.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg from Ensemble number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          required:
+                            - ensg_number
+                            - gene_symbol
+                      required:
+                        - gene1
+                        - gene2
+                    run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: string
+                          description: Name of the cancer type/dataset.
+                        run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - run_ID
+                    mirna:
+                      type: object
+                      description: Information about the miRNA(s) of interest - source is miRBase
+                      properties:
+                        hs_nr:
+                          type: string
+                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
+                        mir_ID:
+                          type: string
+                          description: The accession number is the only truly stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear.
+                      required:
+                        - hs_nr
+                        - mir_ID
+  /exprValue/getceRNA:
+    get:
+      operationId: expressionValues.get_gene_expr
+      tags:
+      - ExpressionValues
+      summary: Get all expression values for gene(s) of interest.
+      description: Get all expression values for gene(s) of interest.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. SEPT7P1,TIGAR).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all expression values for gene(s) of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    dataset:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    expr_value:
+                      type: number
+                      description: Specific expression value for unique gene and sample_ID.
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                      required:
+                      - ensg_number
+                      - gene_symbol
+                    sample_ID:
+                      type: string
+                      description: ID of the specific sample.
+  /exprValue/getmirNA:
+    get:
+      operationId: expressionValues.get_mirna_expr
+      tags:
+      - ExpressionValues
+      summary: Get all expression values for miRNA(s) of interest.
+      description: Get all expression values for miRNA(s) of interest.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: mimat_number
+        in: query
+        description: A comma-separated list of mimat_numbers(s) of the miRNA(s) of interest (e.g. MIMAT0000076, MIMAT0000261)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: hs_number
+        in: query
+        description: A comma-separated list of hs_number(s) of the miRNA(s) of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all expression values for ceRNA of interest
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    dataset:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    expr_value:
+                      type: number
+                      description: Specific expression value for unique gene and sample_ID.
+                    mirna:
+                      type: object
+                      description: Information about the miRNA.
+                      properties:
+                        hs_nr:
+                          type: string
+                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
+                        mir_ID:
+                          type: string
+                          description: The accession number is the only truly stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear.
+                      required:
+                        - hs_nr
+                        - mir_ID
+                    sample_ID:
+                      type: string
+                      description: ID of the specific sample.
+  /stringSearch:
+    get:
+      operationId: externalInformation.getAutocomplete
+      tags:
+      - ExternalInformation
+      summary: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
+      description: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
+      parameters:
+      - name: searchString
+        in: query
+        description: Prefix of a gene name/ensg number or mirna identification
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Retrieve all possible matchings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    autocompleteSuggestion:
+                      type: string
+                      description: Possible autocompletion for the searchString
+  /getGeneInformation:
+    get:
+      operationId: externalInformation.getGeneInformation
+      tags:
+        - ExternalInformation
+      summary: Get all available information about the gene of iterest.
+      description: Convert ensg_number in gene_symbol or the way around. Be aware, that not all genes have a gene symbol provided.
+      parameters:
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. SEPT7P1,TIGAR).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all available information about the gene of iterest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    chromosome_name:
+                      type: integer
+                      description: Name of the chromosome the gene is located on.
+                    description:
+                      type: string
+                      description: Anntotation from Ensemble of the gene.
+                    end_pos:
+                      type: integer
+                      description: Endposition of the gene.
+                    ensg_number:
+                      type: string
+                      description: Ensg number of the gene.
+                    gene_symbol:
+                      type: string
+                      description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                    gene_type:
+                      type: string
+                      description: The gene type includes both status (e.g. known) and biotype (e.g. protein coding).
+                    start_pos:
+                      type: integer
+                      description: Starting position of the gene.
+  /getOverallCounts:
+    get:
+      operationId: externalInformation.getOverallCount
+      tags:
+      - ExternalInformation
+      summary: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
+      description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
+      responses:
+        "200":
+          description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    count_interactions:
+                      type: integer
+                      description: Amount of all interactions in the specific dataset.
+                    count_interactions_sign:
+                      type: integer
+                      description: Amount of all significant interactions in the specific dataset.
+                    count_shared_miRNAs:
+                      type: integer
+                      description: Amount of shared miRNA  in the specific dataset.
+                    run_ID:
+                      type: integer
+                      description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                    disease_name:
+                      type: string
+                      description: Name of the cancer type/dataset.
+
+  /survivalAnalysis/sampleInformation:
+    get:
+      operationId: survivalAnalysis.get_patient_information
+      tags:
+        - SurvivalAnalysis
+      summary: Get all available clinical information for patients/samples.
+      description: Get all available clinical information for patients/samples.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: sample_ID
+        in: query
+        description: A comma-separated list of sample_ID of the patient/sample of interest (e.g. TCGA-BP-4968, TCGA-B8-A54F).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all available clinical information for patients/samples.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    dataset:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    disease_status:
+                      type: integer
+                      description: Information about the disease status (0 = patient is dead, 1 = patient is alive) at the end of observation.
+                    sample_ID:
+                      type: string
+                      description: Unique ID for sample/patient.
+                    survival_time:
+                      type: integer
+                      description: Time of survival in days.
+  /survivalAnalysis/getRates:
+    get:
+      operationId: survivalAnalysis.get_survival_rate
+      tags:
+        - SurvivalAnalysis
+      summary: Get all raw data for kaplan meier plots.
+      description: Get all raw data for kaplan meier plots.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. SEPT7P1,TIGAR).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: sample_ID
+        in: query
+        description: A comma-separated list of sample_ID of the patient/sample of interest (e.g. TCGA-BP-4968, TCGA-B8-A54F).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all raw data for kaplan meier plots.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    dataset:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                      required:
+                      - ensg_number
+                      - gene_symbol
+                    overexpression:
+                      type: integer
+                      description: Information about expression value of the gene (0 = underexpression, gene expression <= mean gene expression over all samples, 1 = overexpression, gene expression >= mean gene expression over all samples)
+                    patient_information:
+                      type: object
+                      description: Information about the sample/patient.
+                      properties:
+                        disease_status:
+                          type: integer
+                          description: Information about the disease status (0 = patient is dead, 1 = patient is alive) at the end of observation.
+                        sample_ID:
+                          type: string
+                          description: Unique ID for sample/patient.
+                        survival_time:
+                          type: integer
+                          description: Time of survival in days.
+  /survivalAnalysis/getPValues:
+    get:
+      operationId: survivalAnalysis.get_survival_pValue
+      tags:
+      - SurvivalAnalysis
+      summary: Retrieve pValues from log rank test based on raw survival analysis data
+      description: Retrieve pValues from log rank test based on raw survival analysis data
+      parameters:
+      - name: disease_name
+        in: query
+        description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest(e.g. SEPT7P1,TIGAR)
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Retrieve pValues from log rank test based on raw survival analysis data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    dataset:
+                      type: string
+                      description: information about the dataset
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                      required:
+                      - ensg_number
+                      - gene_symbol
+                    pValue:
+                      type: number
+                      description: pValue of log rank test
+servers:
+- url: /sponge-api

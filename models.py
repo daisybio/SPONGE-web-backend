@@ -73,11 +73,17 @@ class GeneInteraction(db.Model):
 class miRNAInteraction(db.Model):
     __tablename__ = "interacting_miRNAs"
     interacting_miRNAs_ID = db.Column(db.Integer, primary_key=True)
-    interactions_genegene_ID = db.Column(db.Integer, db.ForeignKey('interactions_genegene.interactions_genegene_ID'), nullable=False)
-    interactions_genegene = relationship("GeneInteraction", foreign_keys=[interactions_genegene_ID])
+
+    run_ID = db.Column(db.Integer, db.ForeignKey('run.run_ID'), nullable=False)
+    run = relationship("Run", foreign_keys=[run_ID])
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
 
     miRNA_ID = db.Column(db.Integer, db.ForeignKey('mirna.miRNA_ID'), nullable=False)
     mirna = relationship("miRNA", foreign_keys=[miRNA_ID])
+
+    coefficient = db.Column(db.Float)
 
 class Gene(db.Model):
     __tablename__ = "gene"
@@ -300,22 +306,14 @@ class GeneInteractionDatasetForMiRNSchema(ma.ModelSchema):
     gene1 = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
     gene2 = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
 
-class miRNAInteractionLongSchema(ma.ModelSchema):
+class miRNAInteractionSchema(ma.ModelSchema):
     class Meta:
         model = miRNAInteraction
         sqla_session = db.session
-        fields = ["interactions_genegene", "mirna"]
+        fields = ["run", "gene", "mirna", "coefficient"]
 
-    interactions_genegene = ma.Nested(GeneInteractionDatasetForMiRNSchema,only=("run", "gene1", "gene2"))
-    mirna = ma.Nested(miRNASchema)
-
-class miRNAInteractionShortSchema(ma.ModelSchema):
-    class Meta:
-        model = miRNAInteraction
-        sqla_session = db.session
-        fields = ["interactions_genegene", "mirna"]
-
-    interactions_genegene = ma.Nested(GeneInteractionDatasetForMiRNSchema,only=("run", "gene1","gene2"))
+    run = ma.Nested(RunForMirnaSchema, only=("run_ID", "dataset"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
     mirna = ma.Nested(miRNASchema, only=("mir_ID", "hs_nr"))
 
 class networkAnalysisSchema(ma.ModelSchema):

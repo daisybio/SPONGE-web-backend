@@ -806,7 +806,7 @@ paths:
       operationId: geneInteraction.read_all_to_one_mirna
       tags:
       - ceRNANetwork
-      summary: Get all ceRNA interactions where miRNA(s) of interest contribute to.
+      summary: Get all ceRNA interactions where miRNA of interest contribute to.
       description: Get all ceRNA interactions where miRNA(s) of interest (different identifiers available - e.g. hs number or mimat number) contribute to.
       parameters:
       - name: disease_name
@@ -817,26 +817,16 @@ paths:
           type: string
       - name: mimat_number
         in: query
-        description: A comma-separated list of mimat_id(s) of the miRNA(s) of interest (e.g. MIMAT0000076, MIMAT0000261) (this or the hs_number(s) is/are needed).
+        description: The mimat_id of the miRNA of interest (e.g. MIMAT0000076) - this or the hs_number is needed.
         required: false
         schema:
-          type: array
-          items:
-            type: string
-          minItems: 0
-        explode: false
-        style: form
+          type: string
       - name: hs_number
         in: query
-        description: A comma-separated list of hs_number(s) of the miRNA(s) of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p) (this or the mimat_numbers(s) is/are needed).
+        description: The hs_number of the miRNA of interest (e.g. hsa-miR-21-5p) - this or the mimat_numbers is needed.
         required: false
         schema:
-          type: array
-          items:
-            type: string
-          minItems: 0
-        explode: false
-        style: form
+          type: string
       - name: limit
         in: query
         description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
@@ -850,88 +840,55 @@ paths:
         required: false
         schema:
           type: integer
-      - name: information
-        in: query
-        description: Show all available information about the specific miRNA (true) or just the hs and mimat number (false).
-        required: false
-        schema:
-          type: boolean
-          default: true
       responses:
         "200":
-          description: Read all ceRNA interactions where miRNA of interesest in
-            the searched disease (if provided) contributes to.
+          description: Get all interactions between the given identifiers (ensg_number or gene_symbol) - if existing.
           content:
             application/json:
               schema:
                 type: array
                 items:
                   properties:
-                    interactions_genegene:
-                      type: object
-                      description: ceRNA interaction the miRNA contributes to.
-                      properties:
-                        gene1:
-                          type: object
-                          description: One of the two interacting ceRNAs.
-                          properties:
-                            ensg_number:
-                              type: string
-                              description: Ensg from Ensemble number of the gene.
-                            gene_symbol:
-                              type: string
-                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
-                          required:
-                            - ensg_number
-                            - gene_symbol
-                        gene2:
-                          type: object
-                          description: The other part of the ceRNA interaction.
-                          properties:
-                            ensg_number:
-                              type: string
-                              description: Ensg from Ensemble number of the gene.
-                            gene_symbol:
-                              type: string
-                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
-                          required:
-                            - ensg_number
-                            - gene_symbol
-                      required:
-                        - gene1
-                        - gene2
+                    correlation:
+                      type: number
+                      description: Correlation of the corresponding ceRNA interaction.
+                    gene1:
+                      type: string
+                      description: Ensg number of the first part of the ceRNA interaction.
+                    gene2:
+                      type: string
+                      description: Ensg number of the second part of the ceRNA interaction.
+                    mscor:
+                      type: number
+                      description: Multiple senstivity correlation (mscor) of the corresponding ceRNA interaction.
+                    p_value:
+                      type: number
+                      description: FDR adjusted p-value of the corresponding ceRNA interaction.
                     run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:
                         dataset:
-                          type: string
-                          description: Name of the cancer type/dataset.
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                          required:
+                          - dataset_ID
+                          - disease_name
                         run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
-                        - dataset
-                        - run_ID
-                    miRNA:
-                      type: object
-                      description: Information about the miRNA(s) of interest - source is miRBase
-                      properties:
-                        hs_nr:
-                          type: string
-                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
-                        id_type:
-                          type: string
-                          description: Mature, etc miRNA?
-                        mir_ID:
-                          type: string
-                          description: The accession number is the only truly stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear.
-                        seq:
-                          type: string
-                          description: Sequence of the miRNA.
-                      required:
-                        - hs_nr
-                        - mir_ID
+                      - dataset
+                      - run_ID
   /miRNAInteraction/getOccurence:
     get:
       operationId: geneInteraction.read_all_mirna
@@ -1089,58 +1046,13 @@ paths:
           minItems: 0
         explode: false
         style: form
-      - name: gene_type
-        in: query
-        description: Defines the type of gene of interest (only one possibility choosable).
-        required: false
-        schema:
-          type: string
-          enum:
-          - 3prime_overlapping_ncRNA
-          - antisense
-          - antisense_RNA
-          - bidirectional_promoter_lncRNA
-          - IG_C_gene
-          - IG_C_pseudogene
-          - IG_V_gene
-          - IG_V_pseudogene
-          - lincRNA
-          - macro_lncRNA
-          - miRNA
-          - misc_RNA
-          - Mt_rRNA
-          - polymorphic_pseudogene
-          - processed_pseudogene
-          - processed_transcript
-          - protein_coding
-          - pseudogene
-          - ribozyme
-          - rRNA
-          - rRNA_pseudogene
-          - scaRNA
-          - scRNA
-          - sense_intronic
-          - sense_overlapping
-          - snoRNA
-          - snRNA
-          - TEC
-          - TR_C_gene
-          - TR_V_gene
-          - TR_V_pseudogene
-          - transcribed_processed_pseudogene
-          - transcribed_unitary_pseudogene
-          - transcribed_unprocessed_pseudogene
-          - translated_processed_pseudogene
-          - unitary_pseudogene
-          - unprocessed_pseudogene
-          - vaultRNA
       - name: between
         in: query
         description: If false, all interactions where one of the interaction partners fits the given genes of interestwill be considered.If true, just interactions between the genes of interest will be considered.
         required: true
         schema:
           type: boolean
-          default: false
+          default: true
       responses:
         "200":
           description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
@@ -1167,22 +1079,6 @@ paths:
                           required:
                             - ensg_number
                             - gene_symbol
-                        gene2:
-                          type: object
-                          description: The other part of the ceRNA interaction.
-                          properties:
-                            ensg_number:
-                              type: string
-                              description: Ensg from Ensemble number of the gene.
-                            gene_symbol:
-                              type: string
-                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
-                          required:
-                            - ensg_number
-                            - gene_symbol
-                      required:
-                        - gene1
-                        - gene2
                     run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object

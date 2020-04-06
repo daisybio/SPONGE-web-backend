@@ -666,7 +666,7 @@ paths:
                 type: array
                 items:
                   properties:
-                    betweeness:
+                    betweenness:
                       type: number
                       description: Betweenness of the corresponding gene (considered as node) in the specific network.
                     eigenvector:

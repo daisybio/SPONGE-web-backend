@@ -116,7 +116,7 @@ class networkAnalysis(db.Model):
     run = relationship("Run", foreign_keys=[run_ID])
 
     eigenvector = db.Column(db.Float)
-    betweeness = db.Column(db.Float)
+    betweenness = db.Column(db.Float)
     node_degree = db.Column(db.Float)
 
 
@@ -320,7 +320,7 @@ class networkAnalysisSchema(ma.ModelSchema):
     class Meta:
         model = networkAnalysis
         sqla_session = db.session
-        fields = ["betweeness", "eigenvector", "gene", "node_degree", "run"]
+        fields = ["betweenness", "eigenvector", "gene", "node_degree", "run"]
 
     run = ma.Nested(RunSchema, only=("run_ID", "dataset"))
     gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))

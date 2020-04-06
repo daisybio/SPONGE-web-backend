@@ -4,7 +4,7 @@ from flask import abort
 import sqlalchemy as sa
 from werkzeug.exceptions import HTTPException
 
-def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, between=False):
+def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, between=False):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNA
     and returns all miRNAs thar contribute to all interactions between the given identifications (ensg_number or gene_symbol)
@@ -18,14 +18,16 @@ def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None
 
     :return: all miRNAs contributing to the interactions between genes of interest
     """
-    # test if just one of the possible identifiers is given
-    if ensg_number is not None and (gene_symbol is not None or gene_type is not None) or (
-            gene_symbol is not None and gene_type is not None):
+    # test if any of the two identification possibilites is given
+    if ensg_number is None and gene_symbol is None:
+        abort(404, "One of the two possible identification numbers must be provided")
+
+    if ensg_number is not None and gene_symbol is not None:
         abort(404,
-              "More than one identification paramter is given. Please choose one out of (ensg number, gene symbol or gene type)")
+              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
 
     queries = []
-    queries2 = []
+    run_IDs = []
     # if specific disease_name is given:
     if disease_name is not None:
         run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
@@ -34,9 +36,7 @@ def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None
 
         if len(run) > 0:
             run_IDs = [i.run_ID for i in run]
-            queries.append(models.GeneInteraction.run_ID.in_(run_IDs))
-            queries2.append(models.GeneInteraction.run_ID.in_(run_IDs))
-
+            queries.append(models.miRNAInteraction.run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -51,61 +51,56 @@ def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None
         gene = models.Gene.query \
             .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
             .all()
-    elif gene_type is not None:
-        gene = models.Gene.query \
-            .filter(models.Gene.gene_type == gene_type) \
-            .all()
 
-    interaction_IDs = []
-    # get requires interaction_ID from database
+    gene_IDs = []
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
-        interactions = []
-        if between:
-            queries.append(
-                sa.and_(models.GeneInteraction.gene_ID1.in_(gene_IDs), models.GeneInteraction.gene_ID2.in_(gene_IDs)))
-            interactions = models.GeneInteraction.query \
-                .filter(*queries) \
-                .all()
-        if not between:
-            queries.append(models.GeneInteraction.gene_ID1.in_(gene_IDs))
-            queries2.append(models.GeneInteraction.gene_ID2.in_(gene_IDs))
-
-            tmp = models.GeneInteraction.query \
-                .filter(*queries) \
-                .all()
-
-            if len(tmp) > 0:
-                interactions.append(tmp)
-
-            tmp = models.GeneInteraction.query \
-                .filter(*queries2) \
-                .all()
-
-            if len(tmp) > 0:
-                interactions.append(tmp)
-
-            interactions = [val for sublist in interactions for val in sublist]
-
-        if len(interactions) > 0:
-            interaction_IDs = [i.interactions_genegene_ID for i in interactions]
-        else:
-            abort(404, "No gene interaction found for given ensg_number(s) or gene_symbol(s).")
+        queries.append(models.miRNAInteraction.gene_ID.in_(gene_IDs))
     else:
         abort(404, "No gene found for given identifiers.")
 
+    interaction_result = []
+    if between:
+        # an Engine, which the Session will use for connection resources
+        some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
 
-    # get all wished mirnas
-    if len(interaction_IDs) > 0:
+        # create a configured "Session" class
+        Session = sa.orm.sessionmaker(bind=some_engine)
+
+        # create a Session
+        session = Session()
+        # test for each dataset if the gene(s) of interest are included in the ceRNA network
+
+        print()
+
+        mirna_filter = session.execute("select mirna_ID from interacting_miRNAs where run_ID IN ( "
+                                       + ','.join(str(e) for e in run_IDs) + ") and gene_ID IN ( "
+                                       + ','.join(str(e) for e in gene_IDs)
+                                       + ") group by mirna_ID HAVING count(mirna_ID) >= 2;").fetchall()
+
+        session.close()
+        some_engine.dispose()
+
+        if len(mirna_filter) == 0:
+            abort(404, "No shared miRNA between genes found.")
+
+        flat_mirna_filter = [item for sublist in mirna_filter for item in sublist]
+        queries.append(models.miRNAInteraction.miRNA_ID.in_(flat_mirna_filter))
+
         interaction_result = models.miRNAInteraction.query \
-            .filter(models.miRNAInteraction.interactions_genegene_ID.in_(interaction_IDs)) \
+            .filter(*queries) \
+            .all()
+    else:
+        interaction_result = models.miRNAInteraction.query \
+            .filter(*queries) \
             .all()
 
-        if len(interaction_result) > 0:
-            # Serialize the data for the response depending on parameter all
-            return models.miRNAInteractionShortSchema(many=True).dump(interaction_result).data
-        else:
-            abort(404, "No data found with input parameter")
+    if len(interaction_result) > 0:
+        # Serialize the data for the response depending on parameter all
+        return models.miRNAInteractionSchema(many=True).dump(interaction_result).data
+    else:
+        abort(404, "No data found with input parameter")
+
 
 ########################################################################################################################
 """Test Cases for Endpoint ​/miRNAInteraction​/findceRNA"""
@@ -137,14 +132,6 @@ class TestDataset(unittest.TestCase):
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_mirna_for_specific_interaction(gene_symbol=["foobar"], between=True), 404)
 
-    def test_abort_error_gene_type(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_mirna_for_specific_interaction(gene_type="foobar", between=True), 404)
-
     def test_abort_error_ensg_and_gene_symbol(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
@@ -153,47 +140,15 @@ class TestDataset(unittest.TestCase):
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_mirna_for_specific_interaction(ensg_number=["ENSGfoobar"], gene_symbol=["foobar"], between=True), 404)
 
-    def test_abort_error_ensg_and_gene_type(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_mirna_for_specific_interaction(ensg_number=["ENSGfoobar"], gene_type="foobar", between=True), 404)
-
-    def test_abort_error_symbol_and_gene_type(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_mirna_for_specific_interaction(gene_symbol=["foobar"], gene_type="foobar", between=True), 404)
-
-    def test_abort_error_symbol_and_gene_type_and_ensg(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_mirna_for_specific_interaction(ensg_number=["ENSGfoobar"], gene_symbol=["foobar"], gene_type="foobar", between=True), 404)
-
-    def test_abort_no_data(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_mirna_for_specific_interaction(disease_name="bladder urothelial carcinoma", gene_type='3prime_overlapping_ncRNA', between=True), 404)
-
     def test_miRNAInteraction_findceRNA_disease_and_ensg(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_mirna_for_specific_interaction(disease_name='bladder urothelial carcinoma', ensg_number=['ENSG00000007312','ENSG00000113657'], between=True)
+        mock_response = test_read_mirna_for_specific_interaction(disease_name='head & neck squamous cell carcinoma', ensg_number=['ENSG00000001626','ENSG00000002726'], between=True)
 
         # retrieve current API response to request
-        api_response = geneInteraction.read_mirna_for_specific_interaction(disease_name='bladder urothelial carcinoma', ensg_number=['ENSG00000007312','ENSG00000113657'], between=True)
+        api_response = geneInteraction.read_mirna_for_specific_interaction(disease_name='head & neck squamous cell carcinoma', ensg_number=['ENSG00000001626','ENSG00000002726'], between=True)
 
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
@@ -203,10 +158,10 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_mirna_for_specific_interaction(disease_name='bladder urothelial carcinoma', gene_symbol=['CD79B', 'DPYSL3'], between=True)
+        mock_response = test_read_mirna_for_specific_interaction(disease_name='head & neck squamous cell carcinoma', gene_symbol=['CFTR', 'AOC1'], between=True)
 
         # retrieve current API response to request
-        api_response = geneInteraction.read_mirna_for_specific_interaction(disease_name='bladder urothelial carcinoma', gene_symbol=['CD79B', 'DPYSL3'], between=True)
+        api_response = geneInteraction.read_mirna_for_specific_interaction(disease_name='head & neck squamous cell carcinoma', gene_symbol=['CFTR', 'AOC1'], between=True)
 
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)

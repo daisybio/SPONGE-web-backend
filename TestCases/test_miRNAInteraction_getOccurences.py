@@ -141,10 +141,10 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma', mimat_number=['MIMAT0026472', 'MIMAT0004486'], occurences=500, sorting="occurences", limit=50)
+        mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma', mimat_number=['MIMAT0026472', 'MIMAT0004486'], occurences=10, sorting="occurences", limit=50)
 
         # retrieve current API response to request
-        api_response = geneInteraction.read_all_mirna(disease_name='head and neck squamous cell carcinoma', mimat_number= ['MIMAT0026472', 'MIMAT0004486'],  occurences=500,  sorting="occurences", limit=50)
+        api_response = geneInteraction.read_all_mirna(disease_name='head and neck squamous cell carcinoma', mimat_number= ['MIMAT0026472', 'MIMAT0004486'],  occurences=10,  sorting="occurences", limit=50)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -153,11 +153,11 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma', mimat_number=['MIMAT0026472', 'MIMAT0004486'], occurences=500, limit=50,  sorting="occurences", descending=False)
+        mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma', mimat_number=['MIMAT0026472', 'MIMAT0004486'], occurences=10, limit=50,  sorting="occurences", descending=False)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_mirna(disease_name='head and neck squamous cell carcinoma',
-                                                                 mimat_number= ['MIMAT0026472', 'MIMAT0004486'],  occurences=500, limit=50,  sorting="occurences", descending=False)
+                                                                 mimat_number= ['MIMAT0026472', 'MIMAT0004486'],  occurences=10, limit=50,  sorting="occurences", descending=False)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -167,12 +167,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma',
-                                            mimat_number=['MIMAT0026472', 'MIMAT0004486'], occurences=500, limit=50,  sorting="occurences",
+                                            mimat_number=['MIMAT0026472', 'MIMAT0004486'], occurences=10, limit=50,  sorting="occurences",
                                             descending=True)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_mirna(disease_name='head and neck squamous cell carcinoma',
-                                                      mimat_number=['MIMAT0026472', 'MIMAT0004486'], occurences=500,  sorting="occurences",
+                                                      mimat_number=['MIMAT0026472', 'MIMAT0004486'], occurences=10,  sorting="occurences",
                                                       limit=50, descending=True)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
@@ -182,11 +182,11 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma', hs_number=['hsa-let-7c-3p', 'hsa-let-7f-1-3p'], occurences=500,limit=50)
+        mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma', hs_number=['hsa-let-7c-3p', 'hsa-let-7f-1-3p'], occurences=10,limit=50)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_mirna(disease_name='head and neck squamous cell carcinoma',
-                                                                 hs_number= ['hsa-let-7c-3p', 'hsa-let-7f-1-3p'],  occurences=500, limit=50)
+                                                                 hs_number= ['hsa-let-7c-3p', 'hsa-let-7f-1-3p'],  occurences=10, limit=50)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -195,11 +195,11 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma', hs_number=['hsa-let-7c-3p', 'hsa-let-7f-1-3p'], occurences=500, limit=50,  sorting="occurences", descending=False)
+        mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma', hs_number=['hsa-let-7c-3p', 'hsa-let-7f-1-3p'], occurences=10, limit=50,  sorting="occurences", descending=False)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_mirna(disease_name='head and neck squamous cell carcinoma',
-                                                                 hs_number= ['hsa-let-7c-3p', 'hsa-let-7f-1-3p'],  occurences=500, limit=50,  sorting="occurences", descending=False)
+                                                                 hs_number= ['hsa-let-7c-3p', 'hsa-let-7f-1-3p'],  occurences=10, limit=50,  sorting="occurences", descending=False)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
@@ -209,12 +209,12 @@ class TestDataset(unittest.TestCase):
 
         # retrieve correct database response to request
         mock_response = test_read_all_mirna(disease_name='head and neck squamous cell carcinoma',
-                                            hs_number=['hsa-let-7c-3p', 'hsa-let-7f-1-3p'], occurences=500, limit=50,
+                                            hs_number=['hsa-let-7c-3p', 'hsa-let-7f-1-3p'], occurences=10, limit=50,
                                             sorting="occurences", descending=True)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_mirna(disease_name='head and neck squamous cell carcinoma',
-                                                      hs_number=['hsa-let-7c-3p', 'hsa-let-7f-1-3p'], occurences=500,
+                                                      hs_number=['hsa-let-7c-3p', 'hsa-let-7f-1-3p'], occurences=10,
                                                       limit=50,  sorting="occurences", descending=True)
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)

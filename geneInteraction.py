@@ -290,7 +290,7 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
 
     # filter further depending on given statistics cutoffs
     if minBetweenness is not None:
-        queries.append(models.networkAnalysis.betweeness > minBetweenness)
+        queries.append(models.networkAnalysis.betweenness > minBetweenness)
     if minNodeDegree is not None:
         queries.append(models.networkAnalysis.node_degree > minNodeDegree)
     if minEigenvector is not None:
@@ -303,9 +303,9 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
     if sorting is not None:
         if sorting == "betweenness":
             if descending:
-                sort.append(models.networkAnalysis.betweeness.desc())
+                sort.append(models.networkAnalysis.betweenness.desc())
             else:
-                sort.append(models.networkAnalysis.betweeness.asc())
+                sort.append(models.networkAnalysis.betweenness.asc())
         if sorting == "degree":
             if descending:
                 sort.append(models.networkAnalysis.node_degree.desc())

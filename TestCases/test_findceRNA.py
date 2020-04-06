@@ -3,15 +3,19 @@ import models, geneInteraction, unittest
 from flask import abort
 from werkzeug.exceptions import HTTPException
 
-def test_read_all_gene_network_analysis(disease_name=None, gene_type=None, betweenness=None, degree=None, eigenvector=None,
-                                   sorting=None, descending=True, limit=15000, offset=0):
+def test_read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None,
+                                   minBetweenness=None, minNodeDegree=None, minEigenvector=None,
+                                   sorting=None, descending=True, limit=100, offset=0):
     """
-    This function responds to a request for /sponge/ceRNANetwork/ceRNAInteraction/findAll/networkAnalysis
+    This function responds to a request for /sponge/findceRNA
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved and satisfies the given filters
     :param disease_name: isease_name of interest
-    :param betweenness: betweenness cutoff (>)
-    :param degree: degree cutoff (>)
-    :param eigenvector: eigenvector cutoff (>)
+    :param gene_type: defines the type of gene of interest
+    :param ensg_number: esng number of the genes of interest
+    :param gene_symbol: gene symbol of the genes of interest
+    :param minBetweenness: betweenness cutoff (>)
+    :param minNodeDegree: degree cutoff (>)
+    :param minEigenvector: eigenvector cutoff (>)
     :param sorting: how the results of the db query should be sorted
     :param descending: should the results be sorted in descending or ascending order
     :param limit: number of results that shouls be shown
@@ -20,7 +24,7 @@ def test_read_all_gene_network_analysis(disease_name=None, gene_type=None, betwe
     """
 
     # test limit
-    if limit > 15000:
+    if limit > 1000:
         abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
 
     # save all needed queries to get correct results
@@ -38,13 +42,38 @@ def test_read_all_gene_network_analysis(disease_name=None, gene_type=None, betwe
         else:
             abort(404, "No dataset with given disease_name found")
 
+    if ensg_number is not None and gene_symbol is not None:
+        abort(404,
+              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+
+    gene = []
+    # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
+    if ensg_number is not None:
+        gene = models.Gene.query \
+            .filter(models.Gene.ensg_number.in_(ensg_number)) \
+            .all()
+        if len(gene) > 0:
+            gene_IDs = [i.gene_ID for i in gene]
+            queries.append(models.networkAnalysis.gene_ID.in_(gene_IDs))
+        else:
+            abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+    elif gene_symbol is not None:
+        gene = models.Gene.query \
+            .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
+            .all()
+        if len(gene) > 0:
+            gene_IDs = [i.gene_ID for i in gene]
+            queries.append(models.networkAnalysis.gene_ID.in_(gene_IDs))
+        else:
+            abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+
     # filter further depending on given statistics cutoffs
-    if betweenness is not None:
-        queries.append(models.networkAnalysis.betweeness > betweenness)
-    if degree is not None:
-        queries.append(models.networkAnalysis.node_degree > degree)
-    if eigenvector is not None:
-        queries.append(models.networkAnalysis.eigenvector > eigenvector)
+    if minBetweenness is not None:
+        queries.append(models.networkAnalysis.betweenness > minBetweenness)
+    if minNodeDegree is not None:
+        queries.append(models.networkAnalysis.node_degree > minNodeDegree)
+    if minEigenvector is not None:
+        queries.append(models.networkAnalysis.eigenvector > minEigenvector)
     if gene_type is not None:
         queries.append(models.Gene.gene_type == gene_type)
 
@@ -53,9 +82,9 @@ def test_read_all_gene_network_analysis(disease_name=None, gene_type=None, betwe
     if sorting is not None:
         if sorting == "betweenness":
             if descending:
-                sort.append(models.networkAnalysis.betweeness.desc())
+                sort.append(models.networkAnalysis.betweenness.desc())
             else:
-                sort.append(models.networkAnalysis.betweeness.asc())
+                sort.append(models.networkAnalysis.betweenness.asc())
         if sorting == "degree":
             if descending:
                 sort.append(models.networkAnalysis.node_degree.desc())
@@ -130,7 +159,7 @@ class TestDataset(unittest.TestCase):
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
-    def test_findceRNA_disease_and_type_and_betweeness_sorting_desc(self):
+    def test_findceRNA_disease_and_type_and_betweenness_sorting_desc(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
@@ -142,7 +171,7 @@ class TestDataset(unittest.TestCase):
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
 
-    def test_findceRNA_disease_and_type_and_betweeness_sorting_asc(self):
+    def test_findceRNA_disease_and_type_and_betweenness_sorting_asc(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 

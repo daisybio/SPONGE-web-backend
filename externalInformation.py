@@ -104,7 +104,7 @@ def getOverallCount():
             "select * "
             " from (select sum(count_all)/2 as count_interactions, sum(count_sign)/2 as count_interactions_sign, run_ID "
                 "from gene_counts group by run_ID) as t1 "
-            "join "
+            "left join "
             "(select sum(occurences) as count_shared_miRNAs, run_ID from occurences_miRNA group by run_ID) as t2 "
             "using(run_ID) "
             "join "

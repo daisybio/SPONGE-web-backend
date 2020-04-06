@@ -145,10 +145,10 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_mirna_for_specific_interaction(disease_name='head & neck squamous cell carcinoma', ensg_number=['ENSG00000001626','ENSG00000002726'], between=True)
+        mock_response = test_read_mirna_for_specific_interaction(disease_name='head and neck squamous cell carcinoma', ensg_number=['ENSG00000001626','ENSG00000002726'], between=True)
 
         # retrieve current API response to request
-        api_response = geneInteraction.read_mirna_for_specific_interaction(disease_name='head & neck squamous cell carcinoma', ensg_number=['ENSG00000001626','ENSG00000002726'], between=True)
+        api_response = geneInteraction.read_mirna_for_specific_interaction(disease_name='head and neck squamous cell carcinoma', ensg_number=['ENSG00000001626','ENSG00000002726'], between=True)
 
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
@@ -158,10 +158,10 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_mirna_for_specific_interaction(disease_name='head & neck squamous cell carcinoma', gene_symbol=['CFTR', 'AOC1'], between=True)
+        mock_response = test_read_mirna_for_specific_interaction(disease_name='head and neck squamous cell carcinoma', gene_symbol=['CFTR', 'AOC1'], between=True)
 
         # retrieve current API response to request
-        api_response = geneInteraction.read_mirna_for_specific_interaction(disease_name='head & neck squamous cell carcinoma', gene_symbol=['CFTR', 'AOC1'], between=True)
+        api_response = geneInteraction.read_mirna_for_specific_interaction(disease_name='head and neck squamous cell carcinoma', gene_symbol=['CFTR', 'AOC1'], between=True)
 
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)

@@ -1062,23 +1062,19 @@ paths:
                 type: array
                 items:
                   properties:
-                    interactions_genegene:
+                    gene:
                       type: object
-                      description: ceRNA interaction the miRNA contributes to.
+                      description: Gene of interest.
                       properties:
-                        gene1:
-                          type: object
-                          description: One of the two interacting ceRNAs.
-                          properties:
-                            ensg_number:
-                              type: string
-                              description: Ensg from Ensemble number of the gene.
-                            gene_symbol:
-                              type: string
-                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
-                          required:
-                            - ensg_number
-                            - gene_symbol
+                        ensg_number:
+                          type: string
+                          description: Ensg from Ensemble number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                      required:
+                        - ensg_number
+                        - gene_symbol
                     run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object

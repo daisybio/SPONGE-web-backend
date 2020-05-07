@@ -1363,7 +1363,7 @@ paths:
       - name: gene_symbol
         in: query
         description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. SEPT7P1,TIGAR).
-        required: false
+        required: true
         schema:
           type: array
           items:
@@ -1404,7 +1404,7 @@ paths:
       - name: gene_symbol
         in: query
         description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. TUBBP2,CSNK1A1L).
-        required: false
+        required: true
         schema:
           type: array
           items:

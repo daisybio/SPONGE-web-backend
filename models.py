@@ -193,6 +193,24 @@ class GeneCount(db.Model):
     count_all = db.Column(db.Integer)
     count_sign = db.Column(db.Integer)
 
+class GeneOntology(db.Model):
+    __tablename__ = "gene_ontology"
+    gene_ontology_ID = db.Column(db.Integer, primary_key=True)
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+
+    gene_ontology_symbol = db.Column(db.String(32))
+
+class hallmarks(db.Model):
+    __tablename__ = "hallmarks"
+    hallmarks_ID = db.Column(db.Integer, primary_key=True)
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+
+    hallmark = db.Column(db.String(32))
+
 class DatasetSchema(ma.ModelSchema):
     class Meta:
         model = Dataset
@@ -408,3 +426,19 @@ class OverallCountSchema(ma.ModelSchema):
     run_ID = fields.Integer()
     disease_name = fields.String()
     count_shared_miRNAs = fields.Integer()
+
+class GeneOntologySchema(ma.ModelSchema):
+    class Meta:
+        model = GeneOntology
+        sql_session = db.session
+        fields = ["gene", "gene_ontology_symbol"]
+
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
+
+class HallmarksSchema(ma.ModelSchema):
+    class Meta:
+        model = hallmarks
+        sql_session = db.session
+        fields = ["gene", "hallmark"]
+
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))

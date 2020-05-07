@@ -1326,11 +1326,11 @@ paths:
       operationId: externalInformation.getOverallCount
       tags:
       - ExternalInformation
-      summary: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
-      description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
+      summary: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
+      description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
       responses:
         "200":
-          description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset
+          description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
           content:
             application/json:
               schema:
@@ -1352,6 +1352,88 @@ paths:
                     disease_name:
                       type: string
                       description: Name of the cancer type/dataset.
+  /getGeneOntology:
+    get:
+      operationId: externalInformation.getGeneOntology
+      tags:
+      - ExternalInformation
+      summary: Function return associated GO Terms for gene(s) of interest.
+      description: Function return associated GO Terms for gene(s) of interest. QuickGO - a fast web-based browser of the Gene Ontology and Gene Ontology annotation data - is used as external source.
+      parameters:
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. SEPT7P1,TIGAR).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Function return associated GO Terms for gene(s) of interest. QuickGO - a fast web-based browser of the Gene Ontology and Gene Ontology annotation data - is used as external source.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                        gene_ontology_symbol:
+                          type: string
+                          description: GO Term of the specific gene symbol.
+  /getHallmark:
+    get:
+      operationId: externalInformation.getHallmark
+      tags:
+      - ExternalInformation
+      summary: Function return associated cancer hallmark for gene(s) of interest.
+      description: Function return associated cancer hallmark for gene(s) of interest. Cancer Hallmark Genes (http://bio-bigdata.hrbmu.edu.cn/CHG/) is used as external source.
+      parameters:
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. TUBBP2,CSNK1A1L).
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Function return associated cancer hallmark for gene(s) of interest. Cancer Hallmark Genes (http://bio-bigdata.hrbmu.edu.cn/CHG/) is used as external source.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                        hallmark:
+                          type: string
+                          description: One of the 11 hallmarks of cancer.
 
   /survivalAnalysis/sampleInformation:
     get:

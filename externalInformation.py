@@ -116,3 +116,61 @@ def getOverallCount():
 
     schema = models.OverallCountSchema(many=True)
     return schema.dump(count).data
+
+def getGeneOntology(gene_symbol):
+    """
+    :param gene_symbol: Gene symbol of the genes of interest
+    :return: Returns all associated ontologies using QuickGO - a fast web-based browser of the Gene Ontology and Gene Ontology annotation data - for the gene(s) of interest.
+    """
+
+    # test if any of the two identification possibilites is given
+    if gene_symbol is None:
+        abort(404, "At least one gene symbol is needed!")
+
+    gene = models.Gene.query \
+        .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
+        .all()
+
+    if len(gene) > 0:
+        gene_IDs = [i.gene_ID for i in gene]
+    else:
+        abort(404, "Not gene(s) found for given gene_symbol(s)!")
+
+    interaction_result = models.GeneOntology.query \
+        .filter(models.GeneOntology.gene_ID.in_(gene_IDs)) \
+        .all()
+
+    if len(interaction_result) > 0:
+        # Serialize the data for the response depending on parameter all
+        return models.GeneOntologySchema(many=True).dump(interaction_result).data
+    else:
+        abort(404, "No GO terms with given parameters found!")
+
+def getHallmark(gene_symbol):
+    """
+    :param gene_symbol: Gene symbol of the genes of interest
+    :return: Returns all associated cancer hallmarks for the gene(s) of interest.
+    """
+
+    # test if any of the two identification possibilites is given
+    if gene_symbol is None:
+        abort(404, "At least one gene symbol is needed!")
+
+    gene = models.Gene.query \
+        .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
+        .all()
+
+    if len(gene) > 0:
+        gene_IDs = [i.gene_ID for i in gene]
+    else:
+        abort(404, "Not gene(s) found for given gene_symbol(s)!")
+
+    interaction_result = models.hallmarks.query \
+        .filter(models.hallmarks.gene_ID.in_(gene_IDs)) \
+        .all()
+
+    if len(interaction_result) > 0:
+        # Serialize the data for the response depending on parameter all
+        return models.HallmarksSchema(many=True).dump(interaction_result).data
+    else:
+        abort(404, "No hallmark associated for gene(s) of interest!")

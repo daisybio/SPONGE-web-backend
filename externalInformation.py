@@ -70,7 +70,7 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
         if len(data) > 0:
             return models.GeneSchema(many=True).dump(data).data
         else:
-            abort(404, "No gene found with: " + ensg_number)
+            abort(404, "No gene(s) found with: " + ''.join(ensg_number))
 
     elif gene_symbol is not None:
         data = models.Gene.query \
@@ -80,7 +80,7 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
         if len(data) > 0:
             return models.GeneSchema(many=True).dump(data).data
         else:
-            abort(404, "No gene found with: " + gene_symbol)
+            abort(404, "No gene found with: " + ''.join(gene_symbol))
 
 
 def getOverallCount():
@@ -146,6 +146,8 @@ def getGeneOntology(gene_symbol):
     else:
         abort(404, "No GO terms with given parameters found!")
 
+from flask import Response
+
 def getHallmark(gene_symbol):
     """
     :param gene_symbol: Gene symbol of the genes of interest
@@ -163,7 +165,7 @@ def getHallmark(gene_symbol):
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
     else:
-        abort(404, "Not gene(s) found for given gene_symbol(s)!")
+        abort(404, "No gene(s) found for given gene_symbol(s)!")
 
     interaction_result = models.hallmarks.query \
         .filter(models.hallmarks.gene_ID.in_(gene_IDs)) \
@@ -173,4 +175,10 @@ def getHallmark(gene_symbol):
         # Serialize the data for the response depending on parameter all
         return models.HallmarksSchema(many=True).dump(interaction_result).data
     else:
-        abort(404, "No hallmark associated for gene(s) of interest!")
+
+        return Response("{"
+                        "'detail': 'No hallmark associated for gene(s) of interest!',"
+                        "'status': 202,"
+                        "'title': 'Accepted',"
+                        "'type': 'about:blank'}",
+                        status=202)

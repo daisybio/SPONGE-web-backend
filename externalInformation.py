@@ -1,5 +1,6 @@
 from flask import abort
 import models
+from flask import Response
 
 
 def getAutocomplete(searchString):
@@ -144,9 +145,13 @@ def getGeneOntology(gene_symbol):
         # Serialize the data for the response depending on parameter all
         return models.GeneOntologySchema(many=True).dump(interaction_result).data
     else:
-        abort(404, "No GO terms with given parameters found!")
+        return Response("{"
+                        "'detail': 'No GO terms with given parameters found!',"
+                        "'status': 202,"
+                        "'title': 'Accepted',"
+                        "'type': 'about:blank'}",
+                        status=202)
 
-from flask import Response
 
 def getHallmark(gene_symbol):
     """

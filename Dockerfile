@@ -1,7 +1,7 @@
 from alpine:latest
 
-RUN apk add --no-cache python3-dev mariadb-connector-c-dev build-base linux-headers\
-    && pip install --upgrade pip
+RUN apk add --no-cache python3-dev==3.8.2 mariadb-connector-c-dev build-base linux-headers\
+    && pip3 install --upgrade pip
 
 WORKDIR /server
 COPY . /server

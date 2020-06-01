@@ -3,6 +3,8 @@ info:
   description: This is the swagger file that goes with our server code for the sponge REST-API
   version: 2.0.0
   title: SPONGE REST-API documentation
+servers:
+  - url: /
 paths:
   /dataset:
     get:
@@ -1362,7 +1364,7 @@ paths:
       parameters:
       - name: gene_symbol
         in: query
-        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. SEPT7P1,TIGAR).
+        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. PTEN,TIGAR).
         required: true
         schema:
           type: array
@@ -1384,6 +1386,9 @@ paths:
                       type: object
                       description: Information about the gene.
                       properties:
+                        description:
+                          type: string
+                          description: Biological descriotion of the GO Term of the specific gene symbol.
                         ensg_number:
                           type: string
                           description: Ensg number of the gene.
@@ -1434,7 +1439,47 @@ paths:
                         hallmark:
                           type: string
                           description: One of the 11 hallmarks of cancer.
-
+  /getWikipathway:
+    get:
+      operationId: externalInformation.getWikipathway
+      tags:
+      - ExternalInformation
+      summary: Function return associated wikipathway keys for gene(s) of interest.
+      description: Function return associated wikipathway keys for gene(s) of interest.
+      parameters:
+      - name: gene_symbol
+        in: query
+        description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. PTEN,GJA1).
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Function return associated cancer hallmark for gene(s) of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                        wp_key:
+                          type: string
+                          description: Wikipathway key for gene(s) of interest.
   /survivalAnalysis/sampleInformation:
     get:
       operationId: survivalAnalysis.get_patient_information
@@ -1633,5 +1678,3 @@ paths:
                     pValue:
                       type: number
                       description: pValue of log rank test
-servers:
-- url: /

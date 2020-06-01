@@ -187,3 +187,38 @@ def getHallmark(gene_symbol):
                         "'title': 'Accepted',"
                         "'type': 'about:blank'}",
                         status=202)
+
+def getWikipathway(gene_symbol):
+    """
+    :param gene_symbol: Gene symbol of the genes of interest
+    :return: Returns all associated wikipathway keys for the gene(s) of interest.
+    """
+
+    # test if any of the two identification possibilites is given
+    if gene_symbol is None:
+        abort(404, "At least one gene symbol is needed!")
+
+    gene = models.Gene.query \
+        .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
+        .all()
+
+    if len(gene) > 0:
+        gene_IDs = [i.gene_ID for i in gene]
+    else:
+        abort(404, "No gene(s) found for given gene_symbol(s)!")
+
+    interaction_result = models.wikipathways.query \
+        .filter(models.wikipathways.gene_ID.in_(gene_IDs)) \
+        .all()
+
+    if len(interaction_result) > 0:
+        # Serialize the data for the response depending on parameter all
+        return models.WikipathwaySchema(many=True).dump(interaction_result).data
+    else:
+
+        return Response("{"
+                        "'detail': 'No wikipathway key associated for gene(s) of interest!',"
+                        "'status': 202,"
+                        "'title': 'Accepted',"
+                        "'type': 'about:blank'}",
+                        status=202)

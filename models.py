@@ -201,15 +201,26 @@ class GeneOntology(db.Model):
     gene = relationship("Gene", foreign_keys=[gene_ID])
 
     gene_ontology_symbol = db.Column(db.String(32))
+    description = db.Column(db.String(32))
 
 class hallmarks(db.Model):
     __tablename__ = "hallmarks"
     hallmarks_ID = db.Column(db.Integer, primary_key=True)
 
+
     gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
     gene = relationship("Gene", foreign_keys=[gene_ID])
 
     hallmark = db.Column(db.String(32))
+
+class wikipathways(db.Model):
+    __tablename__ = "wikipathways"
+    wikipathways_id = db.Column(db.Integer, primary_key=True)
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+
+    wp_key = db.Column(db.String(32))
 
 class DatasetSchema(ma.ModelSchema):
     class Meta:
@@ -431,7 +442,7 @@ class GeneOntologySchema(ma.ModelSchema):
     class Meta:
         model = GeneOntology
         sql_session = db.session
-        fields = ["gene", "gene_ontology_symbol"]
+        fields = ["gene", "gene_ontology_symbol", "description"]
 
     gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
 
@@ -440,5 +451,13 @@ class HallmarksSchema(ma.ModelSchema):
         model = hallmarks
         sql_session = db.session
         fields = ["gene", "hallmark"]
+
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
+
+class WikipathwaySchema(ma.ModelSchema):
+    class Meta:
+        model = wikipathways
+        sql_session = db.session
+        fields = ["gene", "wp_key"]
 
     gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))

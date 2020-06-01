@@ -146,10 +146,10 @@ def getGeneOntology(gene_symbol):
         return models.GeneOntologySchema(many=True).dump(interaction_result).data
     else:
         return Response("{"
-                        "'detail': 'No GO terms with given parameters found!',"
-                        "'status': 202,"
-                        "'title': 'Accepted',"
-                        "'type': 'about:blank'}",
+                        "\"detail\": \"No GO terms with given parameters found!\","
+                        "\"status\": 202,"
+                        "\"title\": \"Accepted\","
+                        "\"type\": \"about:blank\"}",
                         status=202)
 
 
@@ -180,12 +180,11 @@ def getHallmark(gene_symbol):
         # Serialize the data for the response depending on parameter all
         return models.HallmarksSchema(many=True).dump(interaction_result).data
     else:
-
         return Response("{"
-                        "'detail': 'No hallmark associated for gene(s) of interest!',"
-                        "'status': 202,"
-                        "'title': 'Accepted',"
-                        "'type': 'about:blank'}",
+                        "\"detail\": \"No hallmark associated for gene(s) of interest!\","
+                        "\"status\": 202,"
+                        "\"title\": \"Accepted\","
+                        "\"type\": \"about:blank\"}",
                         status=202)
 
 def getWikipathway(gene_symbol):
@@ -215,10 +214,9 @@ def getWikipathway(gene_symbol):
         # Serialize the data for the response depending on parameter all
         return models.WikipathwaySchema(many=True).dump(interaction_result).data
     else:
-
         return Response("{"
-                        "'detail': 'No wikipathway key associated for gene(s) of interest!',"
-                        "'status': 202,"
-                        "'title': 'Accepted',"
-                        "'type': 'about:blank'}",
+                        "\"detail\": \"No wikipathway key associated for gene(s) of interest!\","
+                        "\"status\": 202,"
+                        "\"title\": \"Accepted\","
+                        "\"type\": \"about:blank\"}",
                         status=202)

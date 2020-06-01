@@ -1,4 +1,4 @@
-from alpine:edge
+from alpine:3.11.6
 
 RUN apk add --no-cache python3-dev mariadb-connector-c-dev build-base linux-headers\
     && pip3 install --upgrade pip

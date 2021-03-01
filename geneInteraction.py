@@ -400,11 +400,19 @@ def testGeneInteraction(ensg_number=None, gene_symbol=None):
     return schema.dump(result).data
 
 
-def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, limit=100, offset=0):
+def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, pValue=0.05,
+                   pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
+                   limit=100, offset=0):
     """
     :param disease_name: disease_name of interest
     :param mimat_number: mimat_id( of miRNA of interest
     :param: hs_nr: hs_number of miRNA of interest
+    :param pValue: pValue cutoff
+    :param pValueDirection: < or >
+    :param mscor mscor cutofff
+    :param mscorDirection: < or >
+    :param correlation: correlation cutoff
+    :param correlationDirection: < or >
     :param limit: number of results that should be shown
     :param offset: startpoint from where results should be shown
     :return: all interactions the given miRNA is involved in
@@ -462,11 +470,27 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
         geneInteractionIDs = [i.gene_ID for i in gene_interaction]
     else:
         abort(404, "No gene is associated with the given miRNA.")
-    print(len(gene_interaction))
 
     # save all needed queries to get correct results
     queriesGeneInteraction.append(sa.and_(models.GeneInteraction.gene_ID1.in_(geneInteractionIDs),
                                           models.GeneInteraction.gene_ID2.in_(geneInteractionIDs)))
+
+    # filter further depending on given statistics cutoffs
+    if pValue is not None:
+        if pValueDirection == "<":
+            queriesGeneInteraction.append(models.GeneInteraction.p_value <= pValue)
+        else:
+            queriesGeneInteraction.append(models.GeneInteraction.p_value >= pValue)
+    if mscor is not None:
+        if mscorDirection == "<":
+            queriesGeneInteraction.append(models.GeneInteraction.mscor <= mscor)
+        else:
+            queriesGeneInteraction.append(models.GeneInteraction.mscor >= mscor)
+    if correlation is not None:
+        if correlationDirection == "<":
+            queriesGeneInteraction.append(models.GeneInteraction.correlation <= correlation)
+        else:
+            queriesGeneInteraction.append(models.GeneInteraction.correlation >= correlation)
 
     interaction_result = models.GeneInteraction.query \
         .filter(*queriesGeneInteraction) \
@@ -624,8 +648,6 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
         session = Session()
         # test for each dataset if the gene(s) of interest are included in the ceRNA network
 
-        print()
-
         mirna_filter = session.execute("select mirna_ID from interacting_miRNAs where run_ID IN ( "
                                        + ','.join(str(e) for e in run_IDs) + ") and gene_ID IN ( "
                                        + ','.join(str(e) for e in gene_IDs)
@@ -731,3 +753,62 @@ def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCoun
         return models.GeneCountSchema(many=True).dump(result).data
     else:
         abort(404, "No data found with input parameter")
+
+def get_distinc_ceRNA_sets(disease_name):
+    """
+    Function returns list of distinct gene_IDs (ensg_nr) contributing to a significant interaction (adjusted pVal <= 0.05) in one specific cancer
+    :param disease_name: mandatory, cancer type of interest
+    :return: List of distinct gene_IDs (ensg_nr)
+    """
+
+    # if specific disease_name is given:
+    run_IDs = []
+    if disease_name is not None:
+        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+            .all()
+
+        if len(run) > 0:
+            run_IDs = [i.run_ID for i in run]
+        else:
+            abort(404, "No dataset with given disease_name found")
+
+
+    ensg_nr = []
+    if len(run_IDs) > 0:
+        # an Engine, which the Session will use for connection resources
+        some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
+
+        # create a configured "Session" class
+        Session = sa.orm.sessionmaker(bind=some_engine)
+
+        # create a Session
+        session = Session()
+        # test for each dataset if the gene(s) of interest are included in the ceRNA network
+
+
+
+        id1 = session.execute("SELECT DISTINCT gene_ID1 FROM interactions_genegene where run_ID IN (" +
+                                  ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05")
+
+        print("first ids ready")
+        #id2 = session.execute("SELECT DISTINCT gene_ID2 FROM interactions_genegene where run_ID IN (" +
+        #                          ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05").fetchall()
+
+
+        #for gene in results:
+        #    tmp = session.execute("SELECT ensg_number FROM gene where gene_ID = " + str(gene.gene_ID)).fetchall()
+        #    #print(tmp[0].ensg_number)
+        #    ensg_nr.append({"gene_ID": tmp[0].ensg_number})
+
+        session.close()
+        some_engine.dispose()
+
+    #if len(ensg_nr) > 0:
+        # Serialize the data for the response depending on parameter all
+        #return models.DistinctGeneSetSchema(many=True).dump(results).data
+    #else:
+        #abort(404, "No data found with input parameter")
+    return print("Null")
+
+get_distinc_ceRNA_sets(disease_name="kidney clear")

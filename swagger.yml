@@ -803,6 +803,32 @@ paths:
                     count_sign:
                       description: Number of times gene is involved in significant (p.adj < 0.05) interactions of the netwrk.
                       type: string
+  /getDistinctceRNAs:
+    get:
+      operationId: geneInteraction.get_distinc_ceRNA_sets
+      tags:
+      - ceRNANetwork
+      summary: Function returns list of distinct gene_IDs in one specific cancer.
+      description: Function returns list of distinct gene_IDs (ensg_nr) contributing to a significant interaction (adjusted pVal <= 0.05) in one specific cancer.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Function returns list of distinct gene_IDs (ensg_nr) contributing to a significant interaction (adjusted pVal <= 0.05) in one specific cancer.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    ensg_nr:
+                      type: string
+                      description: Ensg number of distict ceRNA
   /miRNAInteraction/findSpecific:
     get:
       operationId: geneInteraction.read_all_to_one_mirna
@@ -829,6 +855,55 @@ paths:
         required: false
         schema:
           type: string
+      - name: pValue
+        in: query
+        required: false
+        description: Threshold of the FDR adjusted p-value. Default is 0.05.
+        schema:
+          type: number
+          default: 0.05
+      - name: pValueDirection
+        in: query
+        required: false
+        description: Direction of the FDR adjusted p-value threshold (<=, >=).
+        schema:
+          type: string
+          enum:
+            - <
+            - ">"
+          default: <
+      - name: mscor
+        in: query
+        required: false
+        description: Threshold of the 'multiple sensitivity correlation' (mscor).
+        schema:
+          type: number
+      - name: mscorDirection
+        in: query
+        required: false
+        description: Direction of the mscor threshold (<=, >=).
+        schema:
+          type: string
+          enum:
+            - <
+            - ">"
+          default: <
+      - name: correlation
+        in: query
+        required: false
+        description: Threshold of the correlation.
+        schema:
+          type: number
+      - name: correlationDirection
+        in: query
+        required: false
+        description: Direction of the correlation threshold (<=, >=).
+        schema:
+          type: string
+          enum:
+            - <
+            - ">"
+          default: <
       - name: limit
         in: query
         description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
@@ -902,7 +977,6 @@ paths:
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
         schema:
           type: string
       - name: mimat_number

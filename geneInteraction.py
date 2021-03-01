@@ -499,7 +499,7 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        schema = models.GeneInteractionDatasetShortSchema(many=True)
+        schema = models.GeneInteractionDatasetLongSchema(many=True)
         return schema.dump(interaction_result).data
     else:
         abort(404, "No data found with input parameter")

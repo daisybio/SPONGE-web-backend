@@ -6,7 +6,7 @@ connexion==2.3.0
 Flask==1.1.1
 flask-marshmallow==0.10.1
 Flask-SQLAlchemy==2.4.0
-Flask-Cors==3.0.8
+Flask-Cors==3.0.9
 idna==2.8
 inflection==0.3.1
 itsdangerous==1.1.0

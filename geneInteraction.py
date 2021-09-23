@@ -809,6 +809,6 @@ def get_distinc_ceRNA_sets(disease_name):
         #return models.DistinctGeneSetSchema(many=True).dump(results).data
     #else:
         #abort(404, "No data found with input parameter")
-    return print("Null")
+    return
 
 get_distinc_ceRNA_sets(disease_name="kidney clear")

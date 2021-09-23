@@ -17,6 +17,9 @@ CORS(app)
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SPONGE_DB_URI")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['DEBUG '] = True
+app.config['TESTING '] = True
+
 
 @app.after_request
 def add_header(response):

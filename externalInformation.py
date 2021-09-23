@@ -14,7 +14,6 @@ def getAutocomplete(searchString):
         data = models.Gene.query.with_entities(models.Gene.ensg_number, models.Gene.gene_symbol) \
             .filter(models.Gene.ensg_number.ilike(searchString + "%")) \
             .all()
-        print(data)
         if len(data) > 0:
             return models.GeneSchemaShort(many=True).dump(data).data
         else:

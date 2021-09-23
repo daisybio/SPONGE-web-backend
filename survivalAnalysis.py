@@ -89,7 +89,6 @@ def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, samp
 
         if (len(patient) > 0):
             sample_IDs = [i.patient_information_ID for i in patient]
-            print(sample_IDs)
             # save all needed queries to get correct results
             queries.append(models.SurvivalRate.patient_information_ID.in_(sample_IDs))
         else:

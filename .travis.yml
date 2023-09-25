@@ -6,7 +6,7 @@ services:
 
 branches:
   only:
-  - master
+  - spongEffects
   
 env:
   - SPONGE_DB_URI=mysql://user:@localhost/SPONGEdb_v2

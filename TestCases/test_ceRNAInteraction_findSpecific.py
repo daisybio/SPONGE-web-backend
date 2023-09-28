@@ -50,13 +50,13 @@ def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_sym
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
-            queries.append(models.GeneInteraction.run_ID.in_(run_IDs))
+            run_IDs = [i.sponge_run_ID for i in run]
+            queries.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 

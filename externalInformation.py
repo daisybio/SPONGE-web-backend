@@ -83,6 +83,26 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
             abort(404, "No gene found with: " + ''.join(gene_symbol))
 
 
+def getTranscriptInformation(enst_number):
+    """
+    :param enst_number:
+    :return: Available information for given transcript identifier
+    """
+
+    # test if the identification is given
+    if enst_number is None:
+        abort(404, "At least one transcript identification number is needed!")
+
+    data = models.Transcript.query \
+        .filter(models.Transcript.enst_number.in_(enst_number)) \
+        .all()
+
+    if len(data) > 0:
+        return models.TranscriptSchema(many=True).dump(data).data
+    else:
+        abort(404, "No transcript found with: " + enst_number)
+
+
 def getOverallCount():
     """
     Function return current statistic about database - amount of shared miRNA, significant and insignificant
@@ -215,6 +235,74 @@ def getWikipathway(gene_symbol):
     else:
         return Response("{"
                         "\"detail\": \"No wikipathway key associated for gene(s) of interest!\","
+                        "\"status\": 202,"
+                        "\"title\": \"Accepted\","
+                        "\"type\": \"about:blank\"}",
+                        status=202)
+
+
+def getTranscriptGene(enst_number):
+    """
+    :param enst_number:
+    :return: Returns all associated gene id(s) for the transcript(s) of interest.
+    """
+
+    # test if the identification is given
+    if enst_number is None:
+        abort(404, "At least one transcript identification number is needed!")
+
+    data = models.Transcript.query \
+        .filter(models.Transcript.enst_number.in_(enst_number)) \
+        .all()
+
+    if len(data) > 0:
+        return models.TranscriptSchema(many=True).dump(data).data
+    else:
+        abort(404, "No transcript found with: " + enst_number)
+
+    interaction_result = models.Gene.query \
+        .filter(models.Gene.ensg_number).in_(enst_number) \
+        .all()
+
+    if len(interaction_result) > 0:
+        return models.GeneSchema(many=True).dump(interaction_result).data
+    else:
+        return Response("{"
+                        "\"detail\": \"No gene(s) associated for transcript(s) of interest!\","
+                        "\"status\": 202,"
+                        "\"title\": \"Accepted\","
+                        "\"type\": \"about:blank\"}",
+                        status=202)
+
+
+def getGeneTranscripts(ensg_number):
+    """
+    :param ensg_number:
+    :return: Returns all associated transcript id(s) for the gene(s) of interest.
+    """
+
+    # test if the identification is given
+    if ensg_number is None:
+        abort(404, "At least one gene identification number is needed!")
+
+    data = models.Gene.query \
+        .filter(models.Gene.ensg_number.in_(ensg_number)) \
+        .all()
+
+    if len(data) > 0:
+        return models.GeneSchema(many=True).dump(data).data
+    else:
+        abort(404, "No gene found with: " + ensg_number)
+
+    interaction_result = models.Transcript.query \
+        .filter(models.Transcript.enst_number).in_(ensg_number) \
+        .all()
+
+    if len(interaction_result) > 0:
+        return models.TranscriptSchema(many=True).dump(interaction_result).data
+    else:
+        return Response("{"
+                        "\"detail\": \"No transcript(s) associated for gene(s) of interest!\","
                         "\"status\": 202,"
                         "\"title\": \"Accepted\","
                         "\"type\": \"about:blank\"}",

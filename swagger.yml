@@ -83,9 +83,9 @@ paths:
                   download_url:
                     type: string
                     description: URL to cancer type/dataset annotation.
-  /dataset/runInformation:
+  /dataset/spongeRunInformation:
     get:
-      operationId: dataset.read_runInformation
+      operationId: dataset.read_spongeRunInformation
       tags:
       - Dataset
       summary: Get all run information about the cancer type/dataset of interest.
@@ -118,7 +118,7 @@ paths:
                         properties:
                           dataset_ID:
                             type: integer
-                            description: Internal databse ID of the cancer type/dataset.
+                            description: Internal database ID of the cancer type/dataset.
                           disease_name:
                             type: string
                             description: Name of the cancer type/dataset.
@@ -149,12 +149,15 @@ paths:
                     number_of_samples:
                         type: integer
                         description: The number of samples available in the expression data.
-                    run_ID:
+                    sponge_run_ID:
                         type: integer
                         description: Internal database ID of the specific parameter setting (=run).
                     variance_cutoff:
                         type: string
-                        description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Paramter name in SPONGE method is var.threshold)
+                        description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Parameter name in SPONGE method is var.threshold)
+                    sponge_db_version:
+                        type: integer
+                        description: Version of the SPONGE database (1 or 2)
   /ceRNAInteraction/checkGeneInteraction:
     get:
       operationId: geneInteraction.testGeneInteraction
@@ -193,7 +196,7 @@ paths:
                     include:
                       type: integer
                       description: Result of the test. 0 means the gene is not included in the corresponding ceRNA interaction network. 1 mean the gene is a part of the ceRNA network.
-                    run_ID:
+                    sponge_run_ID:
                       type: integer
                       description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
   /ceRNAInteraction/findAll:
@@ -451,12 +454,12 @@ paths:
                           required:
                             - dataset_Id
                             - disease_name
-                        run_ID:
+                        sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
-                        - run_ID
+                        - sponge_run_ID
   /ceRNAInteraction/findSpecific:
     get:
       operationId: geneInteraction.read_specific_interaction
@@ -565,12 +568,12 @@ paths:
                           required:
                             - dataset_ID
                             - disease_name
-                        run_ID:
+                        sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
-                        - run_ID
+                        - sponge_run_ID
   /findceRNA:
     get:
       operationId: geneInteraction.read_all_gene_network_analysis
@@ -749,12 +752,12 @@ paths:
                           required:
                             - dataset_ID
                             - disease_name
-                        run_ID:
+                        sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
-                        - run_ID
+                        - sponge_run_ID
   /getGeneCount:
     get:
       operationId: geneInteraction.getGeneCounts
@@ -831,12 +834,12 @@ paths:
                         dataset:
                           type: string
                           description: Name of the cancer type/dataset.
-                        run_ID:
+                        sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
-                        - run_ID
+                        - sponge_run_ID
                     count_all:
                       description: Number of times gene is involved in the complete network (equals to degree).
                       type: string
@@ -1000,12 +1003,12 @@ paths:
                           required:
                           - dataset_ID
                           - disease_name
-                        run_ID:
+                        sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                       - dataset
-                      - run_ID
+                      - sponge_run_ID
   /miRNAInteraction/getOccurence:
     get:
       operationId: geneInteraction.read_all_mirna
@@ -1120,12 +1123,12 @@ paths:
                           required:
                             - dataset_ID
                             - disease_name
-                        run_ID:
+                        sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
-                        - run_ID
+                        - sponge_run_ID
   /miRNAInteraction/findceRNA:
     get:
       operationId: geneInteraction.read_mirna_for_specific_interaction
@@ -1198,12 +1201,12 @@ paths:
                         dataset:
                           type: string
                           description: Name of the cancer type/dataset.
-                        run_ID:
+                        sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                       required:
                         - dataset
-                        - run_ID
+                        - sponge_run_ID
                     mirna:
                       type: object
                       description: Information about the miRNA(s) of interest - source is miRBase
@@ -1437,6 +1440,55 @@ paths:
                     start_pos:
                       type: integer
                       description: Starting position of the gene.
+                    cytoband:
+                      type: string
+                      description: Cytoband / Karyotype band of the gene.
+                    strand:
+                      type: integer
+                      description: Type of strand of the gene (1 or -1).
+  /getTranscriptInformation:
+    get:
+      operationId: externalInformation.getTranscriptInformation
+      tags:
+        - ExternalInformation
+      summary: Get all available information about the transcript of interest.
+      description: Get all available information about the transcript of interest.
+      parameters:
+      - name: enst_number
+        in: query
+        description: A comma-separated list of enst_number of the transcript(s) of interest (e.g. ENST00000387314, ENST00000389680)
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all available information about the transcript of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    ensg_number:
+                      type: string
+                      description: Ensg number of according gene.
+                    transcript_type:
+                      type: string
+                      description: Type of transcript.
+                    start_pos:
+                      type: integer
+                      description: Startposition of transcript.
+                    end_pos:
+                      type: integer
+                      description: Endposition of transcript.
+                    canonical_transcript:
+                      type: integer
+                      description: Boolean if transcript is canonical (True = 1, False = 0)
   /getOverallCounts:
     get:
       operationId: externalInformation.getOverallCount
@@ -1462,7 +1514,7 @@ paths:
                     count_shared_miRNAs:
                       type: integer
                       description: Amount of shared miRNA  in the specific dataset.
-                    run_ID:
+                    sponge_run_ID:
                       type: integer
                       description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
                     disease_name:
@@ -1594,6 +1646,71 @@ paths:
                         wp_key:
                           type: string
                           description: Wikipathway key for gene(s) of interest.
+  /getTranscriptGene:
+    get:
+      operationId: externalInformation.getTranscriptGene
+      tags:
+      - ExternalInformation
+      summary: Function returns gene ID(s) of transcript(s) of interest.
+      description: Function returns gene ID(s) of transcript(s) of interest.
+      parameters:
+      - name: enst_number
+        in: query
+        description: A comma-separated list pf enst numbers of the transcript(s) of interest (e.g. ENST00000387314, ENST00000389680)
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Function returns gene ID(s) for transcript(s) of interest
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    ensg_number:
+                      type: string
+                      description: Gene number of the transcript
+                    gene_symbol:
+                      type: string
+                      description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+  /getGeneTranscripts:
+    get:
+      operationId: externalInformation.getGeneTranscripts
+      tags:
+      - ExternalInformation
+      summary: Get all included transcripts of a gene of interest.
+      description: Get all included transcripts of a gene of interest.
+      parameters:
+      - name: ensg_number
+        in: query
+        description: A comma-separated list of ensg numbers of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all included transcripts of a gene of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    enst_number:
+                      type: string
+                      description: Enst number of the transcript of the gene of interest.
   /survivalAnalysis/sampleInformation:
     get:
       operationId: survivalAnalysis.get_patient_information
@@ -1792,3 +1909,113 @@ paths:
                     pValue:
                       type: number
                       description: pValue of log rank test
+  /alternativeSplicing/getTranscriptEvents:
+    get:
+      operationId: alternativeSplicing.get_transcript_events
+      tags:
+      - AlternativeSplicing
+      summary: Retrieve all included events of one transcript of interest.
+      description: Retrieve all included events of one transcript of interest.
+      parameters:
+      - name: enst_number
+        in: query
+        description: A comma-separated list of enst numbers of the transcript(s) of interest (e.g. ENST00000387314, ENST00000389680)
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: Get all included events of a transcript of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    event_type:
+                      type: string
+                      description: Name(s) of the event type(s)
+  /alternativeSplicing/getEventPositions:
+    get:
+      operationId: alternativeSplicing.get_event_positions
+      tags:
+      - AlternativeSplicing
+      summary: Retrieve the exon position(s) associated with a transcript of a specific event type.
+      description: Retrieve the exon position(s) associated with a transcript of a specific event type.
+      parameters:
+      - name: enst_number
+        in: query
+        description: A enst number of a transcript of interest (e.g. ENST00000387314)
+        required: true
+        schema:
+          type: string
+      - name: event_type
+        in: query
+        description: Name of the event type of interest (e.g. RI, SE, MX, A5, A3, AF, AL)
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Function returns all exon position(s) for a transcript of interest and a specific event type.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    start_pos:
+                      type: integer
+                      description: start position of the exon
+                    end_pos:
+                      type: integer
+                      description: end position of the exon
+  /alternativeSplicing/getExonsForPosition:
+    get:
+      operationId: alternativeSplicing.get_exons_for_position
+      tags:
+      - AlternativeSplicing
+      summary: Function returns exon ensembl ID(s) of an exon position of interest.
+      description: Function returns exon ensembl ID(s) of an exon position of interest.
+      parameters:
+      - name: start_pos
+        in: query
+        description: start position(s) of exon(s) of interest.
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: end_pos
+        in: query
+        description: end position(s) of exon(s) of interest.
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      responses:
+        "200":
+          description: get exon ID(s) of exon position(s) of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    ense_number:
+                      type: string
+                      description: Ense number of the exon.
+
+

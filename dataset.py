@@ -3,6 +3,32 @@ from config import app
 import models
 
 
+def get_datasets(data_origin=None):
+    f"""
+       This function responds to a request for /sponge/datasets/?data_origin={data_origin}
+       with one matching entry to the specifed data_origin
+
+       :param data_origin:   name of the data source
+       :return:            all datasets that match the source (e.g. TCGA)
+       """
+
+    if data_origin is None:
+        # Create the list of people from our data
+        data = models.Dataset.query \
+            .all()
+    else:
+        # Get the dataset requested
+        data = models.Dataset.query \
+            .filter(models.Dataset.data_origin.like("%" + data_origin + "%")) \
+            .all()
+
+    # Did we find a dataset?
+    if len(data) > 0:
+        # Serialize the data for the response
+        return models.DatasetSchema(many=True).dump(data).data
+    else:
+        abort(404, 'No data found for name: {data_origin}'.format(data_origin=data_origin))
+
 def read(disease_name=None):
     """
        This function responds to a request for /sponge/dataset/?disease_name={disease_name}

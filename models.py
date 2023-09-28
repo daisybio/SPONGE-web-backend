@@ -11,6 +11,7 @@ class Dataset(db.Model):
     data_origin = db.Column(db.String(32))
     disease_type = db.Column(db.String(32))
     download_url = db.Column(db.String(32))
+    disease_subtype = db.Column(db.String(32))
 
 class Run(db.Model):
     __tablename__ = "run"

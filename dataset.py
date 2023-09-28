@@ -39,13 +39,13 @@ def read_runInformation(disease_name=None):
     :return: all available runs + information for disease of interest
     """
 
-    data = models.Run.query \
-        .join(models.Dataset, models.Run.dataset_ID == models.Dataset.dataset_ID) \
+    data = models.SpongeRun.query \
+        .join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID) \
         .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
         .all()
 
     if len(data) > 0:
         # Serialize the data for the response
-        return models.RunSchema(many=True).dump(data).data
+        return models.SpongeRunSchema(many=True).dump(data).data
     else:
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))

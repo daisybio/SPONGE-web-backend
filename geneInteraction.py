@@ -42,12 +42,12 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
     queries_2 = []
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
+            run_IDs = [i.sponge_run_ID for i in run]
             queries_1.append(models.GeneInteraction.run_ID.in_(run_IDs))
             queries_2.append(models.GeneInteraction.run_ID.in_(run_IDs))
         else:
@@ -195,12 +195,12 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
+            run_IDs = [i.sponge_run_ID for i in run]
             queries.append(models.GeneInteraction.run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
@@ -253,12 +253,12 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
 
     # if specific disease_name is given (should be because for this endpoint is it required):
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
+            run_IDs = [i.sponge_run_ID for i in run]
             queries.append(models.networkAnalysis.run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
@@ -376,20 +376,20 @@ def testGeneInteraction(ensg_number=None, gene_symbol=None):
 
     result = []
     for r in run:
-        tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+        tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.sponge_run_ID) +
                               " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
 
         if (tmp[0] == 1):
-            check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+            check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.sponge_run_ID,
                      "include": tmp[0]}
         else:
-            tmp2 = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.run_ID) +
+            tmp2 = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.sponge_run_ID) +
                                    " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
             if (tmp2[0] == 1):
-                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.sponge_run_ID,
                          "include": 1}
             else:
-                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.run_ID,
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.sponge_run_ID,
                          "include": 0}
 
         result.append(check)
@@ -449,12 +449,12 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
+            run_IDs = [i.sponge_run_ID for i in run]
             queriesmirnaInteraction.append(models.miRNAInteraction.run_ID.in_(run_IDs))
             queriesGeneInteraction.append(models.GeneInteraction.run_ID.in_(run_IDs))
         else:
@@ -548,11 +548,11 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
+            run_IDs = [i.sponge_run_ID for i in run]
             queries.append(models.OccurencesMiRNA.run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
@@ -607,12 +607,12 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
     run_IDs = []
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
+            run_IDs = [i.sponge_run_ID for i in run]
             queries.append(models.miRNAInteraction.run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
@@ -703,12 +703,12 @@ def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCoun
     queries = []
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
+            run_IDs = [i.sponge_run_ID for i in run]
             queries.append(models.GeneCount.run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
@@ -764,12 +764,12 @@ def get_distinc_ceRNA_sets(disease_name):
     # if specific disease_name is given:
     run_IDs = []
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
+            run_IDs = [i.sponge_run_ID for i in run]
         else:
             abort(404, "No dataset with given disease_name found")
 

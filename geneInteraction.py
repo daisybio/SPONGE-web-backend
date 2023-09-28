@@ -788,7 +788,7 @@ def get_distinc_ceRNA_sets(disease_name):
 
 
 
-        id1 = session.execute("SELECT DISTINCT gene_ID1 FROM interactions_genegene where run_ID IN (" +
+        id1 = session.execute("SELECT DISTINCT gene_ID1 FROM interactions_genegene where sponge_run_ID IN (" +
                                   ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05")
 
         print("first ids ready")

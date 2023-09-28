@@ -56,9 +56,9 @@ def read(disease_name=None):
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
 
 
-def read_runInformation(disease_name=None):
+def read_spongeRunInformation(disease_name=None):
     """
-    This function responds to a request for /sponge/runInformation/?disease_name={disease_name}
+    This function responds to a request for /sponge/spongeRunInformation/?disease_name={disease_name}
     with a matching entry to the specifed diesease_name
 
     :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)

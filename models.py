@@ -308,7 +308,7 @@ class TranscriptCounts(db.Model):
     transcript = relationship("Transcript", foreign_keys=[transcript_ID])
 
     sponge_run_ID = db.Column(db.Integer, db.ForeignKey('sponge_run.sponge_run_ID'), nullable=False)
-    sponge_run = relationship("Sponge_run", foreign_keys=[sponge_run_ID])
+    sponge_run = relationship("SpongeRun", foreign_keys=[sponge_run_ID])
 
     count_all = db.Column(db.Integer)
     count_sign = db.Column(db.Integer)
@@ -319,7 +319,7 @@ class SpongEffectsRun(db.Model):
     spongEffects_run_ID = db.Column(db.Integer, primary_key=True)
 
     sponge_run_ID = db.Column(db.Integer, db.ForeignKey('sponge_run.sponge_run_ID'), nullable=False)
-    sponge_run = relationship("Sponge_run", foreign_keys=[sponge_run_ID])
+    sponge_run = relationship("SpongeRun", foreign_keys=[sponge_run_ID])
 
     m_scor_threshold = db.Column(db.Float)
     p_adj_threshold = db.Column(db.Float)
@@ -364,9 +364,9 @@ class DifferentialExpressionGene(db.Model):
     differential_expression_gene_ID = db.Column(db.Integer, primary_key=True)
 
     expression_data_gene_ID_1 = db.Column(db.Integer, db.ForeignKey('expression_data_gene.expression_data_gene_ID'), nullable=False)
-    expression_data_gene_1 = relationship("ExpressionDataGene", foreign_keys=[expression_data_gene_ID_1])
+    expression_data_gene_1 = relationship("GeneExpressionValues", foreign_keys=[expression_data_gene_ID_1])
     expression_data_gene_ID_2 = db.Column(db.Integer, db.ForeignKey('expression_data_gene.expression_data_gene_ID'), nullable=False)
-    expression_data_gene_2 = relationship("ExpressionDataGene", foreign_keys=[expression_data_gene_ID_2])
+    expression_data_gene_2 = relationship("GeneExpressionValues", foreign_keys=[expression_data_gene_ID_2])
 
     score = db.Column(db.Float)
     fold_change = db.Column(db.Float)

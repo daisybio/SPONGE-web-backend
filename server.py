@@ -20,5 +20,6 @@ def home():
     return "SPONGEdb API"
 
 if __name__ == "__main__":
-    connex_app.run()
+    print("serving on port: ", config.PORT)
+    connex_app.run(port=config.PORT)
 

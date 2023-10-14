@@ -12,6 +12,8 @@ class Dataset(db.Model):
     disease_type = db.Column(db.String(32))
     download_url = db.Column(db.String(32))
     disease_subtype = db.Column(db.String(32))
+    study_abbreviation = db.Column(db.String(32))
+    version = db.Column(db.Integer)
 
 class SpongeRun(db.Model):
     __tablename__ = "sponge_run"
@@ -280,7 +282,7 @@ class TranscriptElement(db.Model):
     transcript_element_positions = relationship("TranscriptElementPositions", foreign_keys=[transcript_element_positions_ID])
 
     type = db.Column(db.String(32))
-    ensg_number = db.Column(db.String(32))
+    ense_number = db.Column(db.String(32))
 
 
 class InteractionsTranscriptTranscript(db.Model):
@@ -329,7 +331,43 @@ class SpongEffectsRun(db.Model):
     max_size = db.Column(db.Integer)
     method = db.Column(db.String(32))
     cv_folds = db.Column(db.Integer)
+    level = db.Column(db.String(32))
 
+class SpongEffectsRunPerformance(db.Model):
+    __tablename__ = "spongEffects_run_performance"
+    spongEffects_run_performance_ID = db.Column(db.Integer, primary_key=True)
+    spongEffects_run_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run.spongEffects_run_ID'))
+    spongEffects_run = relationship('SpongEffectsRun', foreign_keys=[spongEffects_run_ID])
+
+    model_type = db.Column(db.String(32))
+    split_type = db.Column(db.String(32))
+    accuracy = db.Column(db.Float)
+    kappa = db.Column(db.Float)
+    accuracy_lower = db.Column(db.Float)
+    accuracy_upper = db.Column(db.Float)
+    accuracy_null = db.Column(db.Float)
+    accuracy_p_value = db.Column(db.Float)
+    mcnemar_p_value = db.Column(db.Float)
+
+
+class SpongEffectsRunClassPerformance(db.Model):
+    __tablename__ = 'spongEffects_run_class_performance'
+    spongEffects_run_class_performance_ID = db.Column(db.Integer, primary_key=True)
+    spongEffects_run_performance_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run_performance.spongEffects_run_performance_ID'))
+    spongEffects_run = relationship('SpongEffectsRunPerformance', foreign_keys=[spongEffects_run_performance_ID])
+
+    prediction_class = db.Column(db.String(32))
+    sensitivity = db.Column(db.Float)
+    specificity = db.Column(db.Float)
+    pos_pred_value = db.Column(db.Float)
+    neg_pred_value = db.Column(db.Float)
+    precision_value = db.Column(db.Float)
+    recall = db.Column(db.Float)
+    f1 = db.Column(db.Float)
+    prevalence = db.Column(db.Float)
+    detection_rate = db.Column(db.Float)
+    detection_prevalence = db.Column(db.Float)
+    balanced_accuracy = db.Column(db.Float)
 
 class ExpressionDataTranscript(db.Model):
     __tablename__ = "expression_data_transcript"
@@ -491,6 +529,13 @@ class SpongeRunSchema(ma.ModelSchema):
 
     dataset = ma.Nested(DatasetSchema, only=("dataset_ID", "disease_name", "data_origin"))
 
+class DatasetDetailedSchema(ma.ModelSchema):
+    class Meta:
+        model = SpongeRun
+        sqla_session = db.session
+        fields = ["number_of_samples", "dataset"]
+    dataset = ma.Nested(DatasetSchema, only=("study_abbreviation", "disease_name", "disease_subtype"))
+
 class GeneSchema(ma.ModelSchema):
     class Meta:
         model = Gene
@@ -509,7 +554,7 @@ class SelectedGenesSchema(ma.ModelSchema):
         sqla_session = db.session
 
     sponge_run = ma.Nested(SpongeRunSchema)
-    gene = ma.Nested(GeneSchema, olny=("ensg_number"))
+    gene = ma.Nested(GeneSchema, only=("ensg_number"))
 
 
 class TargetDatabasesSchema(ma.ModelSchema):
@@ -746,6 +791,19 @@ class SpongEffectsRunSchema(ma.ModelSchema):
         sqla_session = db.session
 
     sponge_run = ma.Nested(SpongeRunSchema)
+
+class SpongEffectsRunPerformanceSchema(ma.ModelSchema):
+    class Meta:
+        model = SpongEffectsRunPerformance
+        sqla_session = db.session
+    sponge_effects_run_performance = ma.Nested(SpongEffectsRunSchema)
+
+class SpongEffectsRunClassPerformanceSchema(ma.ModelSchema):
+    class Meta:
+        model = SpongEffectsRunClassPerformance
+        sqla_session = db.session
+
+    sponge_effects_run_performance = ma.Nested(SpongEffectsRunPerformance)
 
 
 class TranscriptInteractionLongSchema(ma.ModelSchema):

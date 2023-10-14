@@ -69,3 +69,25 @@ def get_event_positions(enst_number, event_type):
         abort(404, "No possible event type name")
 
 
+def get_exons_for_position(start_pos: int, end_pos: int):
+    """
+    This function response for the request: /sponge//alternativeSplicing/getExonsForPosition/
+    with genomic start and end positions
+    :param start_pos: genomic start position
+    :param end_pos: genomic end position
+    :return: exons matching the exact genomic positions
+    """
+    # get matching transcript_element_positions
+    transcript_element_positions_ids = models.TranscriptElementPositions.query \
+        .filter(models.TranscriptElementPositions.start_pos == start_pos) \
+        .filter(models.TranscriptElementPositions.end_pos == end_pos) \
+        .all()
+    result = models.TranscriptElement.query \
+        .filter(models.TranscriptElement.transcript_element_positions_ID.in_(transcript_element_positions_ids)) \
+        .all()
+    if len(result) > 0:
+        schema = models.networkAnalysisSchema(many=True)
+        return schema.dump(result).data
+    else:
+        abort(404, "No data found that satisfies the given filters")
+

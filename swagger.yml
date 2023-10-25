@@ -1977,5 +1977,605 @@ paths:
                     ense_number:
                       type: string
                       description: Ense number of the exon.
+  /Comparison:
+    get:
+      operationId: comparison.get_comparison
+      tags:
+      - Comparison
+      summary: Get disease comparisons
+      description: Get all comparisons involving the specified disease name and the subtype.
+      parameters:
+      - name: disease_name
+        in: query
+        description: Name of the disease type. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        schema:
+          type: string
+      - name: disease_subtype
+        in: query
+        description: Name of the specific subtype. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
 
+      responses:
+        "200":
+          description: Successfully retrieved all comparisons involving the condition with the given type name and subtype.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    comparison_ID:
+                      type: int
+                      description: Id of the selected comparison.
+                    condition_1:
+                      type: string
+                      description: Condition of the first type/dataset of the comparison (e.g. "disease" or "normal")
+                    condition_2:
+                      type: string
+                      description: Condition of the second type/dataset of the comparison (e.g. "disease" or "normal")
+                    gene_transcript:
+                      type: string
+                      description: Either "gene" or "transcript", depending on if the comparison was performed on gene level or transcript level data.
+                    dataset_1:
+                      type: object
+                      description: Information about the first dataset of the comparison.
+                      properties:
+                        dataset_ID:
+                          type: integer
+                          description: Internal database ID of the type/dataset.
+                        disease_name:
+                          type: string
+                          description: Name of the type/dataset.
+                        data_origin:
+                          type: string
+                          description: Type/dataset origin (database name, etc.).
+                        disease_type:
+                          type: string
+                          description: Type of the disease (e.g. cancer).
+                        download_url:
+                          type: string
+                          description: URL to type/dataset annotation.
+                        study_abbreviation:
+                          type: string
+                          description: Abbreviation of the disease.
+                        total_number_samples:
+                          type: int
+                          description: Number of samples in the dataset.
+                        version:
+                          type: int
+                          description: SPONGEdb version that the dataset belongs to.
+                    dataset_2:
+                      type: object
+                      description: Information about the first dataset of the comparison.
+                      properties:
+                        dataset_ID:
+                          type: integer
+                          description: Internal databse ID of the type/dataset.
+                        disease_name:
+                          type: string
+                          description: Name of the type/dataset.
+                        data_origin:
+                          type: string
+                          description: Type/dataset origin (database name, etc.).
+                        disease_type:
+                          type: string
+                          description: Type of the disease (e.g. cancer).
+                        download_url:
+                          type: string
+                          description: URL to  type/dataset annotation.
+                        study_abbreviation:
+                          type: string
+                          description: Abbreviation of the disease.
+                        total_number_samples:
+                          type: int
+                          description: Number of samples in the dataset.
+                        version:
+                          type: int
+                          description: SPONGEdb version that the dataset belongs to.
 
+  /gseaSets:
+    get:
+      operationId: gsea.gsea_sets
+      tags:
+      - GSEA
+      - GSEA Sets
+      summary: Get gene sets.
+      description: Get all gene sets for which GSEA results are available for the given type, subtype and condition combination.
+      parameters:
+      - name: disease_name_1
+        in: query
+        description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_name_2
+        in: query
+        description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_subtype_1
+        in: query
+        description: Name of the specific subtype for the first part of the GSEA analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: disease_subtype_2
+        in: query
+        description: Name of the specific subtype for the second part of the GSEA analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: condition_1
+        in: query
+        description: Condition of the first part of the GSEA analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: condition_2
+        in: query
+        description: Condition of the second dataset of the GSEA analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+
+      responses:
+        "200":
+          description: Successfully retrieved all gene sets for which a GSEA result exists for the given comparison.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    gene_set:
+                      type: string
+                      description: Name of the gene set.
+
+  /gseaTerms:
+    get:
+      operationId: gsea.gsea_terms
+      tags:
+      - GSEA
+      - GSEA Terms
+      summary: Get GSEA terms.
+      description: Get all terms for which GSEA results are available for the given gene set, type/subtype, and condition combination.
+      parameters:
+      - name: disease_name_1
+        in: query
+        description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_name_2
+        in: query
+        description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_subtype_1
+        in: query
+        description: Name of the specific subtype for the first part of the GSEA analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: disease_subtype_2
+        in: query
+        description: Name of the specific subtype for the second part of the GSEA analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: condition_1
+        in: query
+        description: Condition of the first part of the GSEA analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: condition_2
+        in: query
+        description: Condition of the second dataset of the GSEA analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: gene_set
+        in: query
+        description: Gene set to which the term belongs.
+        required: true
+        schema:
+          type: string
+
+      responses:
+        "200":
+          description: Successfully retrieved all terms for the given comparison and gene set.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    gene_set:
+                      type: string
+                      description: Name of the term.
+
+  /gseaResults:
+    get:
+      operationId: gsea.gsea_results
+      tags:
+      - GSEA
+      - GSEA Results
+      summary: Get GSEA results.
+      description: Get GSEA results for the given gene set, type, subtype, and condition combination.
+      parameters:
+      - name: disease_name_1
+        in: query
+        description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_name_2
+        in: query
+        description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_subtype_1
+        in: query
+        description: Name of the specific subtype for the first part of the GSEA analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: disease_subtype_2
+        in: query
+        description: Name of the specific subtype for the second part of the GSEA analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: condition_1
+        in: query
+        description: Condition of the first part of the GSEA analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: condition_2
+        in: query
+        description: Condition of the second dataset of the GSEA analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: gene_set
+        in: query
+        description: Gene set that the result belongs to.
+        required: true
+        schema:
+          type: string
+      - name: term
+        in: query
+        description: Term that the result belongs to. Fuzzy search is available (e.g. "GO:1902533").
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successfully retrieved GSEA results for the given comparison, gene set and term.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    es:
+                      type: float
+                      description: Enrichment Score.
+                    nes:
+                      type: float
+                      description: Normalised Enrichment Score.
+                    pvalue:
+                      type: float
+                      description: P-Value of GSEA result.
+                    fdr:
+                      type: float
+                      description: P-Value after false discovery rate control
+                    fwerp:
+                      type: float
+                      description: P-Value after family wise error rate control
+                    gene_percent:
+                      type: float
+                      description: Gene Percent.
+                    tag_percent:
+                      type: string
+                      description: (Genes in leading edge)/(Total matched genes).
+                    term:
+                      type: string
+                      description: Name of the term.
+                    lead_genes:
+                      type: array
+                      items:
+                        type: string
+                        description: Name of a gene in the leading edge.
+                    matched_genes:
+                      type: object
+                      items:
+                        type: string
+                        description: Name of a matched gene.
+                    res:
+                      type: object
+                      properties:
+                        res_ID:
+                          type: integer
+                          description: Id of the score within the gsea result, creates an order for the scores.
+                        score: 
+                          type: float
+                          description: Value of the score.               
+
+  /gseaPlot:
+    get:
+      operationId: gsea.gsea_plot
+      tags:
+      - GSEA
+      - GSEA Plot
+      summary: Get GSEA plot.
+      description: Get GSEA plot for the given gene set, type/subtype, and condition combination.
+      parameters:
+      - name: disease_name_1
+        in: query
+        description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_name_2
+        in: query
+        description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_subtype_1
+        in: query
+        description: Name of the specific subtype for the first part of the GSEA analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: disease_subtype_2
+        in: query
+        description: Name of the specific subtype for the second part of the GSEA analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: condition_1
+        in: query
+        description: Condition of the first part of the GSEA analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: condition_2
+        in: query
+        description: Condition of the second dataset of the GSEA analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: gene_set
+        in: query
+        description: Gene set that the plot belongs to.
+        required: true
+        schema:
+          type: string
+      - name: term
+        in: query
+        description: Term that the plot belongs to. Fuzzy search is available (e.g. "GO:1902533").
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successfully retrieved GSEA results for the given comparison, term, and gene set.
+          content:
+            application/json:
+              schema:
+                type: string
+                description: Base64 encoded string containing GSEA plot
+
+  /DifferentialExpression:
+    get:
+      operationId: diffExpression.get_diff_expr
+      tags:
+      - Differential Expression
+      summary: Get differential expression results between genes.
+      description: Get differential expression results for the given gene, type, subtype, and condition combination.
+      parameters:
+      - name: disease_name_1
+        in: query
+        description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_name_2
+        in: query
+        description: Name of the disease type for the second part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_subtype_1
+        in: query
+        description: Name of the specific subtype for the first part of the differential expression analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: disease_subtype_2
+        in: query
+        description: Name of the specific subtype for the second part of the differential expression analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: condition_1
+        in: query
+        description: Condition of the first part of the differential expression analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: condition_2
+        in: query
+        description: Condition of the second dataset of the differential expression analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: Comma seperated ENSG numbers of the genes.
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+      - name: gene_symbol
+        in: query
+        description: Comma seperated gene symbols.
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+
+      responses:
+        "200":
+          description: Successfully retrieved differential expression results for the given gene, type, subtype, and condition combination.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    differential_expression_gene_ID: 
+                      type: integer
+                      description: Id of differential expression comparison in the database.
+                    gene:
+                      type: string
+                      description: Gene Symbol.
+                    baseMean:
+                      type: float
+                      description: Differential Expression Base Mean.
+                    log2FoldChange:
+                      type: float
+                      description: Log2 Fold Change between gene expressions.
+                    pvalue:
+                      type: float
+                      description: P-Value for change between gene expressions.
+                    padj:
+                      type: float
+                      description: P-Value adjusted for multiple testing problem.
+                    stat:
+                      type: float
+                      description: Differential Expression Statistic.
+                    lfcSE:
+                      type: float
+                      description: Standard Error of Log Fold Change.
+
+  /DifferentialExpressionTranscript:
+    get:
+      operationId: diffExpression.get_diff_expr_transcript
+      tags:
+      - Differential Expression
+      summary: Get differential expression results between transcripts.
+      description: Get differential expression results for the given transcript, type, subtype, and condition combination.
+      parameters:
+      - name: disease_name_1
+        in: query
+        description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_name_2
+        in: query
+        description: Name of the disease type for the second part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: true
+        schema:
+          type: string
+      - name: disease_subtype_1
+        in: query
+        description: Name of the specific subtype for the first part of the differential expression analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: disease_subtype_2
+        in: query
+        description: Name of the specific subtype for the second part of the differential expression analysis. Fuzzy search is available (e.g. "LMS").
+        schema:
+          type: string
+      - name: condition_1
+        in: query
+        description: Condition of the first part of the differential expression analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: condition_2
+        in: query
+        description: Condition of the second dataset of the differential expression analysis (e.g. "disease" or "normal").
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: Comma seperated ENST numbers of the transcripts.
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 0
+        explode: false
+        style: form
+
+      responses:
+        "200":
+          description: Successfully retrieved differential expression results for the given transcript, type, subtype, and condition combination.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    differential_expression_gene_ID: 
+                      type: integer
+                      description: Id of differential expression comparison in the database.
+                    transcript:
+                      type: string
+                      description: ENST number of transcript.
+                    baseMean:
+                      type: float
+                      description: Differential Expression Base Mean.
+                    log2FoldChange:
+                      type: float
+                      description: Log2 Fold Change between gene expressions.
+                    pvalue:
+                      type: float
+                      description: P-Value for change between gene expressions.
+                    padj:
+                      type: float
+                      description: P-Value adjusted for multiple testing problem.
+                    stat:
+                      type: float
+                      description: Differential Expression Statistic.
+                    lfcSE:
+                      type: float
+                      description: Standard Error of Log Fold Change.
+
+  /stringSearch:
+    get:
+      operationId: externalInformation.getAutocomplete
+      tags:
+      - ExternalInformation
+      summary: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
+      description: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
+      parameters:
+      - name: searchString
+        in: query
+        description: Prefix of a gene name/ensg number or mirna identification
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Retrieve all possible matchings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    autocompleteSuggestion:
+                      type: string
+                      description: Possible autocompletion for the searchString

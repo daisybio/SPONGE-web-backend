@@ -1,12 +1,39 @@
 from flask import abort
-from config import app
 import models
 
+
+def get_datasets(data_origin=None):
+    """
+       This function responds to a request for /sponge/datasets?data_origin={data_origin}
+       with one matching entry to the specified data_origin
+
+       :param data_origin:   name of the data source
+       :return:            all datasets that match the source (e.g. TCGA)
+    """
+    # version is hardcoded since version 1 does not have spongEffects scores for transcripts
+    sponge_db_version: int = 2
+    if data_origin is None:
+        # Create the list of people from our data
+        data = models.Dataset.query \
+            .all()
+    else:
+        # Get the dataset requested
+        data = models.Dataset.query \
+            .filter(models.Dataset.data_origin.like("%" + data_origin + "%")) \
+            .filter(models.Dataset.version == sponge_db_version) \
+            .all()
+
+    # Did we find a source?
+    if len(data) > 0:
+        # Serialize the data for the response
+        return models.DatasetSchema(many=True).dump(data).data
+    else:
+        abort(404, 'No data found for name: {data_origin}'.format(data_origin=data_origin))
 
 def read(disease_name=None):
     """
        This function responds to a request for /sponge/dataset/?disease_name={disease_name}
-       with one matching entry to the specifed diesease_name
+       with one matching entry to the specified disease_name
 
        :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)
        :return:            dataset matching ID
@@ -30,9 +57,9 @@ def read(disease_name=None):
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
 
 
-def read_runInformation(disease_name=None):
+def read_spongeRunInformation(disease_name=None):
     """
-    This function responds to a request for /sponge/runInformation/?disease_name={disease_name}
+    This function responds to a request for /sponge/spongeRunInformation/?disease_name={disease_name}
     with a matching entry to the specifed diesease_name
 
     :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)

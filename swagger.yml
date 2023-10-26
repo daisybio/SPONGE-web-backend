@@ -6,6 +6,55 @@ info:
 servers:
   - url: /
 paths:
+  /datasets:
+    get:
+      operationId: dataset.get_datasets
+      tags:
+        - Dataset
+      summary: Get information on datasets for a given source
+      description: Get information on all datasets of a given source (e.g. TCGA) including subtype information
+      parameters:
+        - name: data_origin
+          in: query
+          description: Name of the data origin (e.g. TCGA)
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully read information about datasets of given source.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dataset_ID:
+                    type: integer
+                    description: Internal database ID of the cancer type/dataset.
+                  disease_name:
+                    type: string
+                    description: Name of the cancer type/dataset.
+                  data_origin:
+                    type: string
+                    description: Cancer type/dataset origin (database name, etc.).
+                  disease_type:
+                    type: string
+                    description: Type of the disease (e.g. cancer).
+                  download_url:
+                    type: string
+                    description: URL to cancer type/dataset annotation.
+                  disease_subtype:
+                    type: string
+                    description: Subtype of specific cancer type (NA if no relevant subtype is present)
+                  study_abbreviation:
+                    type: string
+                    description: Study abbreviation
+                  version:
+                    type: integer
+                    description: SPONGEdb version used
+                  number_of_samples:
+                    type: integer
+                    description: Number of samples per disease
   /dataset:
     get:
       operationId: dataset.read
@@ -1247,6 +1296,69 @@ paths:
                     sample_ID:
                       type: string
                       description: ID of the specific sample.
+  /exprValue/getTranscriptExpr:
+    get:
+      operationId: expressionValues.get_transcript_expression
+      tags:
+        - ExpressionValues
+      summary: Get transcript expressions for transcript IDs, gene IDs, or gene symbols
+      description: Get transcript expressions for transcript IDs, gene IDs, or gene symbols
+      parameters:
+        - name: disease_name
+          in: query
+          description: Name of the disease, will return all expression data if not specified
+          required: false
+          schema:
+            type: string
+        - name: enst_number
+          in: query
+          description: Ensembl transcript ID(s)
+          required: false
+          schema:
+            type: string
+        - name: ensg_number
+          in: query
+          description: Ensembl gene ID(s)
+          required: false
+          schema:
+            type: string
+        - name: gene_symbol
+          in: query
+          description: Gene symbol(s)
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Expression values for all transcripts that fit the provided filters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    dataset:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    transcript:
+                      type: string
+                      description: Ensembl transcript ID
+                    expr_value:
+                      type: number
+                      description: Specific expression value for unique transcript and sample_ID.
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                    sample_ID:
+                      type: string
+                      description: ID of the specific sample.
   /exprValue/getmirNA:
     get:
       operationId: expressionValues.get_mirna_expr
@@ -1977,6 +2089,394 @@ paths:
                     ense_number:
                       type: string
                       description: Ense number of the exon.
+  /spongEffects/getRunPerformance:
+    get:
+      operationId: spongEffects.get_run_performance
+      tags:
+        - spongEffects
+      summary: Get best spongEffects run performance for selected disease
+      description: Get best spongEffects run performance for selected disease
+      parameters:
+        - name: disease_name
+          in: query
+          description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
+          required: true
+          schema:
+            type: string
+        - name: level
+          in: query
+          description: Element level to use, either gene or transcript
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully queried spongEffects model performance for given disease
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  model_type:
+                    type: string
+                    description: spongEffects model type (Random, Central genes, or modules)
+                  split_type:
+                    type: string
+                    description: Test or train data split
+                  accuracy:
+                    type: number
+                    description: Overall model accuracy
+                  kappa:
+                    type: number
+                    description: Kappa value
+                  accuracy_lower:
+                    type: number
+                    description: Lower bound of overall accuracy
+                  accuracy_upper:
+                    type: number
+                    description: Upper bound of overall accuracy
+                  accuracy_null:
+                    type: number
+                    description: Null value of overall accuracy
+                  accuracy_p_value:
+                    type: number
+                    description: P-value of overall accuracy
+                  mcnemar_p_value:
+                    type: number
+                    description: P-value for Mcnemar value
+  /spongEffects/getRunClassPerformance:
+    get:
+      operationId: spongEffects.get_run_class_performance
+      tags:
+        - spongEffects
+      summary: Get detailed spongEffects model performance information for given disease type
+      description: Get detailed spongEffects model performance information for given disease type
+      parameters:
+        - name: disease_name
+          in: query
+          description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
+          required: true
+          schema:
+            type: string
+        - name: level
+          in: query
+          description: Level to use, i.e. gene or transcript
+          required: true
+          schema:
+            type: string
+        - name: sponge_db_version
+          in: query
+          description: Database version to use (version 2 is default)
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Successfully extracted spongEffects model performances for given disease and level
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prediction_class:
+                    type: string
+                    description: Predictive class of spongEffects model
+                  sensitivity:
+                    type: number
+                    description: Model sensitivity
+                  specificity:
+                    type: number
+                    description: Model specificity
+                  pos_pred_value:
+                    type: number
+                    description: Model pos_pred_value
+                  neg_pred_value:
+                    type: number
+                    description: Model neg_pred_value
+                  precision_value:
+                    type: number
+                    description: Model precision value
+                  recall:
+                    type: number
+                    description: Model recall value
+                  f1:
+                    type: number
+                    description: Model f1 value
+                  prevalence:
+                    type: number
+                    description: Model prevalence
+                  detection_rate:
+                    type: number
+                    description: Model detection rate
+                  detection_prevalence:
+                    type: number
+                    description: Model detection prevalence
+                  balanced_accuracy:
+                    type: number
+                    description: Model balanced accuracy
+                  spongEffects_run:
+                    type: object
+                    description: spongEffects model details
+                    properties:
+                      model_type:
+                        type: string
+                        description: Model type, i.e. random, module, or central genes
+                      split_type:
+                        type: string
+                        description: Specifies whether model was build with training or testing split
+  /spongEffects/enrichmentScoreDistributions:
+    get:
+      operationId: spongEffects.get_enrichment_score_class_distributions
+      tags:
+        - spongEffects
+      summary: Get enrichment score class distributions of a trained spongEffects model for a given disease
+      description: Get enrichment score class distributions of a trained spongEffects model for a given disease
+      parameters:
+        - name: disease_name
+          in: query
+          description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
+          required: true
+          schema:
+            type: string
+        - name: level
+          in: query
+          description: Level to use, i.e. gene or transcript
+          required: true
+          schema:
+            type: string
+        - name: sponge_db_version
+          in: query
+          description: Database version to use (version 2 is default)
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Successfully calculated enrichment class distributions for given disease and level
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prediction_class:
+                    type: string
+                    description: One of the (sub-)types (predictive class) of the given disease
+                  enrichment_score:
+                    type: number
+                    description: X-axis Enrichment score value
+                  density:
+                    type: number
+                    description: Y-axis distribution values
+  /spongEffects/getSpongEffectsGeneModules:
+    get:
+      operationId: spongEffects.get_gene_modules
+      tags:
+        - spongEffects
+      summary: Extract module hub elements for a given disease and level
+      description: Extract module hub elements for a given disease and level
+      parameters:
+        - name: disease_name
+          in: query
+          description: Disease name
+          required: true
+          schema:
+            type: string
+        - name: sponge_db_version
+          in: query
+          description: SPONGEdb version, defaults to latest
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Successfully extracted spongEffects module hubs for given disease
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ensg_number:
+                    type: string
+                    description: Ensg number of the gene.
+                  gene_symbol:
+                    type: string
+                    description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                  mean_gini_decrease:
+                    type: number
+                    description: Mean decrease in Gini-index
+                  mean_accuracy_decrease:
+                    type: number
+                    description: Mean decrease in accuracy
+  /spongEffects/getSpongEffectsGeneModuleMembers:
+    get:
+      operationId: spongEffects.get_gene_module_members
+      tags:
+        - spongEffects
+      summary: Get connected nodes of specified ceRNA hub(s)
+      description: Get connected nodes of specified ceRNA hub(s)
+      parameters:
+        - name: disease_name
+          in: query
+          description: Name of the disease
+          required: true
+          schema:
+            type: string
+        - name: ensg_number
+          in: query
+          description: Ensembl gene ID
+          required: false
+          schema:
+            type: string
+        - name: gene_symbol
+          in: query
+          description: Gene symbol
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully extracted all module members of hub node(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hub_ensg_number:
+                    type: string
+                    description: Ensembl gene ID of hub node
+                  hub_gene_symbol:
+                    type: string
+                    description: Gene symbol of hub node
+                  member_ensg_number:
+                    type: string
+                    description: Ensembl gene ID of module member
+                  member_gene_symbol:
+                    type: string
+                    description: Gene symbol of module member
+  /spongEffects/getSpongEffectsTranscriptModules:
+    get:
+      operationId: spongEffects.get_transcript_modules
+      tags:
+        - spongEffects
+      summary: Extract module hub elements for a given disease and level
+      description: Extract module hub elements for a given disease and level
+      parameters:
+        - name: disease_name
+          in: query
+          description: Disease name
+          required: true
+          schema:
+            type: string
+        - name: sponge_db_version
+          in: query
+          description: SPONGEdb version, defaults to latest
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Successfully extracted spongEffects module hubs for given disease
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enst_number:
+                    type: string
+                    description: Enst number of the transcript of the gene of interest.
+                  gene:
+                    type: object
+                    description: Information about the gene.
+                    properties:
+                      ensg_number:
+                        type: string
+                        description: Ensg number of the gene.
+                      gene_symbol:
+                        type: string
+                        description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                  mean_gini_decrease:
+                    type: number
+                    description: Mean decrease in Gini-index
+                  mean_accuracy_decrease:
+                    type: number
+                    description: Mean decrease in accuracy
+  /spongEffects/predictCancerType:
+    post:
+      operationId: spongEffects.upload_file
+      summary: Upload a gene/transcript expression file to predict which cancer type it originated from
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                subtypes:
+                  type: boolean
+                  description: Whether to prediction subtype level or only predict types
+                log:
+                  type: boolean
+                  description: Whether to apply a logarithmic scaling to the uploaded expression
+                mscor:
+                  type: number
+                  description: mscor threshold for filtering
+                fdr:
+                  type: number
+                  description: maximum FDR rate for filtering
+                min_size:
+                  type: number
+                  description: Minimum number of elements in a module
+                max_size:
+                  type: number
+                  description: Maximum number of elements in a module
+                min_expr:
+                  type: number
+                  description: Minimum number of elements present in module and expression
+                method:
+                  type: string
+                  description: Method to use for spongEffects enrichment (GSVA, ssGSEA, or OE)
+      responses:
+        "200":
+          description: "File uploaded and processed successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    type: object
+                    properties:
+                      runtime:
+                        type: number
+                        description: Total prediction runtime in seconds
+                      level:
+                        type: string
+                        description: Element level used, i.e. either gene or transcript
+                      n_samples:
+                        type: number
+                        description: Number of samples that were classified
+                      type_predict:
+                        type: string
+                        description: Dominant type prediction
+                      subtype_predict:
+                        type: string
+                        description: Dominant subtype prediction
+                  data:
+                    type: object
+                    properties:
+                      sampleID:
+                        type: string
+                        description: Sample ID of uploaded file
+                      typePrediction:
+                        type: string
+                        description: Predicted TCGA cancer (sub-)type
+                      subtypePrediction:
+                        type: string
+                        description: Predicted subtype
+        "400":
+          description: "File upload or processing failed"
   /Comparison:
     get:
       operationId: comparison.get_comparison
@@ -2430,7 +2930,6 @@ paths:
           minItems: 0
         explode: false
         style: form
-
       responses:
         "200":
           description: Successfully retrieved differential expression results for the given gene, type, subtype, and condition combination.

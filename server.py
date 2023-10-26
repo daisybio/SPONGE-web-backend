@@ -1,9 +1,6 @@
 """
 Main module of the server file
 """
-#import os
-#from swagger_modifier import replaceAll
-#replaceAll("swagger.yml", "- url", "- url: " + os.getenv("SPONGE_API_URL"))
 
 # local modules
 import config
@@ -20,5 +17,6 @@ def home():
     return "SPONGEdb API"
 
 if __name__ == "__main__":
-    connex_app.run()
+    print("serving on port: ", config.PORT)
+    connex_app.run(port=config.PORT)
 

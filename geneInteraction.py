@@ -48,8 +48,8 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
 
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]
-            queries_1.append(models.GeneInteraction.run_ID.in_(run_IDs))
-            queries_2.append(models.GeneInteraction.run_ID.in_(run_IDs))
+            queries_1.append(models.GeneInteraction.sponge_run_id.in_(run_IDs))
+            queries_2.append(models.GeneInteraction.sponge_run_id.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -201,7 +201,7 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
 
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]
-            queries.append(models.GeneInteraction.run_ID.in_(run_IDs))
+            queries.append(models.GeneInteraction.sponge_run_id.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -259,7 +259,7 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
 
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]
-            queries.append(models.networkAnalysis.run_ID.in_(run_IDs))
+            queries.append(models.networkAnalysis.sponge_run_id.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -299,7 +299,7 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
         queries.append(models.Gene.gene_type == gene_type)
 
     # add all sorting if given:
-    sort = [models.networkAnalysis.run_ID]
+    sort = [models.networkAnalysis.sponge_run_id]
     if sorting is not None:
         if sorting == "betweenness":
             if descending:
@@ -376,20 +376,20 @@ def testGeneInteraction(ensg_number=None, gene_symbol=None):
 
     result = []
     for r in run:
-        tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.sponge_run_ID) +
+        tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where sponge_run_id = " + str(r.sponge_run_ID) +
                               " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
 
         if (tmp[0] == 1):
-            check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.sponge_run_ID,
+            check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "sponge_run_id": r.sponge_run_ID,
                      "include": tmp[0]}
         else:
-            tmp2 = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where run_ID = " + str(r.sponge_run_ID) +
+            tmp2 = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where sponge_run_id = " + str(r.sponge_run_ID) +
                                    " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
             if (tmp2[0] == 1):
-                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.sponge_run_ID,
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "sponge_run_id": r.sponge_run_ID,
                          "include": 1}
             else:
-                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "run_ID": r.sponge_run_ID,
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "sponge_run_id": r.sponge_run_ID,
                          "include": 0}
 
         result.append(check)
@@ -455,8 +455,8 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
 
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]
-            queriesmirnaInteraction.append(models.miRNAInteraction.run_ID.in_(run_IDs))
-            queriesGeneInteraction.append(models.GeneInteraction.run_ID.in_(run_IDs))
+            queriesmirnaInteraction.append(models.miRNAInteraction.sponge_run_id.in_(run_IDs))
+            queriesGeneInteraction.append(models.GeneInteraction.sponge_run_id.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -553,7 +553,7 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
             .all()
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]
-            queries.append(models.OccurencesMiRNA.run_ID.in_(run_IDs))
+            queries.append(models.OccurencesMiRNA.sponge_run_id.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -613,7 +613,7 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
 
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]
-            queries.append(models.miRNAInteraction.run_ID.in_(run_IDs))
+            queries.append(models.miRNAInteraction.sponge_run_id.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -648,7 +648,7 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
         session = Session()
         # test for each dataset if the gene(s) of interest are included in the ceRNA network
 
-        mirna_filter = session.execute("select mirna_ID from interacting_miRNAs where run_ID IN ( "
+        mirna_filter = session.execute("select mirna_ID from interacting_miRNAs where sponge_run_ID IN ( "
                                        + ','.join(str(e) for e in run_IDs) + ") and gene_ID IN ( "
                                        + ','.join(str(e) for e in gene_IDs)
                                        + ") group by mirna_ID HAVING count(mirna_ID) >= 2;").fetchall()
@@ -709,7 +709,7 @@ def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCoun
 
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]
-            queries.append(models.GeneCount.run_ID.in_(run_IDs))
+            queries.append(models.GeneCount.sponge_run_id.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -788,11 +788,11 @@ def get_distinc_ceRNA_sets(disease_name):
 
 
 
-        id1 = session.execute("SELECT DISTINCT gene_ID1 FROM interactions_genegene where run_ID IN (" +
+        id1 = session.execute("SELECT DISTINCT gene_ID1 FROM interactions_genegene where sponge_run_ID IN (" +
                                   ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05")
 
         print("first ids ready")
-        #id2 = session.execute("SELECT DISTINCT gene_ID2 FROM interactions_genegene where run_ID IN (" +
+        #id2 = session.execute("SELECT DISTINCT gene_ID2 FROM interactions_genegene where sponge_run_id IN (" +
         #                          ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05").fetchall()
 
 

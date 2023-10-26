@@ -3,17 +3,15 @@ import os
 import random
 import string
 import subprocess
+import tempfile
 
 from flask import request, jsonify, abort
-from sqlalchemy import desc
-from werkzeug.utils import secure_filename
 import sqlalchemy as sa
 
 import config
 import models
 
 from config import app
-from config import UPLOAD_DIR
 
 
 def get_spongEffects_run_ID(disease_name: str, level: str = "gene", sponge_db_version: int = 2):
@@ -321,14 +319,11 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
         # execute command
         process = subprocess.run(cmd, capture_output=True, text=True, check=True)
         # get prediction output
-        print(process.stderr)
+        stderr = process.stderr
         with open(out_path, 'r') as json_file:
             return json.load(json_file)
     except subprocess.CalledProcessError as e:
         abort(500, e)
-    finally:
-        # remove uploaded file
-        os.remove(file_path)
 
 
 @app.route('/spongEffects/predictCancerType', methods=['GET', 'POST'])
@@ -345,14 +340,16 @@ def upload_file():
     apply_log_scale: bool = request.form.get('log') == "true"
     if uploaded_file.filename == '':
         abort(404, "File upload failed")
-    # create random upload file name
-    filename = generate_random_filename(extension="txt")
-    uploaded_file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    # create tmp upload file
+    tempfile.tempdir = app.config["UPLOAD_FOLDER"]
+    tmp_file = tempfile.NamedTemporaryFile(prefix="upload_", suffix=".txt")
+    print(tmp_file.name)
     # save file to uploads folder
-    uploaded_file.save(uploaded_file_path)
+    uploaded_file.save(tmp_file.name)
     # create random output path
-    output_path = os.path.join(app.config["UPLOAD_FOLDER"], generate_random_filename(extension="json"))
+    tmp_out_file = tempfile.NamedTemporaryFile(prefix="prediction_", suffix=".json")
+    print(tmp_out_file.name)
     # run spongEffects
-    return jsonify(run_spongEffects(uploaded_file_path, output_path, run_parameters,
+    return jsonify(run_spongEffects(tmp_file.name, tmp_out_file.name, run_parameters,
                                     log=apply_log_scale, subtype_level=predict_subtypes))
 

@@ -167,6 +167,82 @@ paths:
                     sponge_db_version:
                         type: integer
                         description: Version of the SPONGE database (1 or 2)
+  /networkResults:
+    get:
+      operationId: network_results.get_network_results
+      tags:
+        - network_results
+      summary: Get information about all cancer types/datasets or specific one.
+      description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
+      parameters:
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type.
+          required: false
+          schema:
+            type: string
+        - name: level
+          in: query
+          description: gene or transcript
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully read network result information about all cancer types and subtypes if avaliable.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: object
+                    properties:
+                      scores:
+                        type: object
+                        properties:
+                          labels:
+                            type: array
+                            description: list of cancer type names
+                          values:
+                            type: object
+                            description: matrix of hubness scores
+                      euclidean_distances:
+                        type: object
+                        properties:
+                          x:
+                            type: array
+                            description: list of x coordinates
+                          y:
+                            type: array
+                            description: list of y coordinates
+                          labels:
+                            type: array
+                            description: list of cancer type names
+                  subtype:
+                    type: object
+                    properties:
+                      scores:
+                        type: object
+                        properties:
+                          labels:
+                            type: array
+                            description: list of cancer type names
+                          values:
+                            type: object
+                            description: matrix of hubness scores
+                      euclidean_distances:
+                        type: object
+                        properties:
+                          x:
+                            type: array
+                            description: list of x coordinates
+                          y:
+                            type: array
+                            description: list of y coordinates
+                          labels:
+                            type: array
+                            description: list of cancer type names
   /ceRNAInteraction/checkGeneInteraction:
     get:
       operationId: geneInteraction.testGeneInteraction

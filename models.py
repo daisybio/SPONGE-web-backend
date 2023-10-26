@@ -397,6 +397,15 @@ class ExpressionDataTranscript(db.Model):
     expr_value = db.Column(db.Float)
     sample_ID = db.Column(db.String(32))
 
+class NetworkResults(db.Model):
+    tablename = 'network_results'
+    network_results_ID = db.Column(db.Integer, primary_key=True)
+    sponge_run_ID_1 = db.Column(db.Integer)
+    sponge_run_ID_2 = db.Column(db.Integer)
+    score = db.Column(db.Integer)
+    euclidean_distance = db.Column(db.Integer)
+    level = db.Column(db.String(32))
+
 class SpongEffectsTranscriptModule(db.Model):
     __tablename__ = "spongEffects_transcript_module"
     spongEffects_transcript_module_ID = db.Column(db.Integer, primary_key=True)

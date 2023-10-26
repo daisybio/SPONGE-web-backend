@@ -11,6 +11,10 @@ class Dataset(db.Model):
     data_origin = db.Column(db.String(32))
     disease_type = db.Column(db.String(32))
     download_url = db.Column(db.String(32))
+    disease_subtype = db.Column(db.String(32))
+    study_abbreviation = db.Column(db.String(32))
+    version = db.Column(db.Integer)
+    total_number_of_samples = db.Column(db.Integer)
 
 class SpongeRun(db.Model):
     __tablename__ = "sponge_run"
@@ -477,6 +481,97 @@ class SpongEffectsTranscriptModuleMembers(db.Model):
     enrichment_score_transcript_ID = db.Column(db.Integer, db.ForeignKey('enrichment_score_transcript.enrichment_score_transcript_ID'), nullable=False)
     enrichment_score_transcript = relationship("EnrichmentScoreTranscript", foreign_keys=[enrichment_score_transcript_ID])
 
+class Comparison(db.Model):
+    __tablename__ = "comparison"
+    comparison_ID = db.Column(db.Integer, primary_key=True)
+    dataset_ID_1 = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
+    dataset_1 = relationship("Dataset", foreign_keys=[dataset_ID_1])
+    dataset_ID_2 = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
+    dataset_2 = relationship("Dataset", foreign_keys=[dataset_ID_2])
+    condition_1 = db.Column(db.String(32))
+    condition_2 = db.Column(db.String(32))
+    gene_transcript = db.Column(db.String(32))
+
+class DifferentialExpression(db.Model):
+    __tablename__ = "differential_expression_gene"
+    differential_expression_gene_ID = db.Column(db.Integer, primary_key=True)
+    comparison_ID = db.Column(db.Integer, db.ForeignKey('comparison.comparison_ID'), nullable=False)
+    baseMean = db.Column(db.Float)
+    log2FoldChange = db.Column(db.Float)
+    lfcSE = db.Column(db.Float)
+    pvalue = db.Column(db.Float)
+    padj = db.Column(db.Float)
+    stat = db.Column(db.Float)
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+
+class DifferentialExpressionTranscript(db.Model):
+    __tablename__ = "differential_expression_transcript"
+    differential_expression_transcript_ID = db.Column(db.Integer, primary_key=True)
+    comparison_ID = db.Column(db.Integer, db.ForeignKey('comparison.comparison_ID'), nullable=False)
+    baseMean = db.Column(db.Float)
+    log2FoldChange = db.Column(db.Float)
+    lfcSE = db.Column(db.Float)
+    pvalue = db.Column(db.Float)
+    padj = db.Column(db.Float)
+    stat = db.Column(db.Float)
+    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
+    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
+
+class Gsea(db.Model):
+    __tablename__ = "gsea"
+    gsea_ID = db.Column(db.Integer, primary_key=True)
+    lead_genes = db.relationship('GseaLeadGenes')
+    matched_genes = db.relationship('GseaMatchedGenes')
+    res = db.relationship('GseaRes')
+    gsea_ranking_genes = db.relationship('GseaRankingGenes')
+
+    comparison_ID = db.Column(db.Integer, db.ForeignKey('comparison.comparison_ID'), nullable=False)
+    comparison = relationship("Comparison", foreign_keys=[comparison_ID])
+
+    term = db.Column(db.String(32))
+    gene_set = db.Column(db.String(32))
+    es = db.Column(db.Float)
+    nes = db.Column(db.Float)
+    pvalue = db.Column(db.Float)
+    fdr = db.Column(db.Float)
+    fwerp = db.Column(db.Float)
+    gene_percent = db.Column(db.Float)
+
+class GseaLeadGenes(db.Model):
+    __tablename__ = "gsea_lead_genes"
+
+    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'), primary_key=True)
+    gsea = relationship("Gsea", foreign_keys=[gsea_ID])
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), primary_key=True)
+    gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
+
+class GseaMatchedGenes(db.Model):
+    __tablename__ = "gsea_matched_genes"
+
+    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'), primary_key=True)
+    gsea = relationship("Gsea", foreign_keys=[gsea_ID])
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), primary_key=True)
+    gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
+
+class GseaRes(db.Model):
+    __tablename__ = "gsea_res"
+    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'), primary_key=True)
+    gsea = relationship("Gsea", foreign_keys=[gsea_ID])
+
+    res_ID = db.Column(db.Integer, primary_key=True)
+    score = db.Column(db.Float)
+
+class GseaRankingGenes(db.Model):
+    __tablename__ = "gsea_ranking_genes"
+    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'), primary_key=True)
+    gsea = relationship("Gsea", foreign_keys=[gsea_ID])
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), primary_key=True)
+    gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
+
 
 class DatasetSchema(ma.ModelSchema):
     class Meta:
@@ -923,3 +1018,81 @@ class SpongEffectsTranscriptModuleMembersSchema(ma.ModelSchema):
     spongeEffects_run = ma.Nested(SpongEffectsRun, only=("spongEffects_run_ID", "sponge_run_ID"))
     transcript = ma.Nested(TranscriptSchema, only="enst_number")
     enrichment_score_transcript = ma.Nested(TranscriptEnrichmentScoreSchema)
+
+class DESchema(ma.ModelSchema):
+    class Meta:
+        model = DifferentialExpression
+        sqla_session = db.session
+    
+    gene = ma.Nested(GeneSchemaShort, only=("gene_symbol"))
+
+class DETranscriptSchema(ma.ModelSchema):
+    class Meta:
+        model = DifferentialExpression
+        sqla_session = db.session
+    transcript = ma.Nested(GeneSchemaShort, only=("enst_number"))
+
+class DESchemaShort(ma.ModelSchema):
+    class Meta:
+        model = DifferentialExpression
+        sqla_session = db.session
+        fields = ["gene_ID", "log2FoldChange"]
+    
+class GseaResSchema(ma.ModelSchema):
+    class Meta:
+        model = GseaRes
+        sqla_session = db.session
+
+class GseaLeadGenesSchema(ma.ModelSchema):
+    class Meta:
+        model = GseaLeadGenes
+        sqla_session = db.session
+
+    gene_symbol = ma.Nested(GeneSchemaShort, only=("gene_symbol"))
+
+
+class GseaMatchedGenesSchema(ma.ModelSchema):
+    class Meta:
+        model = GseaLeadGenes
+        sqla_session = db.session
+
+    gene_symbol = ma.Nested(GeneSchemaShort, only=("gene_symbol"))
+
+class GseaSchema(ma.ModelSchema):
+    class Meta:
+        model = Gsea
+        sqla_session = db.session
+        fields = ["term", "es", "nes", "pvalue", "fdr", "fwerp", "gene_percent", "lead_genes", "matched_genes", "res"]
+
+    lead_genes = ma.Nested(GseaLeadGenesSchema, many=True, only=("gene_symbol"))
+    matched_genes = ma.Nested(GseaMatchedGenesSchema, many=True, only=("gene_symbol"))
+    res = ma.Nested(GseaResSchema, many=True, only=("res_ID", "score"))
+
+class GseaSchemaPlot(ma.ModelSchema):
+    class Meta:
+        model = Gsea
+        sqla_session = db.session
+        fields = ["term", "nes", "pvalue", "fdr", "res", "matched_genes", "gsea_ranking_genes"]
+
+    res = ma.Nested(GseaResSchema, many=True, only=("res_ID", "score"))
+
+class GseaTermsSchema(ma.ModelSchema):
+    class Meta:
+        model = Gsea
+        sqla_session = db.session
+        fields = ["term"]
+    
+class GseaSetSchema(ma.ModelSchema):
+    class Meta:
+        model = Gsea
+        sqla_session = db.session
+        fields = ["gene_set"]
+    
+class ComparisonSchema(ma.ModelSchema):
+    class Meta:
+        model = Comparison
+        sqla_session = db.session
+
+    dataset_1 = ma.Nested(DatasetSchema)
+    dataset_2 = ma.Nested(DatasetSchema)
+

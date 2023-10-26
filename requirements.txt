@@ -24,3 +24,7 @@ SQLAlchemy~=1.3.6
 swagger-ui-bundle==0.0.5
 urllib3==1.25.3
 Werkzeug~=0.15.5
+gseapy==1.0.6
+matplotlib==3.7.2
+numpy==1.24.4
+pandas==2.0.3

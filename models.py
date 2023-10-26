@@ -397,35 +397,6 @@ class ExpressionDataTranscript(db.Model):
     expr_value = db.Column(db.Float)
     sample_ID = db.Column(db.String(32))
 
-
-class DifferentialExpressionTranscript(db.Model):
-    __tablename__ = "differential_expression_transcript"
-    differential_expression_transcript_ID = db.Column(db.Integer, primary_key=True)
-
-    expression_data_transcript_ID_1 = db.Column(db.Integer, db.ForeignKey('expression_data_transcript.expression_data_transcript_ID'), nullable=False)
-    expression_data_transcript_1 = relationship("ExpressionDataTranscript", foreign_keys=[expression_data_transcript_ID_1])
-    expression_data_transcript_ID_2 = db.Column(db.Integer, db.ForeignKey('expression_data_transcript.expression_data_transcript_ID'), nullable=False)
-    expression_data_transcript_2 = relationship("ExpressionDataTranscript", foreign_keys=[expression_data_transcript_ID_2])
-
-    score = db.Column(db.Float)
-    fold_change = db.Column(db.Float)
-    p_value = db.Column(db.Float)
-
-
-class DifferentialExpressionGene(db.Model):
-    __tablename__ = "differential_expression_gene"
-    differential_expression_gene_ID = db.Column(db.Integer, primary_key=True)
-
-    expression_data_gene_ID_1 = db.Column(db.Integer, db.ForeignKey('expression_data_gene.expression_data_gene_ID'), nullable=False)
-    expression_data_gene_1 = relationship("GeneExpressionValues", foreign_keys=[expression_data_gene_ID_1])
-    expression_data_gene_ID_2 = db.Column(db.Integer, db.ForeignKey('expression_data_gene.expression_data_gene_ID'), nullable=False)
-    expression_data_gene_2 = relationship("GeneExpressionValues", foreign_keys=[expression_data_gene_ID_2])
-
-    score = db.Column(db.Float)
-    fold_change = db.Column(db.Float)
-    p_value = db.Column(db.Float)
-
-
 class SpongEffectsTranscriptModule(db.Model):
     __tablename__ = "spongEffects_transcript_module"
     spongEffects_transcript_module_ID = db.Column(db.Integer, primary_key=True)

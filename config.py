@@ -15,7 +15,7 @@ CORS(app)
 # change port to whatever is needed
 PORT = 5555
 UPLOAD_DIR = os.getenv("SPONGE_DB_UPLOAD_DIR")
-MODEL_DIR = os.getenv("SPONGEFFECTS_MODEL_DIR")
+MODEL_PATH = os.getenv("SPONGEFFECTS_MODEL_PATH")
 SPONGEFFECTS_PREDICT_SCRIPT = os.getenv("SPONGEFFECTS_PREDICT_SCRIPT")
 
 # Configure the SQLAlchemy part of the app instance

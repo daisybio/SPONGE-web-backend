@@ -2,14 +2,14 @@
 
 packages <- c("SPONGE", "doParallel", "foreach", "dplyr", "randomForest", "argparser", "jsonlite", "ggplot2", "GSVA")
 load_packages <- sapply(packages, function(p) {
-    suppressWarnings(suppressPackageStartupMessages(library(p, character.only = T)))
+  suppressWarnings(suppressPackageStartupMessages(library(p, character.only = T)))
 })
 
 args.effects = commandArgs(trailingOnly = T)
 
 parser <- arg_parser("Argument parser for spongEffects module", name = "spongEffects_parser")
 parser <- add_argument(parser, "--expr", help = "Uploaded gene/transcript expression")
-parser <- add_argument(parser, "--model_dir", help = "Directory containing the spongEffects models")
+parser <- add_argument(parser, "--model_path", help = "Path to spongEffects models RDS object")
 
 parser <- add_argument(parser, "--output", help = "Output filename", default = "predictions.json")
 parser <- add_argument(parser, "--log", help = "Log given expression", flag = T)
@@ -40,40 +40,40 @@ DELIMS <- c(" ", "\t", ",", ";")
 
 #---------------------------FUNCTIONS-------------------------------------------
 
-predict_subtype <- function(df, test_modules_all, level, threshold) {
+predict_subtype <- function(df, all_models, test_modules, threshold) {
   type <- as.character(unique(df$typePrediction))
   if (type %in% SUBTYPE_PROJECTS && nrow(df) >= threshold) {
-    model_path <- get_type_model(type, level)
-    if (length(model_path)!=0){
-      message("predicting subtypes for ", type)
-      load(model_path)
+    # get sub samples
+    test_modules <- test_modules[,df$sampleID]
+    message(Sys.time(), " - predicting subtypes for ", type)
+
+    # match types in model
+    type <- gsub("&", "and", gsub(" ", "_", type))
+
+    # get specific model
+    model <- all_models[[type]]$model$Model
+
+    # get common modules
+    common_modules <- intersect(model$coefnames, rownames(test_modules))
+    if (length(common_modules) > 0) {
+      test_modules <- test_modules[common_modules,,drop=F]
     } else {
+      test_modules <- test_modules[0,,drop=F]
       df$subtypePrediction <- NA
       return(df)
     }
-    # save model
-    model <- trained.model$Model
-    test_mods <- test_modules_all[,df$sampleID,drop=F]
-
-    # get common modules
-    common_modules <- intersect(model$coefnames, rownames(test_mods))
-    if (length(common_modules) > 0) {
-      test_mods <- test_mods[common_modules,,drop=F]
-    } else {
-      test_mods <- test_mods[0,,drop=F]
-    }
 
     # fill missing modules if needed
-    missing_modules <- setdiff(model$coefnames, rownames(test_mods))
+    missing_modules <- setdiff(model$coefnames, rownames(test_modules))
     if (length(missing_modules) > 0) {
-      median_value <- median(apply(test_mods, 2, median))
+      median_value <- median(apply(test_modules, 2, median))
       frac <- 100
-      sd <- (max(test_mods) - min(test_mods)) / frac
-      test_mods[missing_modules,] <- rnorm(length(missing_modules)*ncol(test_mods), mean = median_value, sd = sd)
+      sd <- (max(test_modules) - min(test_modules)) / frac
+      test_modules[missing_modules,] <- rnorm(length(missing_modules)*ncol(test_modules), mean = median_value, sd = sd)
     }
     # build input
-    Input.test <- t(test_mods) %>% scale(center = T, scale = T)
-    df$subtypePrediction <- predict(model, Input.test)
+    Input.test <- t(test_modules) %>% scale(center = T, scale = T)
+    df$subtypePrediction <- as.vector(predict(model, Input.test))
     return(df)
   } else {
     df$subtypePrediction <- NA
@@ -97,7 +97,7 @@ read_expr <- function(path) {
   if (any(id_col_test)){
     expr <- data.frame(expr, row.names = colnames(expr)[id_col_test], check.names = F) %>%
       as.matrix()
-  # columns are IDs
+    # columns are IDs
   } else if (cols_test)  {
     expr <- expr %>% t()
   } else if (rows_test) {
@@ -111,7 +111,6 @@ read_expr <- function(path) {
 #---------------------------PARAMETERS------------------------------------------
 startTime <- Sys.time()
 message(startTime, " - STARTING EXECUTION:")
-# TODO: check parameters
 #---------------------------READ UPLOADED EXPRESSION----------------------------
 test_expr <- read_expr(argv_predict$expr)
 if(argv_predict$log) {
@@ -132,10 +131,12 @@ message(Sys.time(), " - using ", level, " level")
 #---------------------------PREPARE EXPRESSION----------------------------------
 # uploaded expression samples
 samples <- colnames(test_expr)
-#---------------------------LOAD MODULES----------------------------------------
-message(Sys.time(), " - Loading pancan sponge modules")
-Sponge.modules <- readRDS(file.path(argv_predict$model_dir, tolower(level), "PANCAN", "Sponge.modules.RDS"))
-# load(get_pancan_model(level))
+#---------------------------LOAD MODElS-----------------------------------------
+message(Sys.time(), " - Loading spongEffects models")
+models <- readRDS(argv_predict$model_path)
+# select level
+models <- models[[level]]
+Sponge.modules <- models$expression_across_types$modules
 
 #---------------------------CALCULATE MODULES-----------------------------------
 if (!argv_predict$local) {
@@ -146,19 +147,19 @@ if (!argv_predict$local) {
   message("running on single core")
 }
 message(Sys.time(), " - enriching type modules (test)")
-test.modules.uploaded <-  enrichment_modules(Expr.matrix = test_expr, 
-                                             modules = Sponge.modules, 
-                                             bin.size = argv_predict$bin_size, 
+test.modules.uploaded <-  enrichment_modules(Expr.matrix = test_expr,
+                                             modules = Sponge.modules,
+                                             bin.size = argv_predict$bin_size,
                                              min.size = argv_predict$min_size,
-                                             max.size = argv_predict$max_size, 
-                                             min.expr = argv_predict$min_expr, 
-                                             method = argv_predict$method, 
+                                             max.size = argv_predict$max_size,
+                                             min.expr = argv_predict$min_expr,
+                                             method = argv_predict$method,
                                              cores = argv_predict$enrichment_cores)
 message(Sys.time(), " - finished enriching type modules (test)")
 #--------------------------PREDICT CANCER TYPE----------------------------------
 #---------------------------LOAD MODEL------------------------------------------
 message(Sys.time(), " - Loading pancan model")
-trained.model <- readRDS(file.path(argv_predict$model_dir, tolower(level), "PANCAN", "trained.model.RDS"))
+trained.model <- models$expression_across_types$model
 # filter for common modules in test and train
 common_modules <- intersect(trained.model$Model$coefnames, rownames(test.modules.uploaded))
 test.modules.uploaded.pancan <- test.modules.uploaded[common_modules, ]
@@ -182,12 +183,11 @@ predictions <- data.frame(sampleID=samples, typePrediction=type_predictions, sub
 #-----------------PREDICT SUB-TYPES FOR TYPE PREDICTIONS------------------------
 if (argv_predict$subtypes) {
   type_splits <- split(predictions, as.vector(predictions$typePrediction))
-  
+
   # predict subtypes for samples with matching type classification
   predictions <- do.call(rbind, lapply(type_splits,
-                                predict_subtype,
-                                test.modules.uploaded,
-                                level, 2))
+                                       predict_subtype,
+                                       models, test.modules.uploaded, 2))
 }
 # clean up resources
 if (!argv_predict$local) {
@@ -201,7 +201,7 @@ type_predictions_table <- table(predictions$typePrediction)
 dominant_type <- names(type_predictions_table)[max(type_predictions_table)==type_predictions_table]
 dominant_subtype <- NA
 if (argv_predict$subtypes) {
-  subtype_predictions_table <- table(predictions$subTypePrediction)
+  subtype_predictions_table <- table(predictions$subtypePrediction)
   dominant_subtype <- names(subtype_predictions_table)[max(subtype_predictions_table)==subtype_predictions_table]
 }
 

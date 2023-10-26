@@ -305,7 +305,7 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
     cmd = [
         "Rscript", config.SPONGEFFECTS_PREDICT_SCRIPT,
         "--expr", file_path,
-        "--model_dir", config.MODEL_DIR,
+        "--model_path", config.MODEL_PATH,
         "--output", out_path,
         "--local"
     ]

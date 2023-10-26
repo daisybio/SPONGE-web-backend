@@ -331,7 +331,6 @@ def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     # save uploaded file
-    print("upload started")
     uploaded_file = request.files['file']
     # save prediction level
     predict_subtypes: bool = request.form.get('subtypes') == "true"
@@ -343,12 +342,10 @@ def upload_file():
     # create tmp upload file
     tempfile.tempdir = app.config["UPLOAD_FOLDER"]
     tmp_file = tempfile.NamedTemporaryFile(prefix="upload_", suffix=".txt")
-    print(tmp_file.name)
     # save file to uploads folder
     uploaded_file.save(tmp_file.name)
     # create random output path
     tmp_out_file = tempfile.NamedTemporaryFile(prefix="prediction_", suffix=".json")
-    print(tmp_out_file.name)
     # run spongEffects
     return jsonify(run_spongEffects(tmp_file.name, tmp_out_file.name, run_parameters,
                                     log=apply_log_scale, subtype_level=predict_subtypes))

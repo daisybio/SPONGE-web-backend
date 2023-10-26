@@ -1,0 +1,214 @@
+#!/usr/bin/env Rscript
+
+packages <- c("SPONGE", "doParallel", "foreach", "dplyr", "randomForest", "argparser", "jsonlite", "ggplot2", "GSVA")
+load_packages <- sapply(packages, function(p) {
+    suppressWarnings(suppressPackageStartupMessages(library(p, character.only = T)))
+})
+
+args.effects = commandArgs(trailingOnly = T)
+
+parser <- arg_parser("Argument parser for spongEffects module", name = "spongEffects_parser")
+parser <- add_argument(parser, "--expr", help = "Uploaded gene/transcript expression")
+parser <- add_argument(parser, "--model_dir", help = "Directory containing the spongEffects models")
+
+parser <- add_argument(parser, "--output", help = "Output filename", default = "predictions.json")
+parser <- add_argument(parser, "--log", help = "Log given expression", flag = T)
+parser <- add_argument(parser, "--pseudo_count", help = "Pseudo count", default = 1e-3)
+parser <- add_argument(parser, "--subtypes", help = "Predict on subtype level", flag = T)
+########################
+##  PARAMETER TUNING  ##
+########################
+parser <- add_argument(parser, "--cpus", help = "Number of cores to use for backend", default = 4)
+parser <- add_argument(parser, "--mscor", help = "Mscor threshold", default = 0)
+parser <- add_argument(parser, "--fdr", help = "False discovery rate for padj ceRNA interactions", default = 0.05)
+parser <- add_argument(parser, "--bin_size", help = "Total bin size for enrichment", default = 100)
+parser <- add_argument(parser, "--min_size", help = "Minimum size for enrichment", default = 100)
+parser <- add_argument(parser, "--max_size", help = "Maximum size for enrichment", default = 2000)
+parser <- add_argument(parser, "--min_expr", help = "Minimum expression for enrichment", default = 10)
+parser <- add_argument(parser, "--method", help = "Method", default = "gsva")
+parser <- add_argument(parser, "--enrichment_cores", help = "Number of cores to use for enrichment", default = 25)
+parser <- add_argument(parser, "--local", help = "No parallel background", flag = T)
+# parse arguments
+argv_predict <- parse_args(parser, argv = args.effects)
+#---------------------------GLOBAL VARIABLES------------------------------------
+SUBTYPE_PROJECTS <- c("breast invasive carcinoma", "cervical & endocervical cancer",
+                      "esophageal carcinoma", "head & neck squamous cell carcinoma",
+                      "brain lower grade glioma", "sarcoma", "stomach adenocarcinoma",
+                      "testicular germ cell tumor", "uterine corpus endometrioid carcinoma")
+
+DELIMS <- c(" ", "\t", ",", ";")
+
+#---------------------------FUNCTIONS-------------------------------------------
+
+predict_subtype <- function(df, test_modules_all, level, threshold) {
+  type <- as.character(unique(df$typePrediction))
+  if (type %in% SUBTYPE_PROJECTS && nrow(df) >= threshold) {
+    model_path <- get_type_model(type, level)
+    if (length(model_path)!=0){
+      message("predicting subtypes for ", type)
+      load(model_path)
+    } else {
+      df$subtypePrediction <- NA
+      return(df)
+    }
+    # save model
+    model <- trained.model$Model
+    test_mods <- test_modules_all[,df$sampleID,drop=F]
+
+    # get common modules
+    common_modules <- intersect(model$coefnames, rownames(test_mods))
+    if (length(common_modules) > 0) {
+      test_mods <- test_mods[common_modules,,drop=F]
+    } else {
+      test_mods <- test_mods[0,,drop=F]
+    }
+
+    # fill missing modules if needed
+    missing_modules <- setdiff(model$coefnames, rownames(test_mods))
+    if (length(missing_modules) > 0) {
+      median_value <- median(apply(test_mods, 2, median))
+      frac <- 100
+      sd <- (max(test_mods) - min(test_mods)) / frac
+      test_mods[missing_modules,] <- rnorm(length(missing_modules)*ncol(test_mods), mean = median_value, sd = sd)
+    }
+    # build input
+    Input.test <- t(test_mods) %>% scale(center = T, scale = T)
+    df$subtypePrediction <- predict(model, Input.test)
+    return(df)
+  } else {
+    df$subtypePrediction <- NA
+    return(df)
+  }
+}
+
+determine_delimiter <- function(path) {
+  delim_test <- readLines(path, n = 1)
+  test <- sapply(DELIMS, function(d) length(strsplit(delim_test, d)[[1]]))
+  names(which(test == max(test)))
+}
+
+read_expr <- function(path) {
+  delim <- determine_delimiter(path)
+  expr <- read.csv(path, sep = delim, check.names = F)
+  cols_test <- all(grepl("ENS", colnames(expr)))
+  rows_test <- all(grepl("ENS", rownames(expr)))
+  id_col_test <- apply(expr[2,], 2, function(col) all(grepl("ENS", col)))
+  # ID column detected
+  if (any(id_col_test)){
+    expr <- data.frame(expr, row.names = colnames(expr)[id_col_test], check.names = F) %>%
+      as.matrix()
+  # columns are IDs
+  } else if (cols_test)  {
+    expr <- expr %>% t()
+  } else if (rows_test) {
+    expr <- expr %>% as.matrix()
+  } else {
+    stop("Expression file has to contain ensembl IDs in either row names, colum names, or a data column")
+  }
+  # rows are IDs and expression can be used as it is
+  return(expr)
+}
+#---------------------------PARAMETERS------------------------------------------
+startTime <- Sys.time()
+message(startTime, " - STARTING EXECUTION:")
+# TODO: check parameters
+#---------------------------READ UPLOADED EXPRESSION----------------------------
+test_expr <- read_expr(argv_predict$expr)
+if(argv_predict$log) {
+  test_expr <- log2(test_expr+argv_predict$pseudo_count)
+}
+
+# determine level
+level_test <- rownames(test_expr)[1]
+if(grepl("ENSG", level_test)) {
+  level <- "gene"
+} else if (grepl("ENST", level_test)) {
+  level <- "transcript"
+} else {
+  stop("Please provide either ensembl gene or transcript IDs in the expression")
+}
+message(Sys.time(), " - using ", level, " level")
+
+#---------------------------PREPARE EXPRESSION----------------------------------
+# uploaded expression samples
+samples <- colnames(test_expr)
+#---------------------------LOAD MODULES----------------------------------------
+message(Sys.time(), " - Loading pancan sponge modules")
+Sponge.modules <- readRDS(file.path(argv_predict$model_dir, tolower(level), "PANCAN", "Sponge.modules.RDS"))
+# load(get_pancan_model(level))
+
+#---------------------------CALCULATE MODULES-----------------------------------
+if (!argv_predict$local) {
+  message("registering back end with ", argv_predict$enrichment_cores, " cores\n")
+  cl <- makeCluster(argv_predict$enrichment_cores)
+  registerDoParallel(cl)
+} else {
+  message("running on single core")
+}
+message(Sys.time(), " - enriching type modules (test)")
+test.modules.uploaded <-  enrichment_modules(Expr.matrix = test_expr, 
+                                             modules = Sponge.modules, 
+                                             bin.size = argv_predict$bin_size, 
+                                             min.size = argv_predict$min_size,
+                                             max.size = argv_predict$max_size, 
+                                             min.expr = argv_predict$min_expr, 
+                                             method = argv_predict$method, 
+                                             cores = argv_predict$enrichment_cores)
+message(Sys.time(), " - finished enriching type modules (test)")
+#--------------------------PREDICT CANCER TYPE----------------------------------
+#---------------------------LOAD MODEL------------------------------------------
+message(Sys.time(), " - Loading pancan model")
+trained.model <- readRDS(file.path(argv_predict$model_dir, tolower(level), "PANCAN", "trained.model.RDS"))
+# filter for common modules in test and train
+common_modules <- intersect(trained.model$Model$coefnames, rownames(test.modules.uploaded))
+test.modules.uploaded.pancan <- test.modules.uploaded[common_modules, ]
+
+# fill missing modules if needed
+missing_modules <- setdiff(trained.model$Model$coefnames, rownames(test.modules.uploaded))
+if (length(missing_modules) > 0) {
+  median_value <- median(apply(test.modules.uploaded, 2, median))
+  frac <- 100
+  sd <- (max(test.modules.uploaded) - min(test.modules.uploaded)) / frac
+  test.modules.uploaded.pancan[missing_modules,] <- rnorm(length(missing_modules)*ncol(test.modules.uploaded), mean = median_value, sd = sd)
+}
+# transform new input data
+Input.test.pancan <- t(test.modules.uploaded.pancan) %>% scale(center = T, scale = T)
+# predict
+type_predictions <- predict(trained.model$Model, Input.test.pancan)
+# build table with results
+predictions <- data.frame(sampleID=samples, typePrediction=type_predictions, subtypePrediction=NA)
+
+
+#-----------------PREDICT SUB-TYPES FOR TYPE PREDICTIONS------------------------
+if (argv_predict$subtypes) {
+  type_splits <- split(predictions, as.vector(predictions$typePrediction))
+  
+  # predict subtypes for samples with matching type classification
+  predictions <- do.call(rbind, lapply(type_splits,
+                                predict_subtype,
+                                test.modules.uploaded,
+                                level, 2))
+}
+# clean up resources
+if (!argv_predict$local) {
+  stopCluster(cl)
+}
+# determine runtime
+endTime <- Sys.time()
+runTime <- as.double(difftime(endTime, startTime, units = c("secs")))
+# determine dominant predictions
+type_predictions_table <- table(predictions$typePrediction)
+dominant_type <- names(type_predictions_table)[max(type_predictions_table)==type_predictions_table]
+dominant_subtype <- NA
+if (argv_predict$subtypes) {
+  subtype_predictions_table <- table(predictions$subTypePrediction)
+  dominant_subtype <- names(subtype_predictions_table)[max(subtype_predictions_table)==subtype_predictions_table]
+}
+
+# build supplementary information
+meta <- data.frame(runtime=runTime, level=level, n_samples=nrow(predictions),
+                   type_predict=dominant_type, subtype_predict=dominant_subtype)
+
+# return as JSON for API processing
+responseObj <- list(meta=meta, data=predictions)
+write_json(responseObj, path = argv_predict$output)

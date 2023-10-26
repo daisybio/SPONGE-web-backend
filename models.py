@@ -14,6 +14,7 @@ class Dataset(db.Model):
     disease_subtype = db.Column(db.String(32))
     study_abbreviation = db.Column(db.String(32))
     version = db.Column(db.Integer)
+    total_number_of_samples = db.Column(db.Integer)
 
 class SpongeRun(db.Model):
     __tablename__ = "sponge_run"
@@ -115,8 +116,8 @@ class miRNA(db.Model):
     cytoband = db.Column(db.String(100))
 
 class networkAnalysis(db.Model):
-    __tablename__ = "network_analysis"
-    network_analysis_ID = db.Column(db.Integer, primary_key=True)
+    __tablename__ = "network_analysis_gene"
+    network_analysis_gene_ID = db.Column(db.Integer, primary_key=True)
 
     gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
     gene = relationship("Gene", foreign_keys=[gene_ID])
@@ -138,7 +139,7 @@ class GeneExpressionValues(db.Model):
     gene = relationship("Gene", foreign_keys=[gene_ID])
     expr_value = db.Column(db.Float)
     sample_ID = db.Column(db.String(32))
-    normale_cancer = db.Column(db.String(32))
+    normal_cancer = db.Column(db.String(32))
 
 
 class MiRNAExpressionValues(db.Model):
@@ -369,6 +370,17 @@ class SpongEffectsRunClassPerformance(db.Model):
     detection_prevalence = db.Column(db.Float)
     balanced_accuracy = db.Column(db.Float)
 
+
+class SpongEffectsEnrichmentClassDensity(db.Model):
+    __tablename__ = 'spongEffects_enrichment_class_density'
+    spongEffects_enrichment_class_density_ID = db.Column(db.Integer, primary_key=True)
+    spongEffects_run_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run.spongEffects_run_ID'))
+    spongEffects_run = relationship('SpongEffectsRun', foreign_keys=[spongEffects_run_ID])
+
+    prediction_class = db.Column(db.String(32))
+    enrichment_score = db.Column(db.Float)
+    density = db.Column(db.Float)
+
 class ExpressionDataTranscript(db.Model):
     __tablename__ = "expression_data_transcript"
     expression_data_transcript_ID = db.Column(db.Integer, primary_key=True)
@@ -378,6 +390,9 @@ class ExpressionDataTranscript(db.Model):
 
     transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
     transcript = relationship("Transcript", foreign_keys=[transcript_ID])
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey("gene.gene_ID"), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
 
     expr_value = db.Column(db.Float)
     sample_ID = db.Column(db.String(32))
@@ -411,110 +426,92 @@ class DifferentialExpressionGene(db.Model):
     p_value = db.Column(db.Float)
 
 
-class EnrichmentScoreTranscript(db.Model):
-    __tablename__ = "enrichment_score_transcript"
-    enrichment_score_transcript_ID = db.Column(db.Integer, primary_key=True)
-
-    spongEffects_run_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run.spongEffects_run_ID'), nullable=False)
-    spongEffects_run = relationship("SpongEffectsRun", foreign_keys=[spongEffects_run_ID])
-
-    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
-    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
-
-    score_value = db.Column(db.Float)
-    sample_ID = db.Column(db.String(32))
-
-
-class SpongEffectsTranscript(db.Model):
-    __tablename__ = "spongEffects_transcript"
-    spongEffects_transcript_ID = db.Column(db.Integer, primary_key=True)
-
-    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
-    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
-
-    enrichment_score_transcript_ID = db.Column(db.Integer, db.ForeignKey('enrichment_score_transcript.enrichment_score_transcript_ID'), nullable=False)
-    enrichment_score_transcript = relationship("EnrichmentScoreTranscript", foreign_keys=[enrichment_score_transcript_ID])
-
-
-class EnrichmentScoreGene(db.Model):
-    __tablename__ = "enrichment_score_gene"
-    enrichment_score_gene_ID = db.Column(db.Integer, primary_key=True)
-
-    spongEffects_run_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run.spongEffects_run_ID'), nullable=False)
-    spongEffects_run = relationship("SpongEffectsRun", foreign_keys=[spongEffects_run_ID])
-
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
-    gene = relationship("Gene", foreign_keys=[gene_ID])
-
-    score_value = db.Column(db.Float)
-    sample_ID = db.Column(db.String(32))
-
-
-class SpongEffectsGene(db.Model):
-    __tablename__ = "spongEffects_gene"
-    spongEffects_gene_ID = db.Column(db.Integer, primary_key=True)
-
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
-    gene = relationship("Gene", foreign_keys=[gene_ID])
-
-    enrichment_score_gene_ID = db.Column(db.Integer, db.ForeignKey('enrichment_score_gene.enrichment_score_gene_ID'), nullable=False)
-    enrichment_score_gene = relationship("EnrichmentScoreGene", foreign_keys=[enrichment_score_gene_ID])
-
-
 class SpongEffectsTranscriptModule(db.Model):
     __tablename__ = "spongEffects_transcript_module"
     spongEffects_transcript_module_ID = db.Column(db.Integer, primary_key=True)
 
-    spongEffects_run_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run.spongEffects_run_ID'), nullable=False)
+    spongEffects_run_ID = db.Column(db.Integer,
+                                    db.ForeignKey("spongEffects_run.spongEffects_run_ID"), nullable=False)
     spongEffects_run = relationship("SpongEffectsRun", foreign_keys=[spongEffects_run_ID])
 
-    hub_transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
-    hub_transcript = relationship("Transcript", foreign_keys=[hub_transcript_ID])
+    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
+    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
 
-    enrichment_score_transcript_ID = db.Column(db.Integer, db.ForeignKey('enrichment_score_transcript.enrichment_score_transcript_ID'), nullable=False)
-    enrichment_score_transcript = relationship("EnrichmentScoreTranscript", foreign_keys=[enrichment_score_transcript_ID])
+    mean_gini_decrease = db.Column(db.Float)
+    mean_accuracy_decrease = db.Column(db.Float)
+
+
+class EnrichmentScoreTranscript(db.Model):
+    __tablename__ = "enrichment_score_transcript"
+    enrichment_score_transcript_ID = db.Column(db.Integer, primary_key=True)
+
+    spongEffects_transcript_module_ID = db.Column(db.Integer,
+                                                  db.ForeignKey('spongEffects_transcript_module.spongEffects_transcript_module_ID'),
+                                                  nullable=False)
+    spongEffects_transcript_module = relationship('SpongEffectsTranscriptModule', foreign_keys=[spongEffects_transcript_module_ID])
+
+    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
+    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
+
+    score_value = db.Column(db.Float)
+    sample_ID = db.Column(db.String(32))
+
+class SpongEffectsTranscriptModuleMembers(db.Model):
+    __tablename__ = "spongEffects_transcript_module_members"
+    spongEffects_transcript_module_members_ID = db.Column(db.Integer, primary_key=True)
+
+    spongEffects_transcript_module_ID = db.Column(db.Integer,
+                                                  db.ForeignKey(
+                                                      'spongEffects_transcript_module.spongEffects_transcript_module_ID'),
+                                                  nullable=False)
+    spongEffects_transcript_module = relationship('SpongEffectsTranscriptModule',
+                                                  foreign_keys=[spongEffects_transcript_module_ID])
+
+    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
+    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
 
 
 class SpongEffectsGeneModule(db.Model):
     __tablename__ = "spongEffects_gene_module"
     spongEffects_gene_module_ID = db.Column(db.Integer, primary_key=True)
 
-    spongEffects_run_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run.spongEffects_run_ID'), nullable=False)
+    spongEffects_run_ID = db.Column(db.Integer,
+                                    db.ForeignKey("spongEffects_run.spongEffects_run_ID"), nullable=False)
     spongEffects_run = relationship("SpongEffectsRun", foreign_keys=[spongEffects_run_ID])
 
-    hub_gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
-    hub_gene = relationship("Gene", foreign_keys=[hub_gene_ID])
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
 
-    enrichment_score_gene_ID = db.Column(db.Integer, db.ForeignKey('enrichment_score_gene.enrichment_score_gene_ID'), nullable=False)
-    enrichment_score_gene = relationship("EnrichmentScoreGene", foreign_keys=[enrichment_score_gene_ID])
+    mean_gini_decrease = db.Column(db.Float)
+    mean_accuracy_decrease = db.Column(db.Float)
+
+
+class EnrichmentScoreGene(db.Model):
+    __tablename__ = "enrichment_score_gene"
+    enrichment_score_gene_ID = db.Column(db.Integer, primary_key=True)
+
+    spongEffects_gene_module_ID = db.Column(db.Integer,
+                                            db.ForeignKey('spongEffects_gene_module.spongEffects_gene_module_ID'), nullable=False)
+    spongEffects_gene_module = relationship('SpongEffectsGeneModule', foreign_keys=[spongEffects_gene_module_ID])
+
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+
+    score_value = db.Column(db.Float)
+    sample_ID = db.Column(db.String(32))
 
 
 class SpongEffectsGeneModuleMembers(db.Model):
     __tablename__ = "spongEffects_gene_module_members"
     spongEffects_gene_module_members_ID = db.Column(db.Integer, primary_key=True)
 
-    spongEffects_run_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run.spongEffects_run_ID'), nullable=False)
-    spongEffects_run = relationship("SpongEffectsRun", foreign_keys=[spongEffects_run_ID])
+    spongEffects_gene_module_ID = db.Column(db.Integer,
+                                            db.ForeignKey('spongEffects_gene_module.spongEffects_gene_module_ID'),
+                                            nullable=False)
+    spongEffects_gene_module = relationship('SpongEffectsGeneModule', foreign_keys=[spongEffects_gene_module_ID])
 
     gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
     gene = relationship("Gene", foreign_keys=[gene_ID])
-
-    enrichment_score_gene_ID = db.Column(db.Integer, db.ForeignKey('enrichment_score_gene.enrichment_score_gene_ID'), nullable=False)
-    enrichment_score_gene = relationship("EnrichmentScoreGene", foreign_keys=[enrichment_score_gene_ID])
-
-
-class SpongEffectsTranscriptModuleMembers(db.Model):
-    __tablename__ = "spongEffects_transcript_module_members"
-    spongEffects_transcript_module_members_ID = db.Column(db.Integer, primary_key=True)
-
-    spongEffects_run_ID = db.Column(db.Integer, db.ForeignKey('spongEffects_run.spongEffects_run_ID'), nullable=False)
-    spongEffects_run = relationship("SpongEffectsRun", foreign_keys=[spongEffects_run_ID])
-
-    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
-    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
-
-    enrichment_score_transcript_ID = db.Column(db.Integer, db.ForeignKey('enrichment_score_transcript.enrichment_score_transcript_ID'), nullable=False)
-    enrichment_score_transcript = relationship("EnrichmentScoreTranscript", foreign_keys=[enrichment_score_transcript_ID])
 
 
 class DatasetSchema(ma.ModelSchema):
@@ -528,13 +525,6 @@ class SpongeRunSchema(ma.ModelSchema):
         sqla_session = db.session
 
     dataset = ma.Nested(DatasetSchema, only=("dataset_ID", "disease_name", "data_origin"))
-
-class DatasetDetailedSchema(ma.ModelSchema):
-    class Meta:
-        model = SpongeRun
-        sqla_session = db.session
-        fields = ["number_of_samples", "dataset"]
-    dataset = ma.Nested(DatasetSchema, only=("study_abbreviation", "disease_name", "disease_subtype"))
 
 class GeneSchema(ma.ModelSchema):
     class Meta:
@@ -789,21 +779,20 @@ class SpongEffectsRunSchema(ma.ModelSchema):
     class Meta:
         model = SpongEffectsRun
         sqla_session = db.session
-
     sponge_run = ma.Nested(SpongeRunSchema)
 
 class SpongEffectsRunPerformanceSchema(ma.ModelSchema):
     class Meta:
         model = SpongEffectsRunPerformance
         sqla_session = db.session
-    sponge_effects_run_performance = ma.Nested(SpongEffectsRunSchema)
+    spongEffects_run = ma.Nested(SpongEffectsRunSchema)
 
 class SpongEffectsRunClassPerformanceSchema(ma.ModelSchema):
     class Meta:
         model = SpongEffectsRunClassPerformance
         sqla_session = db.session
 
-    sponge_effects_run_performance = ma.Nested(SpongEffectsRunPerformance)
+    spongEffects_run = ma.Nested(SpongEffectsRunPerformanceSchema, only=("model_type", "split_type"))
 
 
 class TranscriptInteractionLongSchema(ma.ModelSchema):
@@ -882,8 +871,9 @@ class ExpressionDataTranscriptSchema(ma.ModelSchema):
         sqla_session = db.session
         fields = ["dataset", "transcript", "expr_value", "sample_ID"]
 
-    dataset = ma.Nested(DatasetSchema, only=("dataset_ID", "disease_name", "data_origin"))
+    dataset = ma.Nested(DatasetSchema, only="disease_name")
     transcript = ma.Nested(TranscriptSchema, only="enst_number")
+    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
 
 
 class AlternativeSplicingEventsTranscriptsSchema(ma.ModelSchema):
@@ -920,65 +910,52 @@ class TranscriptElementSchema(ma.ModelSchema):
     transcript_element_positions = ma.Nested(TranscriptElementPositionsSchema)
 
 
-class TranscriptSpongEffectsSchema(ma.ModelSchema):
+class SpongEffectsEnrichmentClassDensitySchema(ma.ModelSchema):
     class Meta:
-        model = SpongEffectsTranscript
+        model = SpongEffectsEnrichmentClassDensity
         sqla_session = db.session
-        fields = ["transcript", "enrichment_score_transcript"]
-
-    transcript = ma.Nested(TranscriptSchema, only="enst_number")
-    enrichment_score_transcript = ma.Nested(TranscriptEnrichmentScoreSchema)
-
-
-class GeneSpongEffectsSchema(ma.ModelSchema):
-    class Meta:
-        model = SpongEffectsGene
-        sqla_session = db.session
-        fields = ["gene", "enrichment_score_gene"]
-
-    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
-    enrichment_score_gene = ma.Nested(GeneEnrichmentScoreSchema)
 
 
 class SpongEffectsTranscriptModuleSchema(ma.ModelSchema):
     class Meta:
         model = SpongEffectsTranscriptModule
         sqla_session = db.session
-        fields = ["spongEffects_run", "hub_transcript", "enrichment_score_transcript"]
 
-    spongeEffects_run = ma.Nested(SpongEffectsRun, only=("spongEffects_run_ID", "sponge_run_ID"))
-    hub_transcript = ma.Nested(TranscriptSchema, only="enst_number")
-    enrichment_score_transcript = ma.Nested(TranscriptEnrichmentScoreSchema)
-
+    enst_number = fields.String()
+    ensg_number = fields.String()
+    gene_symbol = fields.String()
+    chromosome_name = fields.String()
+    description = fields.String()
 
 class SpongEffectsGeneModuleSchema(ma.ModelSchema):
     class Meta:
         model = SpongEffectsGeneModule
         sqla_session = db.session
-        fields = ["spongEffects_run", "hub_gene", "enrichment_score_gene"]
 
-    spongeEffects_run = ma.Nested(SpongEffectsRun, only=("spongEffects_run_ID", "sponge_run_ID"))
-    hub_gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
-    enrichment_score_gene = ma.Nested(GeneEnrichmentScoreSchema)
+    ensg_number = fields.String()
+    gene_symbol = fields.String()
+    chromosome_name = fields.String()
+    description = fields.String()
 
 
 class SpongEffectsGeneModuleMembersSchema(ma.ModelSchema):
     class Meta:
-        model = SpongEffectsGeneModuleMembers
-        sqla_session = db.session
-        fields = ["spongEffects_run", "gene", "enrichment_score_gene"]
+        strict = True
 
-    spongeEffects_run = ma.Nested(SpongEffectsRun, only=("spongEffects_run_ID", "sponge_run_ID"))
-    gene = ma.Nested(GeneSchema, only=("ensg_number", "gene_symbol"))
-    enrichment_score_gene = ma.Nested(GeneEnrichmentScoreSchema)
+    hub_ensg_number = fields.String()
+    hub_gene_symbol = fields.String()
+    member_ensg_number = fields.String()
+    member_gene_symbol = fields.String()
 
 
 class SpongEffectsTranscriptModuleMembersSchema(ma.ModelSchema):
     class Meta:
-        model = SpongEffectsTranscriptModuleMembers
-        sqla_session = db.session
-        fields = ["spongEffects_run", "transcript", "enrichment_score_transcript"]
+        strict = True
 
-    spongeEffects_run = ma.Nested(SpongEffectsRun, only=("spongEffects_run_ID", "sponge_run_ID"))
-    transcript = ma.Nested(TranscriptSchema, only="enst_number")
-    enrichment_score_transcript = ma.Nested(TranscriptEnrichmentScoreSchema)
+    hub_enst_number = fields.String()
+    hub_ensg_number = fields.String()
+    hub_gene_symbol = fields.String()
+
+    member_enst_number = fields.String()
+    member_ensg_number = fields.String()
+    member_gene_symbol = fields.String()

@@ -3,6 +3,14 @@ from sqlalchemy.orm import relationship
 
 from config import db, ma
 
+class NetworkResults(db.Model):
+    __tablename__ = 'network_results'
+    network_results_ID = db.Column(db.Integer, primary_key=True)
+    sponge_run_ID_1 = db.Column(db.Integer)
+    sponge_run_ID_2 = db.Column(db.Integer)
+    score = db.Column(db.Integer)
+    euclidean_distance = db.Column(db.Integer)
+    level = db.Column(db.String(32))
 
 class Dataset(db.Model):
     __tablename__ = 'dataset'
@@ -11,10 +19,13 @@ class Dataset(db.Model):
     data_origin = db.Column(db.String(32))
     disease_type = db.Column(db.String(32))
     download_url = db.Column(db.String(32))
+    disease_subtype = db.Column(db.String(32))
+    study_abbreviation = db.Column(db.String(32))
+    version = db.Column(db.Integer)
 
 class Run(db.Model):
-    __tablename__ = "run"
-    run_ID = db.Column(db.Integer, primary_key=True)
+    __tablename__ = "sponge_run"
+    sponge_run_ID = db.Column(db.Integer, primary_key=True)
 
     dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
     dataset = relationship("Dataset", foreign_keys=[dataset_ID])
@@ -30,8 +41,9 @@ class Run(db.Model):
     ks = db.Column(db.String(32))
     m_max = db.Column(db.Integer)
     log_level = db.Column(db.String(32))
+    sponge_db_version = db.Column(db.Integer)
 
-
+"""
 class SelectedGenes(db.Model):
     __tablename__ = "selected_genes"
     selected_genes_ID = db.Column(db.Integer, primary_key=True)
@@ -478,3 +490,4 @@ class DistinctGeneSetSchema(ma.ModelSchema):
 
     gene1 = ma.Nested(GeneSchema, only=("ensg_number"))
     gene2 = ma.Nested(GeneSchema, only=("ensg_number"))
+"""

@@ -2942,7 +2942,7 @@ paths:
                 type: string
                 description: Base64 encoded string containing GSEA plot
 
-  /DifferentialExpression:
+  /differentialExpression:
     get:
       operationId: diffExpression.get_diff_expr
       tags:
@@ -3040,7 +3040,7 @@ paths:
                       type: float
                       description: Standard Error of Log Fold Change.
 
-  /DifferentialExpressionTranscript:
+  /differentialExpressionTranscript:
     get:
       operationId: diffExpression.get_diff_expr_transcript
       tags:

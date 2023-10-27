@@ -38,7 +38,6 @@ def get_diff_expr(disease_name_1=None, disease_name_2=None, disease_subtype_1=No
     expression_dataset_gene_IDs = []
 
     if disease_name_1 is not None:
-        print(disease_subtype_1)
         dataset_1 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
             .filter(models.Dataset.version == 2)

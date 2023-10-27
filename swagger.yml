@@ -2553,7 +2553,7 @@ paths:
                         description: Predicted subtype
         "400":
           description: "File upload or processing failed"
-  /Comparison:
+  /comparison:
     get:
       operationId: comparison.get_comparison
       tags:

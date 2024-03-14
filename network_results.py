@@ -89,7 +89,8 @@ def get_network_results(disease_name="Breast invasive carcinoma",
         }
 
     dataset = models.Dataset.query \
-        .filter(models.Dataset.disease_subtype == None) \
+        .filter(*[models.Dataset.disease_subtype == None,
+                  models.Dataset.disease_name != "Parkinsons disease"]) \
         .all()
 
     if len(dataset) == 0:

@@ -12,9 +12,7 @@ class Dataset(db.Model):
     disease_type = db.Column(db.String(32))
     download_url = db.Column(db.String(32))
     disease_subtype = db.Column(db.String(32))
-    study_abbreviation = db.Column(db.String(32))
-    version = db.Column(db.Integer)
-    total_number_of_samples = db.Column(db.Integer)
+
 
 class SpongeRun(db.Model):
     __tablename__ = "sponge_run"

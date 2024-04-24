@@ -2,6 +2,7 @@ import models
 from flask import abort
 import numpy as np
 from sklearn import manifold
+import pandas as pd
 
 
 def get_network_results(disease_name="Breast invasive carcinoma",
@@ -25,61 +26,50 @@ def get_network_results(disease_name="Breast invasive carcinoma",
         abort(404, f"No Dataset entries found for given cancer type: {disease_name}")
         return
 
-    dataset_ids = [entry.dataset_ID for entry in dataset]
-    subtypes = [entry.disease_subtype for entry in dataset]
-    versions = [entry.version for entry in dataset]
+    type_datasets = pd.DataFrame({'dataset_ID': [entry.dataset_ID for entry in dataset],
+                                  'subtype': [entry.disease_subtype for entry in dataset]})
 
-    indices_to_remove = []
-    for i, version in enumerate(versions):
-        if version == 1:
-            indices_to_remove.append(i)
-    for index in sorted(indices_to_remove, reverse=True):
-        del dataset_ids[index]
-        del subtypes[index]
-        del versions[index]
+    run_ids = models.SpongeRun.query \
+        .filter(models.SpongeRun.sponge_db_version == 2) \
+        .all()
 
-    if len(dataset_ids) == 0:
+    all_run_ids = pd.DataFrame({'sponge_run_ID': [entry.sponge_run_ID for entry in run_ids],
+                                'dataset_ID': [entry.dataset_ID for entry in run_ids]})
+
+    type_merge = type_datasets.merge(all_run_ids, how='inner')
+
+    if type_merge.shape[0] == 0:
         abort(404, f"No Dataset entries found for given cancer type: {disease_name}")
         return
 
-    elif len(dataset_ids) == 1:
+    elif type_merge.shape[0] == 1:
         subtypes_result = {}
 
     else:
-        run_ids = models.SpongeRun.query \
-            .filter(models.SpongeRun.dataset_ID.in_(dataset_ids)) \
-            .all()
-
-        if len(run_ids) == 0:
-            abort(404, f"No SPONGE runs found for given dataset IDs: {dataset_ids}")
-            return
-
-        sponge_run_ids = [entry.sponge_run_ID for entry in run_ids]
-
         results = models.NetworkResults.query \
-            .filter(*[models.NetworkResults.sponge_run_ID_1.in_(sponge_run_ids),
-                      models.NetworkResults.sponge_run_ID_2.in_(sponge_run_ids),
+            .filter(*[models.NetworkResults.sponge_run_ID_1.in_(type_merge['sponge_run_ID']),
+                      models.NetworkResults.sponge_run_ID_2.in_(type_merge['sponge_run_ID']),
                       models.NetworkResults.level == level]) \
             .all()
 
         if len(results) == 0:
-            abort(404, f"No network results runs found for given SPONGE run IDs: {sponge_run_ids}")
+            abort(404, f"No network results runs found for given SPONGE run IDs: {type_merge['sponge_run_ID']}")
             return
 
         scores = [entry.score for entry in results]
         euclidean_distances = [entry.euclidean_distance for entry in results]
 
-        euclidean_distances = np.array(euclidean_distances).reshape((len(sponge_run_ids), len(sponge_run_ids)))
+        euclidean_distances = np.array(euclidean_distances).reshape((len(type_merge['sponge_run_ID']), len(type_merge['sponge_run_ID'])))
         mds = manifold.MDS(2, dissimilarity='precomputed', normalized_stress=False)
         coords = mds.fit_transform(euclidean_distances)
         x, y = coords[:, 0], coords[:, 1]
 
-        subtypes = [disease_name if subtype is None else subtype for subtype in subtypes]
+        subtypes = [disease_name if subtype is None else subtype for subtype in type_merge['subtype']]
 
         subtypes_result = {
             "scores": {
                 'labels': subtypes,
-                'values': np.array(scores).reshape((len(sponge_run_ids), len(sponge_run_ids))).tolist()
+                'values': np.array(scores).reshape((len(type_merge['sponge_run_ID']), len(type_merge['sponge_run_ID']))).tolist()
             },
             "euclidean_distances": {
                 'labels': subtypes,
@@ -100,54 +90,33 @@ def get_network_results(disease_name="Breast invasive carcinoma",
         abort(404, f"Found only 1 Cancer Type entry")
         return
 
-    dataset_ids = [entry.dataset_ID for entry in dataset]
-    cancer_types = [entry.disease_name for entry in dataset]
-    versions = [entry.version for entry in dataset]
+    all_datasets = pd.DataFrame({'dataset_ID': [entry.dataset_ID for entry in dataset],
+                                 'disease_name': [entry.disease_name for entry in dataset]})
 
-    indices_to_remove = []
-    for i, version in enumerate(versions):
-        if version == 1:
-            indices_to_remove.append(i)
-    for i, cancer_type in enumerate(cancer_types):
-        if cancer_type == "Pan-Cancer":
-            indices_to_remove.append(i)
-    for index in sorted(indices_to_remove, reverse=True):
-        del dataset_ids[index]
-        del cancer_types[index]
-        del versions[index]
-
-    if len(dataset_ids) == 0:
+    if len(all_datasets['dataset_ID']) == 0:
         abort(404, f"No Dataset entries found for given cancer type: {disease_name}")
         return
 
-    elif len(dataset_ids) == 1:
+    elif len(all_datasets['dataset_ID']) == 1:
         abort(404, f"Found only 1 Cancer Type entry")
         return
 
-    run_ids = models.SpongeRun.query \
-        .filter(models.SpongeRun.dataset_ID.in_(dataset_ids)) \
-        .all()
-
-    if len(run_ids) == 0:
-        abort(404, f"No SPONGE runs found for given dataset IDs: {dataset_ids}")
-        return
-
-    sponge_run_ids = [entry.sponge_run_ID for entry in run_ids]
+    all_merge = all_datasets.merge(all_run_ids, how='inner')
 
     results = models.NetworkResults.query \
-        .filter(*[models.NetworkResults.sponge_run_ID_1.in_(sponge_run_ids),
-                  models.NetworkResults.sponge_run_ID_2.in_(sponge_run_ids),
+        .filter(*[models.NetworkResults.sponge_run_ID_1.in_(all_merge['sponge_run_ID']),
+                  models.NetworkResults.sponge_run_ID_2.in_(all_merge['sponge_run_ID']),
                   models.NetworkResults.level == level]) \
         .all()
 
     if len(results) == 0:
-        abort(404, f"No network results runs found for given SPONGE run IDs: {sponge_run_ids}")
+        abort(404, f"No network results runs found for given SPONGE run IDs: {all_merge['sponge_run_ID']}")
         return
 
     scores = [entry.score for entry in results]
     euclidean_distances = [entry.euclidean_distance for entry in results]
 
-    euclidean_distances = np.array(euclidean_distances).reshape((len(sponge_run_ids), len(sponge_run_ids)))
+    euclidean_distances = np.array(euclidean_distances).reshape((len(all_merge['sponge_run_ID']), len(all_merge['sponge_run_ID'])))
     mds = manifold.MDS(2, dissimilarity='precomputed', normalized_stress=False)
     coords = mds.fit_transform(euclidean_distances)
     x, y = coords[:, 0], coords[:, 1]
@@ -156,11 +125,11 @@ def get_network_results(disease_name="Breast invasive carcinoma",
         "subtype": subtypes_result,
         "type": {
             "scores": {
-                    'labels': cancer_types,
-                    'values': np.array(scores).reshape((len(sponge_run_ids), len(sponge_run_ids))).tolist(),
+                    'labels': all_merge['disease_name'].tolist(),
+                    'values': np.array(scores).reshape((len(all_merge['sponge_run_ID']), len(all_merge['sponge_run_ID']))).tolist(),
             },
             "euclidean_distances": {
-                    'labels': cancer_types,
+                    'labels': all_merge['disease_name'].tolist(),
                     'x': x.tolist(),
                     'y': y.tolist()
             }

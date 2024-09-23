@@ -1,7 +1,12 @@
-from alpine:3.11.6
+FROM python:3.12.6-bullseye
 
-RUN apk add --no-cache python3-dev mariadb-connector-c-dev build-base linux-headers\
-    && pip3 install --upgrade pip
+# Install required packages using apt
+RUN apt-get update && apt-get install -y \
+    libmariadb3 libmariadb-dev build-essential linux-headers-amd64 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip3 install --upgrade pip
 
 WORKDIR /server
 COPY . /server

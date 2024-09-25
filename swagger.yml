@@ -2582,7 +2582,7 @@ paths:
                 items:
                   properties:
                     comparison_ID:
-                      type: int
+                      type: integer
                       description: Id of the selected comparison.
                     condition_1:
                       type: string
@@ -2616,10 +2616,10 @@ paths:
                           type: string
                           description: Abbreviation of the disease.
                         total_number_samples:
-                          type: int
+                          type: integer
                           description: Number of samples in the dataset.
                         version:
-                          type: int
+                          type: integer
                           description: SPONGEdb version that the dataset belongs to.
                     dataset_2:
                       type: object
@@ -2644,10 +2644,10 @@ paths:
                           type: string
                           description: Abbreviation of the disease.
                         total_number_samples:
-                          type: int
+                          type: integer
                           description: Number of samples in the dataset.
                         version:
-                          type: int
+                          type: integer
                           description: SPONGEdb version that the dataset belongs to.
 
   /gseaSets:
@@ -2835,22 +2835,22 @@ paths:
                 items:
                   properties:
                     es:
-                      type: float
+                      type: number
                       description: Enrichment Score.
                     nes:
-                      type: float
+                      type: number
                       description: Normalised Enrichment Score.
                     pvalue:
-                      type: float
+                      type: number
                       description: P-Value of GSEA result.
                     fdr:
-                      type: float
+                      type: number
                       description: P-Value after false discovery rate control
                     fwerp:
-                      type: float
+                      type: number
                       description: P-Value after family wise error rate control
                     gene_percent:
-                      type: float
+                      type: number
                       description: Gene Percent.
                     tag_percent:
                       type: string
@@ -2875,7 +2875,7 @@ paths:
                           type: integer
                           description: Id of the score within the gsea result, creates an order for the scores.
                         score: 
-                          type: float
+                          type: number
                           description: Value of the score.               
 
   /gseaPlot:
@@ -3022,22 +3022,22 @@ paths:
                       type: string
                       description: Gene Symbol.
                     baseMean:
-                      type: float
+                      type: number
                       description: Differential Expression Base Mean.
                     log2FoldChange:
-                      type: float
+                      type: number
                       description: Log2 Fold Change between gene expressions.
                     pvalue:
-                      type: float
+                      type: number
                       description: P-Value for change between gene expressions.
                     padj:
-                      type: float
+                      type: number
                       description: P-Value adjusted for multiple testing problem.
                     stat:
-                      type: float
+                      type: number
                       description: Differential Expression Statistic.
                     lfcSE:
-                      type: float
+                      type: number
                       description: Standard Error of Log Fold Change.
 
   /differentialExpressionTranscript:
@@ -3110,22 +3110,22 @@ paths:
                       type: string
                       description: ENST number of transcript.
                     baseMean:
-                      type: float
+                      type: number
                       description: Differential Expression Base Mean.
                     log2FoldChange:
-                      type: float
+                      type: number
                       description: Log2 Fold Change between gene expressions.
                     pvalue:
-                      type: float
+                      type: number
                       description: P-Value for change between gene expressions.
                     padj:
-                      type: float
+                      type: number
                       description: P-Value adjusted for multiple testing problem.
                     stat:
-                      type: float
+                      type: number
                       description: Differential Expression Statistic.
                     lfcSE:
-                      type: float
+                      type: number
                       description: Standard Error of Log Fold Change.
 
   /stringSearch:

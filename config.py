@@ -1,5 +1,5 @@
 import os
-import connexion
+from connexion import FlaskApp
 from flask_cors import CORS
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 # Create the Connexion application instance
-connex_app = connexion.App(__name__, specification_dir=basedir)
+connex_app = FlaskApp(__name__, specification_dir=basedir)
 
 # Get the underlying Flask app instance
 app = connex_app.app

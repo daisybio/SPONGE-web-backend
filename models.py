@@ -35,17 +35,6 @@ class SpongeRun(db.Model):
     sponge_db_version = db.Column(db.Integer)
 
 
-class SelectedGenes(db.Model):
-    __tablename__ = "selected_genes"
-    selected_genes_ID = db.Column(db.Integer, primary_key=True)
-
-    sponge_run_ID = db.Column(db.Integer, db.ForeignKey('sponge_run.sponge_run_ID'), nullable=False)
-    sponge_run = relationship("SpongeRun", foreign_keys=[sponge_run_ID])
-
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
-    gene = relationship("Gene", foreign_keys=[gene_ID])
-
-
 class TargetDatabases(db.Model):
     __tablename__ = "target_databases"
     target_databases_ID = db.Column(db.Integer, primary_key=True)
@@ -74,14 +63,29 @@ class GeneInteraction(db.Model):
     correlation = db.Column(db.Float)
 
 class miRNAInteraction(db.Model):
-    __tablename__ = "interacting_miRNAs"
-    interacting_miRNAs_ID = db.Column(db.Integer, primary_key=True)
+    __tablename__ = "interactions_genemirna"
+    interactions_genemirna_ID = db.Column(db.Integer, primary_key=True)
 
     sponge_run_ID = db.Column(db.Integer, db.ForeignKey('sponge_run.sponge_run_ID'), nullable=False)
     sponge_run = relationship("SpongeRun", foreign_keys=[sponge_run_ID])
 
     gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
     gene = relationship("Gene", foreign_keys=[gene_ID])
+
+    miRNA_ID = db.Column(db.Integer, db.ForeignKey('mirna.miRNA_ID'), nullable=False)
+    mirna = relationship("miRNA", foreign_keys=[miRNA_ID])
+
+    coefficient = db.Column(db.Float)
+
+class miRNAInteraction(db.Model):
+    __tablename__ = "interactions_transcriptmirna"
+    interactions_transcriptmirna_ID = db.Column(db.Integer, primary_key=True)
+
+    sponge_run_ID = db.Column(db.Integer, db.ForeignKey('sponge_run.sponge_run_ID'), nullable=False)
+    sponge_run = relationship("SpongeRun", foreign_keys=[sponge_run_ID])
+
+    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
+    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
 
     miRNA_ID = db.Column(db.Integer, db.ForeignKey('mirna.miRNA_ID'), nullable=False)
     mirna = relationship("miRNA", foreign_keys=[miRNA_ID])
@@ -152,11 +156,20 @@ class MiRNAExpressionValues(db.Model):
 
 
 class OccurencesMiRNA(db.Model):
-    __tablename__ = "occurences_miRNA"
-    occurences_miRNA_ID = db.Column(db.Integer, primary_key=True)
+    __tablename__ = "occurences_mirna_gene"
+    occurences_mirna_gene_ID = db.Column(db.Integer, primary_key=True, nullable=False)
     miRNA_ID = db.Column(db.Integer, db.ForeignKey('mirna.miRNA_ID'), nullable=False)
     mirna = relationship("miRNA", foreign_keys=[miRNA_ID])
-    occurences = db.Column(db.Integer)
+    occurences = db.Column(db.Integer, nullable=False)
+    sponge_run_ID = db.Column(db.Integer, db.ForeignKey('sponge_run.sponge_run_ID'), nullable=False)
+    sponge_run = relationship("SpongeRun", foreign_keys=[sponge_run_ID])
+
+class OccurencesMiRNA(db.Model):
+    __tablename__ = "occurences_mirna_transcript"
+    occurences_mirna_transcript_ID = db.Column(db.Integer, primary_key=True, nullable=False)
+    miRNA_ID = db.Column(db.Integer, db.ForeignKey('mirna.miRNA_ID'), nullable=False)
+    mirna = relationship("miRNA", foreign_keys=[miRNA_ID])
+    occurences = db.Column(db.Integer, nullable=False)
     sponge_run_ID = db.Column(db.Integer, db.ForeignKey('sponge_run.sponge_run_ID'), nullable=False)
     sponge_run = relationship("SpongeRun", foreign_keys=[sponge_run_ID])
 
@@ -181,7 +194,7 @@ class SurvivalRate(db.Model):
     overexpression = db.Column(db.Integer)
 
 class SurvivalPValue(db.Model):
-    __tablename__ = "survival_pValue"
+    __tablename__ = "survival_pvalue"
     survival_pValue_ID = db.Column(db.Integer, primary_key=True)
     dataset_ID = db.Column(db.Integer, db.ForeignKey('dataset.dataset_ID'), nullable=False)
     dataset = relationship("Dataset", foreign_keys=[dataset_ID])
@@ -260,6 +273,7 @@ class TranscriptElementPositions(db.Model):
 
     start_pos = db.Column(db.Integer)
     end_pos = db.Column(db.Integer)
+    order_number = db.Column(db.Integer)
 
 class AlternativeSplicingEventTranscriptElements(db.Model):
     __tablename__ = "alternative_splicing_event_transcript_elements"
@@ -331,6 +345,7 @@ class SpongEffectsRun(db.Model):
     method = db.Column(db.String(32))
     cv_folds = db.Column(db.Integer)
     level = db.Column(db.String(32))
+    methods = db.Column(db.String(32))
 
 class SpongEffectsRunPerformance(db.Model):
     __tablename__ = "spongEffects_run_performance"
@@ -388,12 +403,10 @@ class ExpressionDataTranscript(db.Model):
 
     transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
     transcript = relationship("Transcript", foreign_keys=[transcript_ID])
-
-    gene_ID = db.Column(db.Integer, db.ForeignKey("gene.gene_ID"), nullable=False)
-    gene = relationship("Gene", foreign_keys=[gene_ID])
-
+    
     expr_value = db.Column(db.Float)
     sample_ID = db.Column(db.String(32))
+    normal_cancer = db.Column(db.String(32))
 
 class NetworkResults(db.Model):
     tablename = 'network_results'
@@ -427,9 +440,6 @@ class EnrichmentScoreTranscript(db.Model):
                                                   db.ForeignKey('spongEffects_transcript_module.spongEffects_transcript_module_ID'),
                                                   nullable=False)
     spongEffects_transcript_module = relationship('SpongEffectsTranscriptModule', foreign_keys=[spongEffects_transcript_module_ID])
-
-    transcript_ID = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
-    transcript = relationship("Transcript", foreign_keys=[transcript_ID])
 
     score_value = db.Column(db.Float)
     sample_ID = db.Column(db.String(32))
@@ -471,9 +481,6 @@ class EnrichmentScoreGene(db.Model):
     spongEffects_gene_module_ID = db.Column(db.Integer,
                                             db.ForeignKey('spongEffects_gene_module.spongEffects_gene_module_ID'), nullable=False)
     spongEffects_gene_module = relationship('SpongEffectsGeneModule', foreign_keys=[spongEffects_gene_module_ID])
-
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
-    gene = relationship("Gene", foreign_keys=[gene_ID])
 
     score_value = db.Column(db.Float)
     sample_ID = db.Column(db.String(32))
@@ -532,10 +539,6 @@ class DifferentialExpressionTranscript(db.Model):
 class Gsea(db.Model):
     __tablename__ = "gsea"
     gsea_ID = db.Column(db.Integer, primary_key=True)
-    lead_genes = db.relationship('GseaLeadGenes')
-    matched_genes = db.relationship('GseaMatchedGenes')
-    res = db.relationship('GseaRes')
-    gsea_ranking_genes = db.relationship('GseaRankingGenes')
 
     comparison_ID = db.Column(db.Integer, db.ForeignKey('comparison.comparison_ID'), nullable=False)
     comparison = relationship("Comparison", foreign_keys=[comparison_ID])
@@ -552,19 +555,23 @@ class Gsea(db.Model):
 class GseaLeadGenes(db.Model):
     __tablename__ = "gsea_lead_genes"
 
-    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'), primary_key=True)
+    gsea_lead_genes_ID = db.Column(db.Integer, nullable=False, primary_key=True)
+
+    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'))
     gsea = relationship("Gsea", foreign_keys=[gsea_ID])
 
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), primary_key=True)
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'))
     gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
 
 class GseaMatchedGenes(db.Model):
     __tablename__ = "gsea_matched_genes"
 
-    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'), primary_key=True)
+    gsea_matched_genes_ID = db.Column(db.Integer, nullable=False, primary_key=True)
+
+    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'))
     gsea = relationship("Gsea", foreign_keys=[gsea_ID])
 
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), primary_key=True)
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'))
     gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
 
 class GseaRes(db.Model):
@@ -577,10 +584,12 @@ class GseaRes(db.Model):
 
 class GseaRankingGenes(db.Model):
     __tablename__ = "gsea_ranking_genes"
-    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'), primary_key=True)
+    gsea_ranking_genes_ID = db.Column(db.Integer, nullable=False, primary_key=True)
+
+    gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'))
     gsea = relationship("Gsea", foreign_keys=[gsea_ID])
 
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), primary_key=True)
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'))
     gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
 
 class DatasetSchema(ma.SQLAlchemyAutoSchema):
@@ -606,15 +615,6 @@ class GeneSchemaShort(ma.SQLAlchemyAutoSchema):
         model = Gene
         sqla_session = db.session
         fields = ["ensg_number","gene_symbol"]
-
-class SelectedGenesSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = SelectedGenes
-        sqla_session = db.session
-
-    sponge_run = ma.Nested(SpongeRunSchema)
-    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number")))
-
 
 class TargetDatabasesSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

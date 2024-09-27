@@ -22,5 +22,5 @@ ENV MARIADB_PLUGIN_DIR /usr/lib/mariadb/plugin
 # CMD ["python3", "server.py"]
 
 #run the command to start uWSGI
-CMD ["uwsgi", "app.ini"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5000", "-w", "4", "server:connex_app"]
 

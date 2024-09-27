@@ -43,7 +43,7 @@ def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, g
     queries_2 = []
     # if specific disease_name is given:
     if disease_name is not None:
-        with app.context():
+        with app.app_context():
             run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
                 .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
                 .all()
@@ -146,7 +146,7 @@ def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, g
         else:
             # Serialize the data for the response depending on parameter all
             schema = models.GeneInteractionDatasetShortSchema(many=True)
-        return schema.dump(interaction_result).data
+        return schema.dump(interaction_result)
     else:
         abort(404, "No information with given parameters found")
 

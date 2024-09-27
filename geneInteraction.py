@@ -2,6 +2,7 @@ import sqlalchemy as sa
 import os
 from flask import abort
 from sqlalchemy import desc
+from sqlalchemy.sql import text
 import models
 
 
@@ -788,8 +789,8 @@ def get_distinc_ceRNA_sets(disease_name):
 
 
 
-        id1 = session.execute("SELECT DISTINCT gene_ID1 FROM interactions_genegene where sponge_run_ID IN (" +
-                                  ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05")
+        id1 = session.execute(text("SELECT DISTINCT gene_ID1 FROM interactions_genegene where sponge_run_ID IN (" +
+                                  ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05"))
 
         print("first ids ready")
         #id2 = session.execute("SELECT DISTINCT gene_ID2 FROM interactions_genegene where sponge_run_id IN (" +

@@ -1,5 +1,7 @@
 from config import *
-import models, geneInteraction, unittest
+import models, unittest
+with app.app_context(): 
+    import geneInteraction
 from flask import abort
 import sqlalchemy as sa
 from werkzeug.exceptions import HTTPException
@@ -41,9 +43,10 @@ def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, g
     queries_2 = []
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
+        with app.context():
+            run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+                .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+                .all()
 
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]

@@ -57,7 +57,7 @@ def get_run_performance(disease_name: str, level: str):
         .all()
 
     if len(query) > 0:
-        return models.SpongEffectsRunPerformanceSchema(many=True).dump(query).data
+        return models.SpongEffectsRunPerformanceSchema(many=True).dump(query)
     else:
         abort(404, 'No spongEffects model performance found for name: {disease_name}'.format(disease_name=disease_name))
 
@@ -70,7 +70,7 @@ def get_run_class_performance(disease_name: str, level: str, sponge_db_version: 
         .filter(models.SpongEffectsRunPerformance.spongEffects_run_ID == spongEffects_run_ID) \
         .all()
     if len(query) > 0:
-        return models.SpongEffectsRunClassPerformanceSchema(many=True).dump(query).data
+        return models.SpongEffectsRunClassPerformanceSchema(many=True).dump(query)
     else:
         abort(404, f'No spongEffects run class performance found for name: {disease_name}')
 
@@ -94,7 +94,7 @@ def get_enrichment_score_class_distributions(disease_name: str, level: str, spon
         .filter(models.SpongEffectsEnrichmentClassDensity.spongEffects_run_ID == spongEffects_run_ID) \
         .all()
     if len(query) > 0:
-        return models.SpongEffectsEnrichmentClassDensitySchema(many=True).dump(query).data
+        return models.SpongEffectsEnrichmentClassDensitySchema(many=True).dump(query)
     else:
         abort(404, 'No spongEffects class enrichment score distribution data found for given parameters')
 
@@ -119,7 +119,7 @@ def get_gene_modules(disease_name: str, sponge_db_version: int = 2):
     session.close()
     some_engine.dispose()
     if len(query) > 0:
-        return models.SpongEffectsGeneModuleSchema(many=True).dump(query).data
+        return models.SpongEffectsGeneModuleSchema(many=True).dump(query)
     else:
         abort(404, "No spongEffects modules found for given disease")
 
@@ -169,7 +169,7 @@ def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_sym
     session.close()
     some_engine.dispose()
     if len(query) > 0:
-        return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(query).data
+        return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(query)
     else:
         abort(404, "No module members found for given disease name and gene identifier")
 
@@ -195,7 +195,7 @@ def get_transcript_modules(disease_name: str, sponge_db_version: int = 2):
     session.close()
     some_engine.dispose()
     if len(query) > 0:
-        return models.SpongEffectsTranscriptModuleSchema(many=True).dump(query).data
+        return models.SpongEffectsTranscriptModuleSchema(many=True).dump(query)
     else:
         abort(404, "No spongEffects modules found for given disease")
 
@@ -250,7 +250,7 @@ def get_transcript_module_members(disease_name: str, enst_number: str = None, en
     session.close()
     some_engine.dispose()
     if len(query) > 0:
-        return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(query).data
+        return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(query)
     else:
         abort(404, "No module members found for given disease name and gene identifier")
 

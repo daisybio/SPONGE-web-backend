@@ -88,7 +88,7 @@ def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
         .all()
                             
     if len(result) > 0:
-        return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaSetSchema(many=True).dump(result).data)] 
+        return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaSetSchema(many=True).dump(result))] 
     else:
         abort(404, "No data found.")
 
@@ -175,7 +175,7 @@ def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None,
         .all() # TODO: maybe replace with _in(term)
                             
     if len(result) > 0:
-        return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaTermsSchema(many=True).dump(result).data)] 
+        return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaTermsSchema(many=True).dump(result))] 
     else:
         abort(404, "No data found.")
 
@@ -266,7 +266,7 @@ def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=Non
     result = result.all()
                             
     if len(result) > 0:
-        result = models.GseaSchema(many=True).dump(result).data
+        result = models.GseaSchema(many=True).dump(result)
         for r in result:
             r.update({"tag_percent": f"{len(r['lead_genes'])}/{len(r['matched_genes'])}"})
 
@@ -365,7 +365,7 @@ def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
 
 
     if len(gsea) > 0:
-        gsea = models.GseaSchemaPlot(many=True).dump(gsea).data
+        gsea = models.GseaSchemaPlot(many=True).dump(gsea)
 
         gene_map = models.Gene.query \
             .filter(models.Gene.gene_ID.in_([x["gene_ID"] for x in gsea[0]["gsea_ranking_genes"]])) \
@@ -377,7 +377,7 @@ def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
             .filter(models.DifferentialExpression.gene_ID.in_(ranking_gene_ids)) \
             .all()
 
-        de = models.DESchemaShort(many=True).dump(de).data
+        de = models.DESchemaShort(many=True).dump(de)
 
         ranking = [y for y in sorted(de, key= lambda x: x["log2FoldChange"], reverse=not reverse)]
         ranking_ids = [x["gene_ID"] for x in ranking]

@@ -1,5 +1,7 @@
 from config import *
-import models, dataset, unittest
+import models, unittest
+with app.app_context(): 
+    import dataset
 from flask import abort
 from werkzeug.exceptions import HTTPException
 
@@ -19,7 +21,7 @@ def test_read_runInformation(disease_name=None):
 
     if len(data) > 0:
         # Serialize the data for the response
-        return models.SpongeRunSchema(many=True).dump(data).data
+        return models.SpongeRunSchema(many=True).dump(data)
     else:
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
 
@@ -29,6 +31,15 @@ def test_read_runInformation(disease_name=None):
 
 class TestDataset(unittest.TestCase):
 
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
+
     def test_get_dataset_information(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
@@ -37,7 +48,7 @@ class TestDataset(unittest.TestCase):
         mock_response = test_read_runInformation(disease_name="breast invasive carcinoma")
 
         # retrieve current API response to request
-        api_response = dataset.read_runInformation(disease_name="breast invasive carcinoma")
+        api_response = dataset.read_spongeRunInformation(disease_name="breast invasive carcinoma")
 
         # assert that the two output the same
         self.assertEqual(mock_response, api_response)
@@ -49,4 +60,4 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(dataset.read_runInformation(disease_name="foobar"), 404)
+            self.assertEqual(dataset.read_spongeRunInformation(disease_name="foobar"), 404)

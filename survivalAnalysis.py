@@ -1,7 +1,7 @@
 from flask import abort
 import models
 
-def get_patient_information(disease_name=None, sample_ID=None):
+def get_patient_information(disease_name=None, sample_ID=None, db_version=2):
     """
       :param disease_name: disease_name of interest
       :param sample_ID: sample ID of the patient of interest
@@ -34,18 +34,23 @@ def get_patient_information(disease_name=None, sample_ID=None):
             abort(404, "No dataset with given disease_name found")
 
     if (sample_ID is not None):
-        queries.append(models.PatientInformation.sample_ID.in_(sample_ID))
+        queries.append(models.PatientInformation.sample_ID.in_([sample_ID]))
+        
+    # database version 
+    if db_version is not None: 
+        queries.append(models.Dataset.version == db_version)
+
 
     result = models.PatientInformation.query \
         .filter(*queries) \
         .all()
 
     if len(result) > 0:
-        return models.PatientInformationSchema(many=True).dump(result).data
+        return models.PatientInformationSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")
 
-def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, sample_ID = None):
+def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, sample_ID = None, db_version=2):
     """
        :param disease_name: disease_name of interest
        :param ensg_number: esng number of the gene of interest
@@ -105,21 +110,26 @@ def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, samp
             queries.append(models.SurvivalRate.dataset_ID.in_(dataset_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
+    
+    # database version 
+    if db_version is not None: 
+        
 
     result = models.SurvivalRate.query \
         .filter(*queries) \
         .all()
 
     if len(result) > 0:
-        return models.SurvivalRateSchema(many=True).dump(result).data
+        return models.SurvivalRateSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")
 
-def get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None):
+def get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None, db_version=2):
     """
           :param disease_name: disease_name of interest
           :param ensg_number: esng number of the gene of interest
           :param gene_symbol: gene symbol of the gene of interest
+          :param db_version: database version
           :return: all pValues for genes of interest for plotting kaplan meier plots
           """
     # test if any of the two identification possibilites is given
@@ -161,12 +171,16 @@ def get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None):
         else:
              abort(404, "No dataset with given disease_name found")
 
+    # database version 
+    if db_version is not None: 
+        queries.append(models.Dataset.version == db_version)
+
     result = models.SurvivalPValue.query \
         .filter(*queries) \
         .all()
 
     if len(result) > 0:
-        return models.SurvivalPValueSchema(many=True).dump(result).data
+        return models.SurvivalPValueSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")
 

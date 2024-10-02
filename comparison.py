@@ -31,6 +31,6 @@ def get_comparison(disease_name=None, disease_subtype=None):
         .all()
                                 
     if len(result) > 0:
-        return models.ComparisonSchema(many=True).dump(result).data
+        return models.ComparisonSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")

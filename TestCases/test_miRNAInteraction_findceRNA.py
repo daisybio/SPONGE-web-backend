@@ -1,7 +1,10 @@
 from config import *
-import models, geneInteraction, unittest
+import models, unittest
+with app.app_context(): 
+    import geneInteraction
 from flask import abort
 import sqlalchemy as sa
+from sqlalchemy.sql import text
 from werkzeug.exceptions import HTTPException
 
 def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, between=False):
@@ -71,12 +74,10 @@ def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None
         session = Session()
         # test for each dataset if the gene(s) of interest are included in the ceRNA network
 
-        print()
-
-        mirna_filter = session.execute("select mirna_ID from interacting_miRNAs where run_ID IN ( "
+        mirna_filter = session.execute(text("select mirna_ID from interactions_genemirna where sponge_run_ID IN ( "
                                        + ','.join(str(e) for e in run_IDs) + ") and gene_ID IN ( "
                                        + ','.join(str(e) for e in gene_IDs)
-                                       + ") group by mirna_ID HAVING count(mirna_ID) >= 2;").fetchall()
+                                       + ") group by mirna_ID HAVING count(mirna_ID) >= 2;")).fetchall()
 
         session.close()
         some_engine.dispose()
@@ -97,7 +98,7 @@ def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.miRNAInteractionSchema(many=True).dump(interaction_result).data
+        return models.miRNAInteractionSchema(many=True).dump(interaction_result)
     else:
         abort(404, "No data found with input parameter")
 
@@ -107,6 +108,15 @@ def test_read_mirna_for_specific_interaction(disease_name=None, ensg_number=None
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
 
     def test_abort_error_disease(self):
         app.config["TESTING"] = True

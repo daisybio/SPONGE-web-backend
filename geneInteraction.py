@@ -324,7 +324,7 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
         .order_by(*sort) \
         .slice(offset, offset + limit) \
         .all()
-
+    
     if len(result) > 0:
         schema = models.networkAnalysisSchema(many=True)
         return schema.dump(result)
@@ -373,19 +373,19 @@ def testGeneInteraction(ensg_number=None, gene_symbol=None):
         abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
-    run = session.execute("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID").fetchall()
+    run = session.execute(text("SELECT * from dataset join run where dataset.dataset_ID = run.dataset_ID")).fetchall()
 
     result = []
     for r in run:
-        tmp = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where sponge_run_ID = " + str(r.sponge_run_ID) +
-                              " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+        tmp = session.execute(text("SELECT EXISTS(SELECT * FROM interactions_genegene where sponge_run_ID = " + str(r.sponge_run_ID) +
+                              " and gene_ID1 = " + str(gene_ID[0]) + " limit 1) as include;")).fetchone()
 
         if (tmp[0] == 1):
             check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "sponge_run_ID": r.sponge_run_ID,
                      "include": tmp[0]}
         else:
-            tmp2 = session.execute("SELECT EXISTS(SELECT * FROM interactions_genegene where sponge_run_ID = " + str(r.sponge_run_ID) +
-                                   " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;").fetchone()
+            tmp2 = session.execute(text("SELECT EXISTS(SELECT * FROM interactions_genegene where sponge_run_ID = " + str(r.sponge_run_ID) +
+                                   " and gene_ID2 = " + str(gene_ID[0]) + " limit 1) as include;")).fetchone()
             if (tmp2[0] == 1):
                 check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "sponge_run_ID": r.sponge_run_ID,
                          "include": 1}
@@ -649,10 +649,10 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
         session = Session()
         # test for each dataset if the gene(s) of interest are included in the ceRNA network
 
-        mirna_filter = session.execute("select mirna_ID from interacting_miRNAs where sponge_run_ID IN ( "
+        mirna_filter = session.execute(text(text("select mirna_ID from interactions_genemirna where sponge_run_ID IN ( "
                                        + ','.join(str(e) for e in run_IDs) + ") and gene_ID IN ( "
                                        + ','.join(str(e) for e in gene_IDs)
-                                       + ") group by mirna_ID HAVING count(mirna_ID) >= 2;").fetchall()
+                                       + ") group by mirna_ID HAVING count(mirna_ID) >= 2;"))).fetchall()
 
         session.close()
         some_engine.dispose()

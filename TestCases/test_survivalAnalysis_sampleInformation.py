@@ -1,6 +1,8 @@
 from config import *
 from werkzeug.exceptions import HTTPException
-import models, survivalAnalysis, unittest
+import models, unittest
+with app.app_context(): 
+    import survivalAnalysis
 from flask import abort
 
 def test_get_patient_information(disease_name=None, sample_ID=None):
@@ -11,6 +13,7 @@ def test_get_patient_information(disease_name=None, sample_ID=None):
     """
 
     # if specific disease_name is given:
+    queries = []
     if disease_name is not None:
         dataset = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
@@ -23,14 +26,14 @@ def test_get_patient_information(disease_name=None, sample_ID=None):
             abort(404, "No dataset with given disease_name found")
 
     if (sample_ID is not None):
-        queries = [models.PatientInformation.sample_ID.in_(sample_ID)]
+        queries.append(models.PatientInformation.sample_ID.in_(sample_ID))
 
     result = models.PatientInformation.query \
         .filter(*queries) \
         .all()
 
     if len(result) > 0:
-        return models.PatientInformationSchema(many=True).dump(result).data
+        return models.PatientInformationSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")
 
@@ -40,6 +43,15 @@ def test_get_patient_information(disease_name=None, sample_ID=None):
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
 
     def test_abort_error_disease(self):
         app.config["TESTING"] = True

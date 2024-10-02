@@ -108,7 +108,7 @@ def get_diff_expr(disease_name_1=None, disease_name_2=None, disease_subtype_1=No
     result = result.all()
 
     if len(result) > 0:
-        out = models.DESchema(many=True).dump(result).data
+        out = models.DESchema(many=True).dump(result)
         if reverse:
             for i in range(len(out)):
                 out[i]["log2FoldChange"] = -out[i]["log2FoldChange"]
@@ -216,7 +216,7 @@ def get_diff_expr_transcript(disease_name_1=None, disease_name_2=None, disease_s
     result = result.all()
 
     if len(result) > 0:
-        out = models.DETranscriptSchema(many=True).dump(result).data
+        out = models.DETranscriptSchema(many=True).dump(result)
         if reverse:
             for i in range(len(out)):
                 out[i]["log2FoldChange"] = -out[i]["log2FoldChange"]

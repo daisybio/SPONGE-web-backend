@@ -1,5 +1,7 @@
 from config import *
-import models, expressionValues, unittest
+import models, unittest
+with app.app_context(): 
+    import expressionValues
 from flask import abort
 from werkzeug.exceptions import HTTPException
 
@@ -55,7 +57,7 @@ def test_get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None):
         .all()
 
     if len(result) > 0:
-        return models.miRNAExpressionSchema(many=True).dump(result).data
+        return models.miRNAExpressionSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")
 
@@ -64,6 +66,15 @@ def test_get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None):
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
 
     def test_abort_error_disease(self):
         app.config["TESTING"] = True

@@ -113,7 +113,7 @@ def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, samp
     
     # database version 
     if db_version is not None: 
-        
+        queries.append(models.Dataset.version == db_version)
 
     result = models.SurvivalRate.query \
         .filter(*queries) \

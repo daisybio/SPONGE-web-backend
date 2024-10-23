@@ -1,6 +1,5 @@
 from flask import abort
 import models
-import gseapy as gp
 from gseapy.plot import GSEAPlot
 import base64
 import io 

@@ -1,6 +1,9 @@
 from flask import abort
 import models
 from flask import Response
+from sqlalchemy.sql import text
+import sqlalchemy as sa
+import os
 
 
 def getAutocomplete(searchString):
@@ -43,8 +46,6 @@ def getAutocomplete(searchString):
         else:
             abort(404, "No gene symbol found for the given String")
 
-import sqlalchemy as sa
-import os
 
 def getGeneInformation(ensg_number=None, gene_symbol=None):
     """
@@ -120,7 +121,7 @@ def getOverallCount():
     session = Session()
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
 
-    count = session.execute(
+    count = session.execute(text(
             "select * "
             " from (select sum(count_all)/2 as count_interactions, sum(count_sign)/2 as count_interactions_sign, run_ID "
                 "from gene_counts group by run_ID) as t1 "
@@ -129,7 +130,7 @@ def getOverallCount():
             "using(run_ID) "
             "join "
             "(SELECT dataset.disease_name, run.run_ID from dataset join run where dataset.dataset_ID = run.dataset_ID) as t3 "
-            "using(run_ID);").fetchall()
+            "using(run_ID);")).fetchall()
 
     session.close()
     some_engine.dispose()

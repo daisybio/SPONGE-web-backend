@@ -31,6 +31,9 @@ UPLOAD_DIR = os.getenv("SPONGE_DB_UPLOAD_DIR")
 MODEL_PATH = os.getenv("SPONGEFFECTS_MODEL_PATH")
 SPONGEFFECTS_PREDICT_SCRIPT = os.getenv("SPONGEFFECTS_PREDICT_SCRIPT")
 
+# latest database version 
+LATEST = 2
+
 # Configure the SQLAlchemy part of the app instance
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("SPONGE_DB_URI")

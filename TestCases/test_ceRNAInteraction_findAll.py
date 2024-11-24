@@ -1,5 +1,7 @@
 from config import *
-import models, geneInteraction, unittest
+import models, unittest
+with app.app_context(): 
+    import geneInteraction
 from flask import abort
 import sqlalchemy as sa
 from werkzeug.exceptions import HTTPException
@@ -41,9 +43,10 @@ def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, g
     queries_2 = []
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
+        with app.app_context():
+            run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+                .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+                .all()
 
         if len(run) > 0:
             run_IDs = [i.sponge_run_ID for i in run]
@@ -143,7 +146,7 @@ def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, g
         else:
             # Serialize the data for the response depending on parameter all
             schema = models.GeneInteractionDatasetShortSchema(many=True)
-        return schema.dump(interaction_result).data
+        return schema.dump(interaction_result)
     else:
         abort(404, "No information with given parameters found")
 
@@ -153,66 +156,51 @@ def test_read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, g
 
 class TestDataset(unittest.TestCase):
 
-    def test_abort_error_disease(self):
+    def setUp(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
 
+    def tearDown(self):
+        self.app_context.pop()
+
+    def test_abort_error_disease(self):
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_all_genes(disease_name="foobar", pValue = None), 404)
 
     def test_abort_error_limit(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_all_genes(disease_name="foobar", limit = 20000, pValue = None), 404)
 
     def test_abort_error_ensg(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_all_genes(ensg_number=["ENSGfoobar"], pValue = None), 404)
 
     def test_abort_error_gene_symbol(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_all_genes(gene_symbol=["foobar"], pValue = None), 404)
 
     def test_abort_error_ensg_and_gene_symbol(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_all_genes(ensg_number=["ENSGfoobar"],gene_symbol=["foobar"], pValue = None), 404)
 
     def test_abort_error_gene_type(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_all_genes(gene_type="foobar", pValue = None), 404)
 
     def test_abort_error_no_data(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
             self.assertEqual(geneInteraction.read_all_genes(disease_name="bladder urothelial carcinoma", ensg_number=['ENSG00000023041'], pValue = None), 404)
 
     def test_findAll_disease_and_ensg(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', ensg_number=['ENSG00000172137','ENSG00000078237'], limit=50, pValue = None)
 
@@ -223,9 +211,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_gene_symbol(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma', gene_symbol=['CALB2','TIGAR'], limit=50, pValue = None)
 
@@ -236,9 +221,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_ensg_pValue_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, pValue=0.5, pValueDirection="<", sorting="pValue")
@@ -251,9 +233,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_ensg_pValue_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, pValue=0.5, pValueDirection=">", sorting="pValue")
@@ -266,9 +245,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_gene_symbol_pValue_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             gene_symbol=['CALB2', 'TIGAR'], limit=50, pValue=0.5, pValueDirection="<", sorting="pValue")
@@ -281,9 +257,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_gene_symbol_pValue_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             gene_symbol=['CALB2', 'TIGAR'], limit=50, pValue=0.5, pValueDirection=">", sorting="pValue")
@@ -297,9 +270,6 @@ class TestDataset(unittest.TestCase):
 
 
     def test_findAll_disease_and_ensg_correlation_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation", pValue = None)
@@ -312,9 +282,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_ensg_correlation_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation", pValue = None)
@@ -327,9 +294,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_gene_symbol_correlation_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.2, correlationDirection="<", sorting="correlation",pValue = None)
@@ -342,9 +306,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_gene_symbol_correlation_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             gene_symbol=['CALB2', 'TIGAR'], limit=50, correlation=0.1, correlationDirection=">", sorting="correlation",pValue = None)
@@ -358,9 +319,6 @@ class TestDataset(unittest.TestCase):
 
 
     def test_findAll_disease_and_ensg_mscor_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor",pValue = None)
@@ -373,9 +331,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_ensg_mscor_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)
@@ -388,9 +343,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_gene_symbol_mscor_smaller(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.02, mscorDirection="<", sorting="mscor", pValue = None)
@@ -403,9 +355,6 @@ class TestDataset(unittest.TestCase):
         self.assertEqual(mock_response, api_response)
 
     def test_findAll_disease_and_gene_symbol_mscor_greater(self):
-        app.config["TESTING"] = True
-        self.app = app.test_client()
-
         # retrieve correct database response to request
         mock_response = test_read_all_genes(disease_name='bladder urothelial carcinoma',
                                             gene_symbol=['CALB2', 'TIGAR'], limit=50, mscor=0.01, mscorDirection=">", sorting="mscor", pValue = None)

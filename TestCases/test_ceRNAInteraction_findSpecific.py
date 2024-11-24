@@ -1,5 +1,7 @@
 from config import *
-import models, geneInteraction, unittest
+import models, unittest
+with app.app_context(): 
+    import geneInteraction
 from flask import abort
 import sqlalchemy as sa
 from werkzeug.exceptions import HTTPException
@@ -74,7 +76,7 @@ def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_sym
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.GeneInteractionDatasetShortSchema(many=True).dump(interaction_result).data
+        return models.GeneInteractionDatasetShortSchema(many=True).dump(interaction_result)
     else:
         abort(404, "No information with given parameters found")
 
@@ -84,6 +86,16 @@ def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_sym
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
+
     def test_abort_error_disease(self):
         app.config["TESTING"] = True
         self.app = app.test_client()

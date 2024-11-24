@@ -1,6 +1,8 @@
 from config import *
 from werkzeug.exceptions import HTTPException
-import models, survivalAnalysis, unittest
+import models, unittest
+with app.app_context(): 
+    import survivalAnalysis
 from flask import abort
 
 def test_get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None):
@@ -54,7 +56,7 @@ def test_get_survival_pValue(disease_name, ensg_number = None, gene_symbol = Non
         .all()
 
     if len(result) > 0:
-        return models.SurvivalPValueSchema(many=True).dump(result).data
+        return models.SurvivalPValueSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")
 
@@ -63,6 +65,15 @@ def test_get_survival_pValue(disease_name, ensg_number = None, gene_symbol = Non
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
 
     def test_abort_error_disease(self):
         app.config["TESTING"] = True
@@ -102,7 +113,7 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(survivalAnalysis.get_survival_pValue(disease_name="bladder urothelial carcinoma", ensg_number=['ENSG00000023041']), 404)
+            self.assertEqual(survivalAnalysis.get_survival_pValue(disease_name="bladder urothelial carcinoma", ensg_number=['ENSG00000023041'], db_version=1), 404)
 
     def test_surivalAnalysis_getPValue_disease_and_ensg(self):
         app.config["TESTING"] = True

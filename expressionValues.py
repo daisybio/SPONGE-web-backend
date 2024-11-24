@@ -56,7 +56,7 @@ def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, sponge_
         .all()
 
     if len(result) > 0:
-        return models.geneExpressionSchema(many=True).dump(result).data
+        return models.geneExpressionSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")
 
@@ -121,7 +121,7 @@ def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_n
         .all()
 
     if len(result) > 0:
-        return models.ExpressionDataTranscriptSchema(many=True).dump(result).data
+        return models.ExpressionDataTranscriptSchema(many=True).dump(result)
     else:
         abort(404, "No transcript expression data found for the given filters.")
 
@@ -178,6 +178,6 @@ def get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None):
         .all()
 
     if len(result) > 0:
-        return models.miRNAExpressionSchema(many=True).dump(result).data
+        return models.miRNAExpressionSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")

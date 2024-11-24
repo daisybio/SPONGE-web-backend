@@ -27,7 +27,7 @@ def get_transcript_events(enst_number):
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.AlternativeSplicingEventTranscripts(many=True).dump(interaction_result).data
+        return models.AlternativeSplicingEventTranscripts(many=True).dump(interaction_result)
     else:
         return Response("{"
                         "\"detail\": \"No event types with given parameters found!\","
@@ -87,7 +87,7 @@ def get_exons_for_position(start_pos: int, end_pos: int):
         .all()
     if len(result) > 0:
         schema = models.networkAnalysisSchema(many=True)
-        return schema.dump(result).data
+        return schema.dump(result)
     else:
         abort(404, "No data found that satisfies the given filters")
 

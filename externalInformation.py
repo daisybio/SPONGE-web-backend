@@ -15,7 +15,7 @@ def getAutocomplete(searchString):
             .filter(models.Gene.ensg_number.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.GeneSchemaShort(many=True).dump(data).data
+            return models.GeneSchemaShort(many=True).dump(data)
         else:
             abort(404, "No ensg number found for the given String")
     elif searchString.startswith("HSA") or searchString.startswith("hsa"):
@@ -23,7 +23,7 @@ def getAutocomplete(searchString):
             .filter(models.miRNA.hs_nr.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.miRNASchemaShort(many=True).dump(data).data
+            return models.miRNASchemaShort(many=True).dump(data)
         else:
             abort(404, "No hsa number found for the given String")
     elif searchString.startswith("MIMAT") or searchString.startswith("mimat"):
@@ -31,7 +31,7 @@ def getAutocomplete(searchString):
             .filter(models.miRNA.mir_ID.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.miRNASchemaShort(many=True).dump(data).data
+            return models.miRNASchemaShort(many=True).dump(data)
         else:
             abort(404, "No mimat number found for the given String")
     else:
@@ -39,7 +39,7 @@ def getAutocomplete(searchString):
             .filter(models.Gene.gene_symbol.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.GeneSchemaShort(many=True).dump(data).data
+            return models.GeneSchemaShort(many=True).dump(data)
         else:
             abort(404, "No gene symbol found for the given String")
 
@@ -68,7 +68,7 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
             .all()
 
         if len(data) > 0:
-            return models.GeneSchema(many=True).dump(data).data
+            return models.GeneSchema(many=True).dump(data)
         else:
             abort(404, "No gene(s) found with: " + ''.join(ensg_number))
 
@@ -78,7 +78,7 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
             .all()
 
         if len(data) > 0:
-            return models.GeneSchema(many=True).dump(data).data
+            return models.GeneSchema(many=True).dump(data)
         else:
             abort(404, "No gene found with: " + ''.join(gene_symbol))
 
@@ -98,7 +98,7 @@ def getTranscriptInformation(enst_number):
         .all()
 
     if len(data) > 0:
-        return models.TranscriptSchema(many=True).dump(data).data
+        return models.TranscriptSchema(many=True).dump(data)
     else:
         abort(404, "No transcript found with: " + enst_number)
 
@@ -135,7 +135,7 @@ def getOverallCount():
     some_engine.dispose()
 
     schema = models.OverallCountSchema(many=True)
-    return schema.dump(count).data
+    return schema.dump(count)
 
 def getGeneOntology(gene_symbol):
     """
@@ -162,7 +162,7 @@ def getGeneOntology(gene_symbol):
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.GeneOntologySchema(many=True).dump(interaction_result).data
+        return models.GeneOntologySchema(many=True).dump(interaction_result)
     else:
         return Response("{"
                         "\"detail\": \"No GO terms with given parameters found!\","
@@ -197,7 +197,7 @@ def getHallmark(gene_symbol):
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.HallmarksSchema(many=True).dump(interaction_result).data
+        return models.HallmarksSchema(many=True).dump(interaction_result)
     else:
         return Response("{"
                         "\"detail\": \"No hallmark associated for gene(s) of interest!\","
@@ -231,7 +231,7 @@ def getWikipathway(gene_symbol):
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.WikipathwaySchema(many=True).dump(interaction_result).data
+        return models.WikipathwaySchema(many=True).dump(interaction_result)
     else:
         return Response("{"
                         "\"detail\": \"No wikipathway key associated for gene(s) of interest!\","
@@ -256,7 +256,7 @@ def getTranscriptGene(enst_number):
         .all()
 
     if len(data) > 0:
-        return models.TranscriptSchema(many=True).dump(data).data
+        return models.TranscriptSchema(many=True).dump(data)
     else:
         abort(404, "No transcript found with: " + enst_number)
 
@@ -265,7 +265,7 @@ def getTranscriptGene(enst_number):
         .all()
 
     if len(interaction_result) > 0:
-        return models.GeneSchema(many=True).dump(interaction_result).data
+        return models.GeneSchema(many=True).dump(interaction_result)
     else:
         return Response("{"
                         "\"detail\": \"No gene(s) associated for transcript(s) of interest!\","
@@ -290,7 +290,7 @@ def getGeneTranscripts(ensg_number):
         .all()
 
     if len(data) > 0:
-        return models.GeneSchema(many=True).dump(data).data
+        return models.GeneSchema(many=True).dump(data)
     else:
         abort(404, "No gene found with: " + ensg_number)
 
@@ -299,7 +299,7 @@ def getGeneTranscripts(ensg_number):
         .all()
 
     if len(interaction_result) > 0:
-        return models.TranscriptSchema(many=True).dump(interaction_result).data
+        return models.TranscriptSchema(many=True).dump(interaction_result)
     else:
         return Response("{"
                         "\"detail\": \"No transcript(s) associated for gene(s) of interest!\","

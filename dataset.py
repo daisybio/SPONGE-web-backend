@@ -26,7 +26,7 @@ def get_datasets(data_origin=None):
     # Did we find a source?
     if len(data) > 0:
         # Serialize the data for the response
-        return models.DatasetSchema(many=True).dump(data).data
+        return models.DatasetSchema(many=True).dump(data)
     else:
         abort(404, 'No data found for name: {data_origin}'.format(data_origin=data_origin))
 
@@ -52,7 +52,7 @@ def read(disease_name=None):
     # Did we find a dataset?
     if len(data) > 0:
         # Serialize the data for the response
-        return models.DatasetSchema(many=True).dump(data).data
+        return models.DatasetSchema(many=True).dump(data)
     else:
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
 
@@ -73,6 +73,6 @@ def read_spongeRunInformation(disease_name=None):
 
     if len(data) > 0:
         # Serialize the data for the response
-        return models.SpongeRunSchema(many=True).dump(data).data
+        return models.SpongeRunSchema(many=True).dump(data)
     else:
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))

@@ -649,10 +649,10 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
         session = Session()
         # test for each dataset if the gene(s) of interest are included in the ceRNA network
 
-        mirna_filter = session.execute(text(text("select mirna_ID from interactions_genemirna where sponge_run_ID IN ( "
+        mirna_filter = session.execute(text("select mirna_ID from interactions_genemirna where sponge_run_ID IN ( "
                                        + ','.join(str(e) for e in run_IDs) + ") and gene_ID IN ( "
                                        + ','.join(str(e) for e in gene_IDs)
-                                       + ") group by mirna_ID HAVING count(mirna_ID) >= 2;"))).fetchall()
+                                       + ") group by mirna_ID HAVING count(mirna_ID) >= 2;")).fetchall()
 
         session.close()
         some_engine.dispose()
@@ -811,5 +811,3 @@ def get_distinc_ceRNA_sets(disease_name):
     #else:
         #abort(404, "No data found with input parameter")
     return
-
-get_distinc_ceRNA_sets(disease_name="kidney clear")

@@ -3127,30 +3127,3 @@ paths:
                     lfcSE:
                       type: number
                       description: Standard Error of Log Fold Change.
-
-  /stringSearch:
-    get:
-      operationId: externalInformation.getAutocomplete
-      tags:
-      - ExternalInformation
-      summary: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
-      description: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
-      parameters:
-      - name: searchString
-        in: query
-        description: Prefix of a gene name/ensg number or mirna identification
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: Retrieve all possible matchings
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  properties:
-                    autocompleteSuggestion:
-                      type: string
-                      description: Possible autocompletion for the searchString

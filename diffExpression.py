@@ -1,8 +1,9 @@
 from flask import abort
-
 import models
+from config import LATEST
 
-def get_diff_expr(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, ensg_number=None, gene_symbol=None):
+def get_diff_expr(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, 
+                  condition_2=None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
     """
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
@@ -12,6 +13,7 @@ def get_diff_expr(disease_name_1=None, disease_name_2=None, disease_subtype_1=No
     :param condition_2: condition of second part of comparison (e.g. disease, normal)
     :param ensg_number: esng number of the gene(s) of interest
     :param gene_symbol: gene symbol of the gene(s) of interest
+    :param sponge_db_version: version of the database
     :return: differential expression information for the genes of interest and the selected comparison
     """
 
@@ -40,7 +42,7 @@ def get_diff_expr(disease_name_1=None, disease_name_2=None, disease_subtype_1=No
     if disease_name_1 is not None:
         dataset_1 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.version == 2)
+            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
         if disease_subtype_1 is None:
             dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
@@ -58,7 +60,7 @@ def get_diff_expr(disease_name_1=None, disease_name_2=None, disease_subtype_1=No
     if disease_name_2 is not None:
         dataset_2 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.version == 2) 
+            .filter(models.Dataset.sponge_db_version == sponge_db_version) 
 
         if disease_subtype_2 is None:
             dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))
@@ -119,7 +121,8 @@ def get_diff_expr(disease_name_1=None, disease_name_2=None, disease_subtype_1=No
         abort(404, "No data found.")
 
 
-def get_diff_expr_transcript(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, enst_number=None):
+def get_diff_expr_transcript(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, 
+                             condition_1=None, condition_2=None, enst_number=None, sponge_db_version: int = LATEST):
     """
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
@@ -128,6 +131,7 @@ def get_diff_expr_transcript(disease_name_1=None, disease_name_2=None, disease_s
     :param condition_1: condition of first part of comparison (e.g. disease, normal)
     :param condition_2: condition of second part of comparison (e.g. disease, normal)
     :param enst_number: esng number of the transcript(s) of interest
+    :param sponge_db_version: version of the database
     :return: differential expression information for the transcript of interest and the selected comparison
     """
 
@@ -148,7 +152,7 @@ def get_diff_expr_transcript(disease_name_1=None, disease_name_2=None, disease_s
     if disease_name_1 is not None:
         dataset_1 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.version == 2)
+            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
         if disease_subtype_1 is None:
             dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
@@ -166,7 +170,7 @@ def get_diff_expr_transcript(disease_name_1=None, disease_name_2=None, disease_s
     if disease_name_2 is not None:
         dataset_2 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.version == 2) 
+            .filter(models.Dataset.sponge_db_version == sponge_db_version) 
 
         if disease_subtype_2 is None:
             dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))

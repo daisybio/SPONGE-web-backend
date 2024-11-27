@@ -1,13 +1,13 @@
 from flask import abort
-
 import models
+from config import LATEST
 
-def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, sponge_db_version: int = 2):
+def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
     """
     :param disease_name: disease_name of interest
     :param ensg_number: esng number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
-    :param sponge_db_version: SPONGEdb version (defaults to latest)
+    :param sponge_db_version: version of the database
     :return: all expression values for the genes of interest
     """
 
@@ -38,18 +38,21 @@ def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, sponge_
     # save all needed queries to get correct results
     queries = [models.GeneExpressionValues.gene_ID.in_(gene_IDs)]
 
+    # filter datasets by database version 
+    dataset_query = models.Dataset.query.filter(models.Dataset.sponge_db_version == sponge_db_version)
+
     # if specific disease_name is given:
     if disease_name is not None:
-        dataset = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .filter(models.Dataset.version == sponge_db_version) \
-            .all()
+        dataset_query = dataset_query \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+    
+    dataset = dataset_query.all()
 
-        if len(dataset) > 0:
-            dataset_IDs = [i.dataset_ID for i in dataset]
-            queries.append(models.GeneExpressionValues.dataset_ID.in_(dataset_IDs))
-        else:
-            abort(404, "No dataset with given disease_name found")
+    if len(dataset) > 0:
+        dataset_IDs = [i.dataset_ID for i in dataset]
+        queries.append(models.GeneExpressionValues.dataset_ID.in_(dataset_IDs))
+    else:
+        abort(404, f"No dataset with given disease_name for the database version {sponge_db_version} found")
 
     result = models.GeneExpressionValues.query \
         .filter(*queries) \
@@ -61,14 +64,14 @@ def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, sponge_
         abort(404, "No data found.")
 
 
-def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = 2):
+def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, version: int = LATEST):
     """
     Handles API call to return transcript expressions
     :param disease_name: Name of the disease
     :param enst_number: Ensembl transcript ID(s)
     :param ensg_number: Ensembl gene ID(s)
     :param gene_symbol: gene symbol(s)
-    :param sponge_db_version: Defaults to 2, transcript expression is not available in prior versions
+    :param sponge_db_version: version of the database
     :return: expression values for given search parameters
     """
     if ensg_number is None and gene_symbol is None and enst_number is None:
@@ -103,18 +106,23 @@ def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_n
     transcript_IDs = [i.transcript_ID for i in transcript]
     # build filters
     filters = [models.ExpressionDataTranscript.transcript_ID.in_(transcript_IDs)]
+    
+    # filter datasets by database version 
+    dataset_query = models.Dataset.query.filter(models.Dataset.sponge_db_version == sponge_db_version)
+
     # search for disease and add dataset_ID to filters if found
     if disease_name is not None:
-        dataset = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .filter(models.Dataset.version == sponge_db_version) \
-            .all()
+        dataset_query = dataset_query \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+    
+    dataset = dataset_query.all()
 
-        if len(dataset) > 0:
-            dataset_IDs = [i.dataset_ID for i in dataset]
-            filters.append(models.ExpressionDataTranscript.dataset_ID.in_(dataset_IDs))
-        else:
-            abort(404, "No dataset with given disease_name found")
+    if len(dataset) > 0:
+        dataset_IDs = [i.dataset_ID for i in dataset]
+        filters.append(models.ExpressionDataTranscript.dataset_ID.in_(dataset_IDs))
+    else:
+        abort(404, f"No dataset with given disease_name for the database version {sponge_db_version} found")
+    
     # apply all filters
     result = models.ExpressionDataTranscript.query \
         .filter(*filters) \
@@ -126,11 +134,12 @@ def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_n
         abort(404, "No transcript expression data found for the given filters.")
 
 
-def get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None):
+def get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None, sponge_db_version: int = LATEST):
     """
     :param disease_name: disease_name of interest
     :param mimat_number: comma-separated list of mimat_id(s) of miRNA of interest
     :param: hs_nr: comma-separated list of hs_number(s) of miRNA of interest
+    :param sponge_db_version: version of the database
     :return: all expression values for the mimats of interest
     """
 
@@ -156,22 +165,26 @@ def get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None):
     if len(mirna) > 0:
         mirna_IDs = [i.miRNA_ID for i in mirna]
     else:
-        abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+        abort(404, "No miRNA(s) found for given mimat_number(s) or hs_number(s)")
 
     # save all needed queries to get correct results
     queries = [models.MiRNAExpressionValues.miRNA_ID.in_(mirna_IDs)]
 
+    # filter datasets by database version
+    dataset_query = models.Dataset.query.filter(models.Dataset.sponge_db_version == sponge_db_version)
+
     # if specific disease_name is given:
     if disease_name is not None:
-        dataset = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
+        dataset_query = models.Dataset.query \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) 
+    
+    dataset = dataset_query.all()
 
-        if len(dataset) > 0:
-            dataset_IDs = [i.dataset_ID for i in dataset]
-            queries.append(models.MiRNAExpressionValues.dataset_ID.in_(dataset_IDs))
-        else:
-            abort(404, "No dataset with given disease_name found")
+    if len(dataset) > 0:
+        dataset_IDs = [i.dataset_ID for i in dataset]
+        queries.append(models.MiRNAExpressionValues.dataset_ID.in_(dataset_IDs))
+    else:
+        abort(404, f"No dataset with given disease_name for the database version {sponge_db_version} found")
 
     result = models.MiRNAExpressionValues.query \
         .filter(*queries) \

@@ -177,10 +177,6 @@ def get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None, sp
     else:
             abort(404, "No dataset with given disease_name found")
 
-    # database version 
-    if db_version is not None: 
-        queries.append(models.Dataset.version == db_version)
-
     result = models.SurvivalPValue.query \
         .filter(*queries) \
         .all()

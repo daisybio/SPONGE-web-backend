@@ -2,8 +2,9 @@ from flask import abort
 import models
 from flask import Response
 from sqlalchemy.sql import text
-import sqlalchemy as sa
-import os
+from sqlalchemy import func, select, join
+from sqlalchemy.orm import aliased
+from config import LATEST, db 
 
 
 def getAutocomplete(searchString):

@@ -2431,6 +2431,24 @@ paths:
                     description: Gene symbol of module member
   /spongEffects/getSpongEffectsTranscriptModules:
     get:
+      description: New endpoint
+      responses:
+        200:
+          description: New response
+          content:
+            application/json:
+              schema:
+                :
+    get:
+      description: New endpoint
+      responses:
+        200:
+          description: New response
+          content:
+            application/json:
+              schema:
+                :
+    get:
       operationId: spongEffects.get_transcript_modules
       tags:
         - spongEffects
@@ -2476,6 +2494,52 @@ paths:
                   mean_accuracy_decrease:
                     type: number
                     description: Mean decrease in accuracy
+  /spongEffects/getSpongEffectsTranscriptModuleMembers:
+    get:
+      operationId: spongEffects.get_transcript_module_members
+      tags:
+        - spongEffects
+      summary: Get connected nodes of specified ceRNA hub(s)
+      description: Get connected nodes of specified ceRNA hub(s)
+      parameters:
+        - name: disease_name
+          in: query
+          description: Name of the disease
+          required: true
+          schema:
+            type: string
+        - name: enst_number
+          in: query
+          description: Ensembl transcript ID
+          required: false
+          schema:
+            type: string
+        - name: gene_symbol
+          in: query
+          description: Gene symbol
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully extracted all module members of hub node(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hub_enst_number:
+                    type: string
+                    description: Ensembl transcript ID of hub node
+                  hub_gene_symbol:
+                    type: string
+                    description: Gene symbol of hub node
+                  member_enst_number:
+                    type: string
+                    description: Ensembl transcript ID of module member
+                  member_gene_symbol:
+                    type: string
+                    description: Gene symbol of module member
   /spongEffects/predictCancerType:
     post:
       operationId: spongEffects.upload_file

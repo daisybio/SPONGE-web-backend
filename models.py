@@ -12,9 +12,9 @@ class Dataset(db.Model):
     disease_type = db.Column(db.String(32))
     download_url = db.Column(db.String(32))
     disease_subtype = db.Column(db.String(32))
-    version = db.Column(db.Integer)
+    sponge_db_version = db.Column(db.Integer)
 
-
+    
 class SpongeRun(db.Model):
     __tablename__ = "sponge_run"
     sponge_run_ID = db.Column(db.Integer, primary_key=True)
@@ -825,6 +825,7 @@ class checkGeneInteractionProCancer(ma.SQLAlchemyAutoSchema):
 
     data_origin = fields.String()
     disease_name = fields.String()
+    disease_subtype = fields.String()
     sponge_run_ID = fields.Integer()
     include = fields.Integer()
 
@@ -870,19 +871,6 @@ class WikipathwaySchema(ma.SQLAlchemyAutoSchema):
         fields = ["gene", "wp_key"]
 
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
-
-class DistinctGeneSetSchema(ma.SQLAlchemyAutoSchema):
-    #class Meta:
-    #    strict = True
-
-    #gene = fields.String()
-    class Meta:
-        model = GeneInteraction
-        sqla_session = db.session
-        fields = ["gene1", "gene2"]
-
-    gene1 = ma.Nested(lambda: GeneSchema(only=("ensg_number")))
-    gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number")))
 
 class TranscriptSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

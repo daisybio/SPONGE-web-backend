@@ -2,8 +2,9 @@ from flask import abort
 import models
 from flask import Response
 from sqlalchemy.sql import text
-import sqlalchemy as sa
-import os
+from sqlalchemy import func, select, join
+from sqlalchemy.orm import aliased
+from config import LATEST, db 
 
 
 def getAutocomplete(searchString):
@@ -12,6 +13,7 @@ def getAutocomplete(searchString):
     :param searchString: String (ensg_number, gene_symbol, hs_number or mimat_number)
     :return: list of all genes/mirnas having search string as a prefic
     """
+    # Note: this function does not check for the database version because this would take too long
 
     if searchString.startswith("ENSG") or searchString.startswith("ensg"):
         data = models.Gene.query.with_entities(models.Gene.ensg_number, models.Gene.gene_symbol) \
@@ -104,39 +106,81 @@ def getTranscriptInformation(enst_number):
         abort(404, "No transcript found with: " + enst_number)
 
 
-def getOverallCount():
+def getOverallCount(sponge_db_version: int = LATEST):
     """
     Function return current statistic about database - amount of shared miRNA, significant and insignificant
      interactions per dataset
+    :param sponge_db_version: Version of the database
     :return: Current statistic about database
     """
 
-    # an Engine, which the Session will use for connection resources
-    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
+    # count = db.session.execute(text(
+    #         "select * "
+    #         " from (select sum(count_all)/2 as count_interactions, sum(count_sign)/2 as count_interactions_sign, sponge_run_ID "
+    #             "from gene_counts group by sponge_run_ID) as t1 "
+    #         "left join "
+    #         "(select sum(occurences) as count_shared_miRNAs, sponge_run_ID from occurences_mirna_gene group by sponge_run_ID) as t2 "
+    #         "using(sponge_run_ID) "
+    #         "join "
+    #         "(SELECT dataset.disease_name, sponge_run.sponge_run_ID from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID) "
+    #         "WHERE dataset.version = 2 AND sponge_run.version = 2 as t3 "
+    #         "using(sponge_run_ID);")).fetchall()
 
-    # create a configured "Session" class
-    Session = sa.orm.sessionmaker(bind=some_engine)
+    # Aliases for tables
+    t1 = (
+        select(
+            (func.sum(models.GeneCount.count_all) / 2).label("count_interactions"),
+            (func.sum(models.GeneCount.count_sign) / 2).label("count_interactions_sign"),
+            models.GeneCount.sponge_run_ID
+        )
+        .group_by(models.GeneCount.sponge_run_ID)
+        .subquery("t1")
+    )
 
-    # create a Session
-    session = Session()
-    # test for each dataset if the gene(s) of interest are included in the ceRNA network
+    t2 = (
+        select(
+            (func.sum(models.OccurencesMiRNA.occurences)).label("count_shared_mirnas_gene"),
+            models.OccurencesMiRNA.sponge_run_ID
+        )
+        .group_by(models.OccurencesMiRNA.sponge_run_ID)
+        .subquery("t2")
+    )
 
-    count = session.execute(text(
-            "select * "
-            " from (select sum(count_all)/2 as count_interactions, sum(count_sign)/2 as count_interactions_sign, run_ID "
-                "from gene_counts group by run_ID) as t1 "
-            "left join "
-            "(select sum(occurences) as count_shared_miRNAs, run_ID from occurences_miRNA group by run_ID) as t2 "
-            "using(run_ID) "
-            "join "
-            "(SELECT dataset.disease_name, run.run_ID from dataset join run where dataset.dataset_ID = run.dataset_ID) as t3 "
-            "using(run_ID);")).fetchall()
+    t3 = (
+        select(
+            models.Dataset.disease_name,
+            models.SpongeRun.sponge_run_ID
+        )
+        .select_from(
+            join(models.Dataset, models.SpongeRun, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID)
+        )
+        .where(
+            models.Dataset.sponge_db_version == sponge_db_version,
+            models.SpongeRun.sponge_db_version == sponge_db_version
+        )
+        .subquery("t3")
+    )
 
-    session.close()
-    some_engine.dispose()
+    # Main query
+    query = (
+        select(
+            t1.c.count_interactions,
+            t1.c.count_interactions_sign,
+            t1.c.sponge_run_ID,
+            t2.c.count_shared_mirnas_gene,
+            t3.c.disease_name
+        )
+        .select_from(
+            t1.outerjoin(t2, t1.c.sponge_run_ID == t2.c.sponge_run_ID)
+            .join(t3, t1.c.sponge_run_ID == t3.c.sponge_run_ID)
+        )
+    )
+
+    count = db.session.execute(query).fetchall()
 
     schema = models.OverallCountSchema(many=True)
     return schema.dump(count)
+
 
 def getGeneOntology(gene_symbol):
     """
@@ -198,7 +242,7 @@ def getHallmark(gene_symbol):
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.HallmarksSchema(many=True).dump(interaction_result)
+        return models.HallmarksSchema(many=True).dump(interaction_result)   
     else:
         return Response("{"
                         "\"detail\": \"No hallmark associated for gene(s) of interest!\","
@@ -252,21 +296,15 @@ def getTranscriptGene(enst_number):
     if enst_number is None:
         abort(404, "At least one transcript identification number is needed!")
 
-    data = models.Transcript.query \
-        .filter(models.Transcript.enst_number.in_(enst_number)) \
-        .all()
+    query = select(models.Gene.ensg_number).select_from(
+        join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
+    ).where(models.Transcript.enst_number.in_(enst_number))
 
-    if len(data) > 0:
-        return models.TranscriptSchema(many=True).dump(data)
-    else:
-        abort(404, "No transcript found with: " + enst_number)
+    result = db.session.execute(query).fetchall()
 
-    interaction_result = models.Gene.query \
-        .filter(models.Gene.ensg_number).in_(enst_number) \
-        .all()
-
-    if len(interaction_result) > 0:
-        return models.GeneSchema(many=True).dump(interaction_result)
+    if len(result) > 0:
+        # return models.GeneSchemaShort(many=True).dump(result)
+        return [r[0] for r in result]
     else:
         return Response("{"
                         "\"detail\": \"No gene(s) associated for transcript(s) of interest!\","
@@ -286,21 +324,15 @@ def getGeneTranscripts(ensg_number):
     if ensg_number is None:
         abort(404, "At least one gene identification number is needed!")
 
-    data = models.Gene.query \
-        .filter(models.Gene.ensg_number.in_(ensg_number)) \
-        .all()
+    query = select(models.Transcript.enst_number).select_from(
+        join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
+    ).where(models.Gene.ensg_number.in_(ensg_number))
 
-    if len(data) > 0:
-        return models.GeneSchema(many=True).dump(data)
-    else:
-        abort(404, "No gene found with: " + ensg_number)
+    result = db.session.execute(query).fetchall()
 
-    interaction_result = models.Transcript.query \
-        .filter(models.Transcript.enst_number).in_(ensg_number) \
-        .all()
-
-    if len(interaction_result) > 0:
-        return models.TranscriptSchema(many=True).dump(interaction_result)
+    if len(result) > 0:
+        # return models.TranscriptSchemaShort(many=True).dump(result)
+        return [r[0] for r in result]
     else:
         return Response("{"
                         "\"detail\": \"No transcript(s) associated for gene(s) of interest!\","

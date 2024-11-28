@@ -1,17 +1,17 @@
 from flask import abort
 import models
+from config import LATEST
 
 
-def get_datasets(data_origin=None):
+def get_datasets(data_origin=None, sponge_db_version: int = LATEST):
     """
-       This function responds to a request for /sponge/datasets?data_origin={data_origin}
+       This function responds to a request for /sponge/datasets?data_origin={data_origin}&version={version}
        with one matching entry to the specified data_origin
 
        :param data_origin:   name of the data source
+       :param sponge_db_version:       version of the database
        :return:            all datasets that match the source (e.g. TCGA)
     """
-    # version is hardcoded since version 1 does not have spongEffects scores for transcripts
-    sponge_db_version: int = 2
     if data_origin is None:
         # Create the list of people from our data
         data = models.Dataset.query \
@@ -20,7 +20,7 @@ def get_datasets(data_origin=None):
         # Get the dataset requested
         data = models.Dataset.query \
             .filter(models.Dataset.data_origin.like("%" + data_origin + "%")) \
-            .filter(models.Dataset.version == sponge_db_version) \
+            .filter(models.Dataset.sponge_db_version == sponge_db_version) \
             .all()
 
     # Did we find a source?
@@ -30,12 +30,13 @@ def get_datasets(data_origin=None):
     else:
         abort(404, 'No data found for name: {data_origin}'.format(data_origin=data_origin))
 
-def read(disease_name=None):
+def read(disease_name=None, sponge_db_version: int = LATEST):
     """
-       This function responds to a request for /sponge/dataset/?disease_name={disease_name}
+       This function responds to a request for /sponge/dataset/?disease_name={disease_name}&version={version}
        with one matching entry to the specified disease_name
 
        :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)
+       :param sponge_db_version:       version of the database
        :return:            dataset matching ID
        """
 
@@ -47,6 +48,7 @@ def read(disease_name=None):
         # Get the dataset requested
         data = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+            .filter(models.Dataset.sponge_db_version == sponge_db_version) \
             .all()
 
     # Did we find a dataset?
@@ -57,18 +59,20 @@ def read(disease_name=None):
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
 
 
-def read_spongeRunInformation(disease_name=None):
+def read_spongeRunInformation(disease_name=None, sponge_db_version: int = LATEST):
     """
-    This function responds to a request for /sponge/spongeRunInformation/?disease_name={disease_name}
+    This function responds to a request for /sponge/spongeRunInformation/?disease_name={disease_name}&version={version}
     with a matching entry to the specifed diesease_name
 
     :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)
+    :param sponge_db_version:       sponge_db_version of the database
     :return: all available runs + information for disease of interest
     """
 
     data = models.SpongeRun.query \
         .join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID) \
         .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+        .filter(models.Dataset.sponge_db_version == sponge_db_version) \
         .all()
 
     if len(data) > 0:

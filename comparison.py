@@ -1,15 +1,17 @@
 from flask import abort
 import models
+from config import LATEST
 
-def get_comparison(disease_name=None, disease_subtype=None):
+def get_comparison(disease_name=None, disease_subtype=None, sponge_db_version: int = LATEST):
     """
     :param disease_name: disease name of one part of the comparison (e.g. Sarcoma)
     :param disease_subtype: subtype of the same part of the comparison, overtype if none is provided (e.g. LMS) 
+    :param sponge_db_version: version of the database
     :return: all comparisons which contain the given disease name and subtype combination
     """
 
     # if specific disease_name is given:
-    dataset = models.Dataset.query
+    dataset = models.Dataset.query.filter(models.Dataset.sponge_db_version == sponge_db_version)
 
     if disease_name is not None:
         dataset = dataset.filter(models.Dataset.disease_name.like("%" + disease_name + "%"))

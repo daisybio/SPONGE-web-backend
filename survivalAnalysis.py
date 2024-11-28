@@ -1,10 +1,12 @@
 from flask import abort
 import models
+from config import LATEST
 
-def get_patient_information(disease_name=None, sample_ID=None, db_version=2):
+def get_patient_information(disease_name=None, sample_ID=None, sponge_db_version: int = LATEST):
     """
       :param disease_name: disease_name of interest
       :param sample_ID: sample ID of the patient of interest
+      :param sponge_db_version: version of the database
       :return: all patient information for the samples of interest
       """
 
@@ -20,26 +22,25 @@ def get_patient_information(disease_name=None, sample_ID=None, db_version=2):
     #else:
     #    abort(404, "No samples found for given IDs)")
 
+    # filter for database version 
+    query = models.Dataset.query.filter(models.Dataset.version == sponge_db_version)
+
     # save all needed queries to get correct results
     queries = []
     if disease_name is not None:
-        dataset = models.Dataset.query \
+        query = query.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
+    
+    dataset = query.all()
 
-        if len(dataset) > 0:
-            dataset_IDs = [i.dataset_ID for i in dataset]
-            queries = [models.PatientInformation.dataset_ID.in_(dataset_IDs)]
-        else:
-            abort(404, "No dataset with given disease_name found")
+    if len(dataset) > 0:
+        dataset_IDs = [i.dataset_ID for i in dataset]
+        queries = [models.PatientInformation.dataset_ID.in_(dataset_IDs)]
+    else:
+        abort(404, "No dataset with given disease_name found")
 
     if (sample_ID is not None):
         queries.append(models.PatientInformation.sample_ID.in_([sample_ID]))
-        
-    # database version 
-    if db_version is not None: 
-        queries.append(models.Dataset.version == db_version)
-
 
     result = models.PatientInformation.query \
         .filter(*queries) \
@@ -50,12 +51,13 @@ def get_patient_information(disease_name=None, sample_ID=None, db_version=2):
     else:
         abort(404, "No data found.")
 
-def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, sample_ID = None, db_version=2):
+def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, sample_ID = None, sponge_db_version: int = LATEST):
     """
        :param disease_name: disease_name of interest
        :param ensg_number: esng number of the gene of interest
        :param gene_symbol: gene symbol of the gene of interest
        :param sample_ID: sample_Id of patient/sample of interest
+       :param sponge_db_version: version of the database
        :return: all "raw data" for genes of interest for plotting kaplan meier plots
        """
     # test if any of the two identification possibilites is given
@@ -99,21 +101,21 @@ def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, samp
         else:
             abort(404, "No samples found for given IDs)")
 
+    # filter for database version
+    dataset_query = models.Dataset.query.filter(models.Dataset.version == sponge_db_version)
+
     # if specific disease_name is given:
     if disease_name is not None:
-        dataset = models.Dataset.query \
+        dataset_query = dataset_query.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
-
-        if len(dataset) > 0:
-            dataset_IDs = [i.dataset_ID for i in dataset]
-            queries.append(models.SurvivalRate.dataset_ID.in_(dataset_IDs))
-        else:
-            abort(404, "No dataset with given disease_name found")
     
-    # database version 
-    if db_version is not None: 
-        queries.append(models.Dataset.version == db_version)
+    dataset = dataset_query.all()
+
+    if len(dataset) > 0:
+        dataset_IDs = [i.dataset_ID for i in dataset]
+        queries.append(models.SurvivalRate.dataset_ID.in_(dataset_IDs))
+    else:
+        abort(404, "No dataset with given disease_name found")
 
     result = models.SurvivalRate.query \
         .filter(*queries) \
@@ -124,12 +126,12 @@ def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, samp
     else:
         abort(404, "No data found.")
 
-def get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None, db_version=2):
+def get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None, sponge_db_version: int = LATEST):
     """
           :param disease_name: disease_name of interest
           :param ensg_number: esng number of the gene of interest
           :param gene_symbol: gene symbol of the gene of interest
-          :param db_version: database version
+          :param sponge_db_version: version of the database
           :return: all pValues for genes of interest for plotting kaplan meier plots
           """
     # test if any of the two identification possibilites is given
@@ -159,17 +161,21 @@ def get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None, db
     else:
         abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
 
+    # filter for database version
+    dataset_query = models.Dataset.query.filter(models.Dataset.version == sponge_db_version)
+
     # if specific disease_name is given:
     if disease_name is not None:
-        dataset = models.Dataset.query \
+        dataset_query = dataset_query.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
+    
+    dataset = dataset_query.all()
 
-        if len(dataset) > 0:
-            dataset_IDs = [i.dataset_ID for i in dataset]
-            queries.append(models.SurvivalPValue.dataset_ID.in_(dataset_IDs))
-        else:
-             abort(404, "No dataset with given disease_name found")
+    if len(dataset) > 0:
+        dataset_IDs = [i.dataset_ID for i in dataset]
+        queries.append(models.SurvivalPValue.dataset_ID.in_(dataset_IDs))
+    else:
+            abort(404, "No dataset with given disease_name found")
 
     # database version 
     if db_version is not None: 

@@ -4,10 +4,11 @@ from gseapy.plot import GSEAPlot
 import base64
 import io 
 import matplotlib.pyplot as plt
+from config import LATEST
 
 plt.switch_backend('agg')
 
-def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None):
+def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, sponge_db_version: int = LATEST):
     """
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
@@ -15,6 +16,7 @@ def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
     :param disease_subtype_2: subtype of second part of comparison, overtype if none is provided (e.g. LMS) 
     :param condition_1: condition of first part of comparison (e.g. disease, normal)
     :param condition_2: condition of second part of comparison (e.g. disease, normal)
+    :param db_version: version of the sponge database
     :return: gene sets with significant terms for the selected comparison
     """
 
@@ -22,8 +24,8 @@ def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
 
     if disease_name_1 is not None:
         dataset_1 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.version == 2)
+            .filter(models.Dataset.disease_name.like("%" + disease_name_1.lower() + "%")) \
+            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
         if disease_subtype_1 is None:
             dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
@@ -34,6 +36,8 @@ def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
 
         dataset_1 = [x.dataset_ID for x in dataset_1]
 
+        print("Dataset: ", models.Dataset)
+
         if len(dataset_1) == 0:
             abort(404, f"No dataset with disease_name_1 {disease_name_1} and disease_subtype_1 {disease_subtype_1} found")
     else:
@@ -42,7 +46,7 @@ def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
     if disease_name_2 is not None:
         dataset_2 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.version == 2)
+            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
         if disease_subtype_2 is None:
             dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))
@@ -93,7 +97,7 @@ def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
 
 
 
-def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None):
+def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, sponge_db_version: int = LATEST):
     """
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
@@ -102,6 +106,7 @@ def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None,
     :param condition_1: condition of first part of comparison (e.g. disease, normal)
     :param condition_2: condition of second part of comparison (e.g. disease, normal)
     :param gene_set: gene set which should include the terms that are returned
+    :param sponge_db_version: version of the sponge database
     :return: names of the significantly enriched terms present in the gene set for the selected comparison
     """
 
@@ -109,7 +114,7 @@ def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None,
     if disease_name_1 is not None:
         dataset_1 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.version == 2) 
+            .filter(models.Dataset.sponge_db_version == sponge_db_version) 
 
         if disease_subtype_1 is None:
             dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
@@ -128,7 +133,7 @@ def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None,
     if disease_name_2 is not None:
         dataset_2 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.version == 2)
+            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
         if disease_subtype_2 is None:
             dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))
@@ -179,7 +184,7 @@ def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None,
         abort(404, "No data found.")
 
 
-def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, term=None):
+def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, term=None, sponge_db_version: int = LATEST):
     """
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
@@ -189,12 +194,13 @@ def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=Non
     :param condition_2: condition of second part of comparison (e.g. disease, normal)
     :param gene_set: gene set which should include the selected term
     :param term: term for which to return the gene set enrichment results
+    :param sponge_db_version: version of the sponge database
     :return: Gene set enrichment results for the term and comparison
     """
     if disease_name_1 is not None:
         dataset_1 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.version == 2)
+            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
         if disease_subtype_1 is None:
             dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
@@ -213,7 +219,7 @@ def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=Non
     if disease_name_2 is not None:
         dataset_2 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.version == 2) 
+            .filter(models.Dataset.sponge_db_version == sponge_db_version) 
 
         if disease_subtype_2 is None:
             dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))
@@ -279,7 +285,7 @@ def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=Non
     else:
         abort(404, "No data found.")
 
-def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, term=None, gene_set=None):
+def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, term=None, gene_set=None, sponge_db_version: int = LATEST):
     """
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
@@ -289,13 +295,14 @@ def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
     :param condition_2: condition of second part of comparison (e.g. disease, normal)
     :param gene_set: gene set which should include the selected term
     :param term: term for which to return the gene set enrichment results
+    :param sponge_db_version: version of the sponge database
     :return: Gene set enrichment plot for the term and comparison
     """
 
     if disease_name_1 is not None:
         dataset_1 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.version == 2)
+            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
         if disease_subtype_1 is None:
             dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
@@ -314,7 +321,7 @@ def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
     if disease_name_2 is not None:
         dataset_2 = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.version == 2)
+            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
         if disease_subtype_2 is None:
             dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))

@@ -3,13 +3,17 @@ from flask import abort
 import numpy as np
 from sklearn import manifold
 import pandas as pd
+from config import LATEST
 
 
 def get_network_results(disease_name="Breast invasive carcinoma",
-                        level="gene"):
+                        level="gene", sponge_db_version=LATEST):
     """
     :param disease_name: disease_name of interest
+    :param version: version of the database
     :param level: "gene" or "transcript"
+    :param sponge_db_version: version of the database
+    :return: dictionary containing the network results
     """
 
     if disease_name is None:
@@ -20,6 +24,7 @@ def get_network_results(disease_name="Breast invasive carcinoma",
 
     dataset = models.Dataset.query \
         .filter(models.Dataset.disease_name == disease_name) \
+        .filter(models.Dataset.sponge_db_version == sponge_db_version) \
         .all()
 
     if len(dataset) == 0:
@@ -30,7 +35,7 @@ def get_network_results(disease_name="Breast invasive carcinoma",
                                   'subtype': [entry.disease_subtype for entry in dataset]})
 
     run_ids = models.SpongeRun.query \
-        .filter(models.SpongeRun.sponge_db_version == 2) \
+        .filter(models.SpongeRun.sponge_db_version == sponge_db_version) \
         .all()
 
     all_run_ids = pd.DataFrame({'sponge_run_ID': [entry.sponge_run_ID for entry in run_ids],
@@ -81,6 +86,7 @@ def get_network_results(disease_name="Breast invasive carcinoma",
     dataset = models.Dataset.query \
         .filter(*[models.Dataset.disease_subtype == None,
                   models.Dataset.disease_name != "Parkinsons disease"]) \
+        .filter(models.Dataset.sponge_db_version == sponge_db_version) \
         .all()
 
     if len(dataset) == 0:

@@ -5,6 +5,15 @@ info:
   title: SPONGE REST-API documentation
 servers:
   - url: /
+components:
+  parameters:
+    VersionParam:
+      name: sponge_db_version
+      in: query
+      description: The version of the API. The default value is specified in the python functions!
+      required: false
+      schema:
+        type: string
 paths:
   /datasets:
     get:
@@ -14,6 +23,7 @@ paths:
       summary: Get information on datasets for a given source
       description: Get information on all datasets of a given source (e.g. TCGA) including subtype information
       parameters:
+        - $ref: '#/components/parameters/VersionParam'
         - name: data_origin
           in: query
           description: Name of the data origin (e.g. TCGA)
@@ -63,6 +73,7 @@ paths:
       summary: Get information about all cancer types/datasets or specific one.
       description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -100,6 +111,7 @@ paths:
       summary: Get all run information about the cancer type/dataset of interest.
       description: Retrieve all used parameters of the SPONGE method to create published results for the cancer type/dataset of interest.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -164,29 +176,27 @@ paths:
                     variance_cutoff:
                         type: string
                         description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Parameter name in SPONGE method is var.threshold)
-                    sponge_db_version:
-                        type: integer
-                        description: Version of the SPONGE database (1 or 2)
   /networkResults:
     get:
       operationId: network_results.get_network_results
       tags:
-        - network_results
+      - network_results
       summary: Get information about all cancer types/datasets or specific one.
       description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
       parameters:
-        - name: disease_name
-          in: query
-          description: Name of the specific cancer type.
-          required: false
-          schema:
-            type: string
-        - name: level
-          in: query
-          description: gene or transcript
-          required: false
-          schema:
-            type: string
+      - $ref: '#/components/parameters/VersionParam'
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type.
+        required: false
+        schema:
+          type: string
+      - name: level
+        in: query
+        description: gene or transcript
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: Successfully read network result information about all cancer types and subtypes if avaliable.
@@ -251,6 +261,7 @@ paths:
       summary: Tests for specific gene  if has at least one interaction in each cancer type/dataset.
       description: Tests for specific gene (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: ensg_number
         in: query
         description: Ensg number of the gene of interest (e.g. ENSG00000259090).
@@ -269,7 +280,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
+                type: object
                 items:
                   properties:
                     data_origin:
@@ -292,6 +303,7 @@ paths:
       summary: Get all ceRNA interactions the gene(s) of interest is/are involed in.
       description: Get all ceRNA interactions by given identifications (ensg_number, gene_symbol or gene_type), specific cancer type/dataset or different filter possibilities according different statistical values (e.g. FDR adjusted p-value).
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -553,6 +565,7 @@ paths:
       summary: Get all interactions between the given identifiers (ensg_number or gene_symbol).
       description: Get all interactions between the given identifiers (ensg_number or gene_symbol).
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -667,6 +680,7 @@ paths:
       summary: Get all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
       description: Get all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -851,6 +865,7 @@ paths:
       summary: Get the number of times a gene of interest is involved in the complete network or just significant interactions.
       description: Get the number of times a gene of interest is involved in the complete network or just significant interactions.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -931,32 +946,6 @@ paths:
                     count_sign:
                       description: Number of times gene is involved in significant (p.adj < 0.05) interactions of the netwrk.
                       type: string
-  /getDistinctceRNAs:
-    get:
-      operationId: geneInteraction.get_distinc_ceRNA_sets
-      tags:
-      - ceRNANetwork
-      summary: Function returns list of distinct gene_IDs in one specific cancer.
-      description: Function returns list of distinct gene_IDs (ensg_nr) contributing to a significant interaction (adjusted pVal <= 0.05) in one specific cancer.
-      parameters:
-      - name: disease_name
-        in: query
-        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: Function returns list of distinct gene_IDs (ensg_nr) contributing to a significant interaction (adjusted pVal <= 0.05) in one specific cancer.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  properties:
-                    ensg_nr:
-                      type: string
-                      description: Ensg number of distict ceRNA
   /miRNAInteraction/findSpecific:
     get:
       operationId: geneInteraction.read_all_to_one_mirna
@@ -965,6 +954,7 @@ paths:
       summary: Get all ceRNA interactions where miRNA of interest contribute to.
       description: Get all ceRNA interactions where miRNA(s) of interest (different identifiers available - e.g. hs number or mimat number) contribute to.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1102,6 +1092,7 @@ paths:
       summary: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
       description: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1222,6 +1213,7 @@ paths:
       description: Get all miRNAs that contribute to all interactions between the given identifiers (ensg_number or gene_symbol).
       summary: Get all miRNAs that contribute to all interactions between the given identifiers (ensg_number or gene_symbol).
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1313,6 +1305,7 @@ paths:
       summary: Get all expression values for gene(s) of interest.
       description: Get all expression values for gene(s) of interest.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1376,34 +1369,35 @@ paths:
     get:
       operationId: expressionValues.get_transcript_expression
       tags:
-        - ExpressionValues
+      - ExpressionValues
       summary: Get transcript expressions for transcript IDs, gene IDs, or gene symbols
       description: Get transcript expressions for transcript IDs, gene IDs, or gene symbols
       parameters:
-        - name: disease_name
-          in: query
-          description: Name of the disease, will return all expression data if not specified
-          required: false
-          schema:
-            type: string
-        - name: enst_number
-          in: query
-          description: Ensembl transcript ID(s)
-          required: false
-          schema:
-            type: string
-        - name: ensg_number
-          in: query
-          description: Ensembl gene ID(s)
-          required: false
-          schema:
-            type: string
-        - name: gene_symbol
-          in: query
-          description: Gene symbol(s)
-          required: false
-          schema:
-            type: string
+      - $ref: '#/components/parameters/VersionParam'
+      - name: disease_name
+        in: query
+        description: Name of the disease, will return all expression data if not specified
+        required: false
+        schema:
+          type: string
+      - name: enst_number
+        in: query
+        description: Ensembl transcript ID(s)
+        required: false
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: Ensembl gene ID(s)
+        required: false
+        schema:
+          type: string
+      - name: gene_symbol
+        in: query
+        description: Gene symbol(s)
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: Expression values for all transcripts that fit the provided filters
@@ -1443,6 +1437,7 @@ paths:
       summary: Get all expression values for miRNA(s) of interest.
       description: Get all expression values for miRNA(s) of interest.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1510,6 +1505,7 @@ paths:
       summary: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
       description: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: searchString
         in: query
         description: Prefix of a gene name/ensg number or mirna identification
@@ -1536,6 +1532,7 @@ paths:
       summary: Get all available information about the gene of iterest.
       description: Convert ensg_number in gene_symbol or the way around. Be aware, that not all genes have a gene symbol provided.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: ensg_number
         in: query
         description: A comma-separated list of ensg numbers of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
@@ -1602,6 +1599,7 @@ paths:
       summary: Get all available information about the transcript of interest.
       description: Get all available information about the transcript of interest.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: enst_number
         in: query
         description: A comma-separated list of enst_number of the transcript(s) of interest (e.g. ENST00000387314, ENST00000389680)
@@ -1644,6 +1642,8 @@ paths:
       - ExternalInformation
       summary: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
       description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
+      parameters:
+      - $ref: '#/components/parameters/VersionParam'
       responses:
         "200":
           description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
@@ -1676,6 +1676,7 @@ paths:
       summary: Function return associated GO Terms for gene(s) of interest.
       description: Function return associated GO Terms for gene(s) of interest. QuickGO - a fast web-based browser of the Gene Ontology and Gene Ontology annotation data - is used as external source.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: gene_symbol
         in: query
         description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. PTEN,TIGAR).
@@ -1720,6 +1721,7 @@ paths:
       summary: Function return associated cancer hallmark for gene(s) of interest.
       description: Function return associated cancer hallmark for gene(s) of interest. Cancer Hallmark Genes (http://bio-bigdata.hrbmu.edu.cn/CHG/) is used as external source.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: gene_symbol
         in: query
         description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. TUBBP2,CSNK1A1L).
@@ -1761,6 +1763,7 @@ paths:
       summary: Function return associated wikipathway keys for gene(s) of interest.
       description: Function return associated wikipathway keys for gene(s) of interest.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: gene_symbol
         in: query
         description: A comma-separated list of gene symbol(s) of the gene of interest (e.g. PTEN,GJA1).
@@ -1802,6 +1805,7 @@ paths:
       summary: Function returns gene ID(s) of transcript(s) of interest.
       description: Function returns gene ID(s) of transcript(s) of interest.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: enst_number
         in: query
         description: A comma-separated list pf enst numbers of the transcript(s) of interest (e.g. ENST00000387314, ENST00000389680)
@@ -1836,6 +1840,7 @@ paths:
       summary: Get all included transcripts of a gene of interest.
       description: Get all included transcripts of a gene of interest.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: ensg_number
         in: query
         description: A comma-separated list of ensg numbers of the gene(s) of interest (e.g. ENSG00000259090, ENSG00000217289).
@@ -1867,6 +1872,7 @@ paths:
       summary: Get all available clinical information for patients/samples.
       description: Get all available clinical information for patients/samples.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1913,6 +1919,7 @@ paths:
       summary: Get all raw data for kaplan meier plots.
       description: Get all raw data for kaplan meier plots.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -2001,6 +2008,7 @@ paths:
       summary: Retrieve pValues from log rank test based on raw survival analysis data
       description: Retrieve pValues from log rank test based on raw survival analysis data
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
@@ -2169,22 +2177,23 @@ paths:
     get:
       operationId: spongEffects.get_run_performance
       tags:
-        - spongEffects
+      - spongEffects
       summary: Get best spongEffects run performance for selected disease
       description: Get best spongEffects run performance for selected disease
       parameters:
-        - name: disease_name
-          in: query
-          description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-          required: true
-          schema:
-            type: string
-        - name: level
-          in: query
-          description: Element level to use, either gene or transcript
-          required: true
-          schema:
-            type: string
+      - $ref: '#/components/parameters/VersionParam'
+      - name: disease_name
+        in: query
+        description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
+        required: true
+        schema:
+          type: string
+      - name: level
+        in: query
+        description: Element level to use, either gene or transcript
+        required: true
+        schema:
+          type: string
       responses:
         "200":
           description: Successfully queried spongEffects model performance for given disease
@@ -2224,28 +2233,23 @@ paths:
     get:
       operationId: spongEffects.get_run_class_performance
       tags:
-        - spongEffects
+      - spongEffects
       summary: Get detailed spongEffects model performance information for given disease type
       description: Get detailed spongEffects model performance information for given disease type
       parameters:
-        - name: disease_name
-          in: query
-          description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-          required: true
-          schema:
-            type: string
-        - name: level
-          in: query
-          description: Level to use, i.e. gene or transcript
-          required: true
-          schema:
-            type: string
-        - name: sponge_db_version
-          in: query
-          description: Database version to use (version 2 is default)
-          required: false
-          schema:
-            type: number
+      - $ref: '#/components/parameters/VersionParam'
+      - name: disease_name
+        in: query
+        description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
+        required: true
+        schema:
+          type: string
+      - name: level
+        in: query
+        description: Level to use, i.e. gene or transcript
+        required: true
+        schema:
+          type: string
       responses:
         "200":
           description: Successfully extracted spongEffects model performances for given disease and level
@@ -2304,28 +2308,23 @@ paths:
     get:
       operationId: spongEffects.get_enrichment_score_class_distributions
       tags:
-        - spongEffects
+      - spongEffects
       summary: Get enrichment score class distributions of a trained spongEffects model for a given disease
       description: Get enrichment score class distributions of a trained spongEffects model for a given disease
       parameters:
-        - name: disease_name
-          in: query
-          description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-          required: true
-          schema:
-            type: string
-        - name: level
-          in: query
-          description: Level to use, i.e. gene or transcript
-          required: true
-          schema:
-            type: string
-        - name: sponge_db_version
-          in: query
-          description: Database version to use (version 2 is default)
-          required: false
-          schema:
-            type: number
+      - $ref: '#/components/parameters/VersionParam'
+      - name: disease_name
+        in: query
+        description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
+        required: true
+        schema:
+          type: string
+      - name: level
+        in: query
+        description: Level to use, i.e. gene or transcript
+        required: true
+        schema:
+          type: string
       responses:
         "200":
           description: Successfully calculated enrichment class distributions for given disease and level
@@ -2347,22 +2346,17 @@ paths:
     get:
       operationId: spongEffects.get_gene_modules
       tags:
-        - spongEffects
+      - spongEffects
       summary: Extract module hub elements for a given disease and level
       description: Extract module hub elements for a given disease and level
       parameters:
-        - name: disease_name
-          in: query
-          description: Disease name
-          required: true
-          schema:
-            type: string
-        - name: sponge_db_version
-          in: query
-          description: SPONGEdb version, defaults to latest
-          required: false
-          schema:
-            type: number
+      - $ref: '#/components/parameters/VersionParam'
+      - name: disease_name
+        in: query
+        description: Disease name
+        required: true
+        schema:
+          type: string
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -2387,28 +2381,29 @@ paths:
     get:
       operationId: spongEffects.get_gene_module_members
       tags:
-        - spongEffects
+      - spongEffects
       summary: Get connected nodes of specified ceRNA hub(s)
       description: Get connected nodes of specified ceRNA hub(s)
       parameters:
-        - name: disease_name
-          in: query
-          description: Name of the disease
-          required: true
-          schema:
-            type: string
-        - name: ensg_number
-          in: query
-          description: Ensembl gene ID
-          required: false
-          schema:
-            type: string
-        - name: gene_symbol
-          in: query
-          description: Gene symbol
-          required: false
-          schema:
-            type: string
+      - $ref: '#/components/parameters/VersionParam'
+      - name: disease_name
+        in: query
+        description: Name of the disease
+        required: true
+        schema:
+          type: string
+      - name: ensg_number
+        in: query
+        description: Ensembl gene ID
+        required: false
+        schema:
+          type: string
+      - name: gene_symbol
+        in: query
+        description: Gene symbol
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: Successfully extracted all module members of hub node(s)
@@ -2431,42 +2426,19 @@ paths:
                     description: Gene symbol of module member
   /spongEffects/getSpongEffectsTranscriptModules:
     get:
-      description: New endpoint
-      responses:
-        200:
-          description: New response
-          content:
-            application/json:
-              schema:
-                :
-    get:
-      description: New endpoint
-      responses:
-        200:
-          description: New response
-          content:
-            application/json:
-              schema:
-                :
-    get:
       operationId: spongEffects.get_transcript_modules
       tags:
-        - spongEffects
+      - spongEffects
       summary: Extract module hub elements for a given disease and level
       description: Extract module hub elements for a given disease and level
       parameters:
-        - name: disease_name
-          in: query
-          description: Disease name
-          required: true
-          schema:
-            type: string
-        - name: sponge_db_version
-          in: query
-          description: SPONGEdb version, defaults to latest
-          required: false
-          schema:
-            type: number
+      - $ref: '#/components/parameters/VersionParam'
+      - name: disease_name
+        in: query
+        description: Disease name
+        required: true
+        schema:
+          type: string
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -2494,56 +2466,12 @@ paths:
                   mean_accuracy_decrease:
                     type: number
                     description: Mean decrease in accuracy
-  /spongEffects/getSpongEffectsTranscriptModuleMembers:
-    get:
-      operationId: spongEffects.get_transcript_module_members
-      tags:
-        - spongEffects
-      summary: Get connected nodes of specified ceRNA hub(s)
-      description: Get connected nodes of specified ceRNA hub(s)
-      parameters:
-        - name: disease_name
-          in: query
-          description: Name of the disease
-          required: true
-          schema:
-            type: string
-        - name: enst_number
-          in: query
-          description: Ensembl transcript ID
-          required: false
-          schema:
-            type: string
-        - name: gene_symbol
-          in: query
-          description: Gene symbol
-          required: false
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Successfully extracted all module members of hub node(s)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  hub_enst_number:
-                    type: string
-                    description: Ensembl transcript ID of hub node
-                  hub_gene_symbol:
-                    type: string
-                    description: Gene symbol of hub node
-                  member_enst_number:
-                    type: string
-                    description: Ensembl transcript ID of module member
-                  member_gene_symbol:
-                    type: string
-                    description: Gene symbol of module member
   /spongEffects/predictCancerType:
     post:
       operationId: spongEffects.upload_file
       summary: Upload a gene/transcript expression file to predict which cancer type it originated from
+      parameters: 
+      - $ref: '#/components/parameters/VersionParam'
       requestBody:
         content:
           multipart/form-data:
@@ -2625,6 +2553,7 @@ paths:
       summary: Get disease comparisons
       description: Get all comparisons involving the specified disease name and the subtype.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name
         in: query
         description: Name of the disease type. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -2635,7 +2564,6 @@ paths:
         description: Name of the specific subtype. Fuzzy search is available (e.g. "LMS").
         schema:
           type: string
-
       responses:
         "200":
           description: Successfully retrieved all comparisons involving the condition with the given type name and subtype.
@@ -2713,7 +2641,6 @@ paths:
                         version:
                           type: integer
                           description: SPONGEdb version that the dataset belongs to.
-
   /gseaSets:
     get:
       operationId: gsea.gsea_sets
@@ -2723,6 +2650,7 @@ paths:
       summary: Get gene sets.
       description: Get all gene sets for which GSEA results are available for the given type, subtype and condition combination.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -2770,7 +2698,6 @@ paths:
                     gene_set:
                       type: string
                       description: Name of the gene set.
-
   /gseaTerms:
     get:
       operationId: gsea.gsea_terms
@@ -2780,6 +2707,7 @@ paths:
       summary: Get GSEA terms.
       description: Get all terms for which GSEA results are available for the given gene set, type/subtype, and condition combination.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -2833,7 +2761,6 @@ paths:
                     gene_set:
                       type: string
                       description: Name of the term.
-
   /gseaResults:
     get:
       operationId: gsea.gsea_results
@@ -2843,6 +2770,7 @@ paths:
       summary: Get GSEA results.
       description: Get GSEA results for the given gene set, type, subtype, and condition combination.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -2941,7 +2869,6 @@ paths:
                         score: 
                           type: number
                           description: Value of the score.               
-
   /gseaPlot:
     get:
       operationId: gsea.gsea_plot
@@ -2951,6 +2878,7 @@ paths:
       summary: Get GSEA plot.
       description: Get GSEA plot for the given gene set, type/subtype, and condition combination.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -3005,7 +2933,6 @@ paths:
               schema:
                 type: string
                 description: Base64 encoded string containing GSEA plot
-
   /differentialExpression:
     get:
       operationId: diffExpression.get_diff_expr
@@ -3014,6 +2941,7 @@ paths:
       summary: Get differential expression results between genes.
       description: Get differential expression results for the given gene, type, subtype, and condition combination.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -3103,7 +3031,6 @@ paths:
                     lfcSE:
                       type: number
                       description: Standard Error of Log Fold Change.
-
   /differentialExpressionTranscript:
     get:
       operationId: diffExpression.get_diff_expr_transcript
@@ -3112,6 +3039,7 @@ paths:
       summary: Get differential expression results between transcripts.
       description: Get differential expression results for the given transcript, type, subtype, and condition combination.
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -3191,7 +3119,6 @@ paths:
                     lfcSE:
                       type: number
                       description: Standard Error of Log Fold Change.
-
   /stringSearch:
     get:
       operationId: externalInformation.getAutocomplete
@@ -3200,6 +3127,7 @@ paths:
       summary: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
       description: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
       parameters:
+      - $ref: '#/components/parameters/VersionParam'
       - name: searchString
         in: query
         description: Prefix of a gene name/ensg number or mirna identification

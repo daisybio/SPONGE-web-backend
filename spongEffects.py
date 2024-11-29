@@ -11,17 +11,18 @@ import sqlalchemy as sa
 import config
 import models
 
-from config import app
+from config import LATEST, db
 
 
-def get_spongEffects_run_ID(disease_name: str, level: str = "gene", sponge_db_version: int = 2):
-    # an Engine, which the Session will use for connection resources
-    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
-    # create a configured "Session" class
-    Session = sa.orm.sessionmaker(bind=some_engine)
-    # create a Session
-    session = Session()
-    query = session.execute(
+def get_spongEffects_run_ID(disease_name: str, level: str = "gene", sponge_db_version: int = LATEST):
+    """
+    :param disease_name: Disease name as string (fuzzy search)
+    :param level: One of gene/transcript
+    :param sponge_db_version: Database version (defaults to most recent version)
+    :return: spongEffects_run_ID for given disease name and level
+    """
+
+    query = db.session.execute(
         "SELECT sEr.spongEffects_run_ID from spongEffects_run_performance"
         " JOIN spongEffects_run sEr on spongEffects_run_performance.spongEffects_run_ID = sEr.spongEffects_run_ID"
         " JOIN sponge_run sr on sEr.sponge_run_ID = sr.sponge_run_ID"
@@ -33,23 +34,21 @@ def get_spongEffects_run_ID(disease_name: str, level: str = "gene", sponge_db_ve
         " ORDER BY accuracy_upper DESC"
         " LIMIT 1;"
     ).fetchall()
-    # clean up resources
-    session.close()
-    some_engine.dispose()
+
     if len(query) > 0:
         return query[0].spongEffects_run_ID
     else:
         abort(404, "No spongEffects run found for given parameters")
 
 
-def get_run_performance(disease_name: str, level: str):
+def get_run_performance(disease_name: str, level: str, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getRunPerformance
     :param disease_name: Disease name as string (fuzzy search)
     :param level: One of gene/transcript
+    :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects model performances for given disease and level
     """
-    sponge_db_version: int = 2
     spongEffects_run_ID = get_spongEffects_run_ID(disease_name, level, sponge_db_version)
     query = models.SpongEffectsRunPerformance.query \
         .join(models.SpongEffectsRun, models.SpongEffectsRun.spongEffects_run_ID == models.SpongEffectsRunPerformance.spongEffects_run_ID) \
@@ -62,7 +61,14 @@ def get_run_performance(disease_name: str, level: str):
         abort(404, 'No spongEffects model performance found for name: {disease_name}'.format(disease_name=disease_name))
 
 
-def get_run_class_performance(disease_name: str, level: str, sponge_db_version: int = 2):
+def get_run_class_performance(disease_name: str, level: str, sponge_db_version: int = LATEST):
+    """
+    API request for /spongEffects/getRunClassPerformance
+    :param disease_name: Disease name as string (fuzzy search)
+    :param level: One of gene/transcript
+    :param sponge_db_version: Database version (defaults to most recent version)
+    :return: Best spongEffects model class performances for given disease and level
+    """
     spongEffects_run_ID = get_spongEffects_run_ID(disease_name, level, sponge_db_version)
     query = models.SpongEffectsRunClassPerformance.query \
         .join(models.SpongEffectsRunPerformance,
@@ -75,13 +81,13 @@ def get_run_class_performance(disease_name: str, level: str, sponge_db_version: 
         abort(404, f'No spongEffects run class performance found for name: {disease_name}')
 
 
-def get_enrichment_score_class_distributions(disease_name: str, level: str, sponge_db_version: int = 2):
+def get_enrichment_score_class_distributions(disease_name: str, level: str, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/enrichmentScoreDistributions?disease_name={disease_name}
     Get spongEffects enrichment score distributions for a given disease_name
     :param disease_name: Name of the disease to filter for
     :param level: one of gene/transcript
-    :param sponge_db_version: Database version (defaults to most recent version 2)
+    :param sponge_db_version: Database version (defaults to most recent version)
     :return: enrichment score class distribution for all available subtypes of given disease
     """
     level = level.lower()
@@ -99,32 +105,37 @@ def get_enrichment_score_class_distributions(disease_name: str, level: str, spon
         abort(404, 'No spongEffects class enrichment score distribution data found for given parameters')
 
 
-def get_gene_modules(disease_name: str, sponge_db_version: int = 2):
+def get_gene_modules(disease_name: str, sponge_db_version: int = LATEST):
+    """
+    API request for /spongEffects/getGeneModules
+    :param disease_name: Disease name as string (fuzzy search)
+    :param sponge_db_version: Database version (defaults to most recent version)
+    :return: Best spongEffects gene modules for given disease
+    """
     # get spongEffects_run_ID
     spongEffects_run_ID = get_spongEffects_run_ID(disease_name, "gene", sponge_db_version)
-    # an Engine, which the Session will use for connection resources
-    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
-    # create a configured "Session" class
-    Session = sa.orm.sessionmaker(bind=some_engine)
-    # create a Session
-    session = Session()
     # get modules
-    query = session.execute(
+    query = db.session.execute(
         "SELECT * FROM spongEffects_gene_module as A"
         " JOIN gene g ON A.gene_ID = g.gene_ID"
         f" WHERE spongEffects_run_ID = {spongEffects_run_ID}"
         " ORDER BY mean_accuracy_decrease DESC, mean_accuracy_decrease DESC;"
     ).fetchall()
-    # clean up resources
-    session.close()
-    some_engine.dispose()
     if len(query) > 0:
         return models.SpongEffectsGeneModuleSchema(many=True).dump(query)
     else:
         abort(404, "No spongEffects modules found for given disease")
 
 
-def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = 2):
+def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
+    """
+    API request for /spongEffects/getGeneModuleMembers
+    :param disease_name: Disease name as string (fuzzy search)
+    :param ensg_number: ENSG number of gene
+    :param gene_symbol: Gene symbol
+    :param sponge_db_version: Database version (defaults to most recent version)
+    :return: spongEffects gene module members for given disease and gene identifier
+    """
     # get spongEffects_run_ID
     spongEffects_run_ID = get_spongEffects_run_ID(disease_name, "gene", sponge_db_version)
     # test if any of the two identification possibilities is given
@@ -135,12 +146,6 @@ def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_sym
         abort(404,
               "More than one identification parameter is given. Please choose one out of (ensg_number, gene symbol)")
 
-    # create search engine
-    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
-    # create a configured "Session" class
-    Session = sa.orm.sessionmaker(bind=some_engine)
-    # create a Session
-    session = Session()
     # determine search method
     if ensg_number is not None:
         search_key: str = "ensg_number"
@@ -156,7 +161,7 @@ def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_sym
     else:
         search_val = "'"+search_val+"'"
     # search DB
-    query = session.execute(
+    query = db.session.execute(
         "SELECT gA.ensg_number AS hub_ensg_number, gA.gene_symbol AS hub_gene_symbol,"
         " g.ensg_number AS member_ensg_number, g.gene_symbol as member_gene_symbol"
         " FROM spongEffects_gene_module_members as A"
@@ -165,42 +170,42 @@ def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_sym
         " JOIN gene gA on gA.gene_ID = sEgm.gene_ID"
         f" WHERE gA.{search_key} IN ({search_val}) AND spongEffects_run_ID = {spongEffects_run_ID};"
     ).fetchall()
-    # clean up resources
-    session.close()
-    some_engine.dispose()
+
     if len(query) > 0:
         return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(query)
     else:
         abort(404, "No module members found for given disease name and gene identifier")
 
 
-def get_transcript_modules(disease_name: str, sponge_db_version: int = 2):
+def get_transcript_modules(disease_name: str, sponge_db_version: int = LATEST):
     # get spongEffects_run_ID
     spongEffects_run_ID = get_spongEffects_run_ID(disease_name, "transcript", sponge_db_version)
-    # an Engine, which the Session will use for connection resources
-    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
-    # create a configured "Session" class
-    Session = sa.orm.sessionmaker(bind=some_engine)
-    # create a Session
-    session = Session()
+
     # get modules
-    query = session.execute(
+    query = db.session.execute(
         "SELECT * FROM spongEffects_transcript_module as A"
         " JOIN transcript t ON A.transcript_ID = t.transcript_ID"
         " JOIN gene g ON t.gene_ID = g.gene_ID"
         f" WHERE spongEffects_run_ID = {spongEffects_run_ID}"
         " ORDER BY mean_accuracy_decrease DESC, mean_accuracy_decrease DESC;"
     ).fetchall()
-    # clean up resources
-    session.close()
-    some_engine.dispose()
+
     if len(query) > 0:
         return models.SpongEffectsTranscriptModuleSchema(many=True).dump(query)
     else:
         abort(404, "No spongEffects modules found for given disease")
 
 
-def get_transcript_module_members(disease_name: str, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = 2):
+def get_transcript_module_members(disease_name: str, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
+    """
+    API request for /spongEffects/getTranscriptModuleMembers
+    :param disease_name: Disease name as string (fuzzy search)
+    :param enst_number: ENST number of transcript
+    :param ensg_number: ENSG number of gene
+    :param gene_symbol: Gene symbol
+    :param sponge_db_version: Database version (defaults to most recent version)
+    :return: spongEffects transcript module members for given disease and gene identifier    
+    """
     # get spongEffects_run_ID
     spongEffects_run_ID = get_spongEffects_run_ID(disease_name, "gene", sponge_db_version)
     # test if any of the two identification possibilities is given
@@ -255,6 +260,12 @@ def get_transcript_module_members(disease_name: str, enst_number: str = None, en
         abort(404, "No module members found for given disease name and gene identifier")
 
 def generate_random_filename(length=12, extension=None):
+    """
+    Generate a random filename
+    :param length: Length of the random string
+    :param extension: Optional file extension
+    :return: Random filename    
+    """
     # Define characters to use for generating the random filename
     characters = string.ascii_letters + string.digits
     # Generate a random string of the specified length
@@ -326,7 +337,6 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
         abort(500, e)
 
 
-@app.route('/spongEffects/predictCancerType', methods=['GET', 'POST'])
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
@@ -340,7 +350,7 @@ def upload_file():
     if uploaded_file.filename == '':
         abort(404, "File upload failed")
     # create tmp upload file
-    tempfile.tempdir = app.config["UPLOAD_FOLDER"]
+    tempfile.tempdir = config.UPLOAD_DIR
     tmp_file = tempfile.NamedTemporaryFile(prefix="upload_", suffix=".txt")
     # save file to uploads folder
     uploaded_file.save(tmp_file.name)

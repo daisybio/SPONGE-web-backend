@@ -56,15 +56,9 @@ paths:
                   disease_subtype:
                     type: string
                     description: Subtype of specific cancer type (NA if no relevant subtype is present)
-                  study_abbreviation:
-                    type: string
-                    description: Study abbreviation
-                  version:
+                  sponge_db_version:
                     type: integer
                     description: SPONGEdb version used
-                  number_of_samples:
-                    type: integer
-                    description: Number of samples per disease
   /dataset:
     get:
       operationId: dataset.read
@@ -90,10 +84,10 @@ paths:
                 properties:
                   dataset_ID:
                     type: integer
-                    description: Internal databse ID of the cancer type/dataset.
+                    description: Internal database ID of the cancer type/dataset.
                   disease_name:
                     type: string
-                    description: Name of the camcer type/dataset.
+                    description: Name of the cancer type/dataset.
                   data_origin:
                     type: string
                     description: Cancer type/dataset origin (database name, etc.).
@@ -103,6 +97,12 @@ paths:
                   download_url:
                     type: string
                     description: URL to cancer type/dataset annotation.
+                  disease_subtype:
+                    type: string
+                    description: Subtype of specific cancer type (NA if no relevant subtype is present)
+                  sponge_db_version:
+                    type: integer
+                    description: SPONGEdb version used
   /dataset/spongeRunInformation:
     get:
       operationId: dataset.read_spongeRunInformation
@@ -2065,7 +2065,7 @@ paths:
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+          required: true
         schema:
           type: string
       - name: ensg_number

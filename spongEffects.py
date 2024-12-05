@@ -107,7 +107,7 @@ def get_enrichment_score_class_distributions(disease_name: str, level: str, spon
 
 def get_gene_modules(disease_name: str, sponge_db_version: int = LATEST):
     """
-    API request for /spongEffects/getGeneModules
+    API request for /spongEffects/getSpongEffectsGeneModules
     :param disease_name: Disease name as string (fuzzy search)
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects gene modules for given disease

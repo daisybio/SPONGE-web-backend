@@ -532,7 +532,7 @@ paths:
                     p_value:
                       type: number
                       description: FDR adjusted p-value of the corresponding ceRNA interaction.
-                    run:
+                    sponge_run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:
@@ -548,6 +548,271 @@ paths:
                             disease_name:
                                 type: string
                                 description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_Id
+                            - disease_name
+                        sponge_run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - sponge_run_ID
+  /ceRNAInteraction/findAllTranscripts:
+    get:
+      operationId: transcriptInteraction.read_all_transcripts
+      tags:
+        - ceRNANetwork
+      summary: Get all ceRNA interactions the transcript(s) of interest is/are involed in.
+      description: Get all ceRNA interactions by given identifications (enst_number or transcript_type), specific cancer type/dataset or different filter possibilities according different statistical values (e.g. FDR adjusted p-value).
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: false
+          schema:
+            type: string
+        - name: enst_number
+          in: query
+          description: A comma-separated list of enst number(s) of interest (e.g. ENST00000369985).
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: transcript_type
+          in: query
+          description: Defines the type of transcripts of interest (only one possibility choosable).
+          required: false
+          schema:
+            type: string
+            enum:
+              - 3prime_overlapping_ncRNA
+              - antisense
+              - antisense_RNA
+              - bidirectional_promoter_lncRNA
+              - IG_C_gene
+              - IG_C_pseudogene
+              - IG_V_gene
+              - IG_V_pseudogene
+              - lincRNA
+              - macro_lncRNA
+              - miRNA
+              - misc_RNA
+              - Mt_rRNA
+              - polymorphic_pseudogene
+              - processed_pseudogene
+              - processed_transcript
+              - protein_coding
+              - pseudogene
+              - ribozyme
+              - rRNA
+              - rRNA_pseudogene
+              - scaRNA
+              - scRNA
+              - sense_intronic
+              - sense_overlapping
+              - snoRNA
+              - snRNA
+              - TEC
+              - TR_C_gene
+              - TR_V_gene
+              - TR_V_pseudogene
+              - transcribed_processed_pseudogene
+              - transcribed_unitary_pseudogene
+              - transcribed_unprocessed_pseudogene
+              - translated_processed_pseudogene
+              - unitary_pseudogene
+              - unprocessed_pseudogene
+              - vaultRNA
+        - name: pValue
+          in: query
+          required: false
+          description: Threshold of the FDR adjusted p-value. Default is 0.05.
+          schema:
+            type: number
+            default: 0.05
+        - name: pValueDirection
+          in: query
+          required: false
+          description: Direction of the FDR adjusted p-value threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: mscor
+          in: query
+          required: false
+          description: Threshold of the 'multiple sensitivity correlation' (mscor).
+          schema:
+            type: number
+        - name: mscorDirection
+          in: query
+          required: false
+          description: Direction of the mscor threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: correlation
+          in: query
+          required: false
+          description: Threshold of the correlation.
+          schema:
+            type: number
+        - name: correlationDirection
+          in: query
+          required: false
+          description: Direction of the correlation threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: sorting
+          in: query
+          required: false
+          description: Possibilities for sorting of the results.
+          schema:
+            type: string
+            enum:
+              - pValue
+              - mscor
+              - correlation
+        - name: descending
+          in: query
+          required: false
+          description: Descending (true) or ascending (false) ordering of the results.
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+        - name: information
+          in: query
+          description: All available information about genes displayed (true) or just enst number (false).
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Read all ceRNA interactions where transcript of interesest in
+            the searched disease (if provided) is involved in
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    correlation:
+                      type: number
+                      description: Correlation of the corresponding ceRNA interaction.
+                    transcript1:
+                      type: object
+                      description: One of the two interacting ceRNAs.
+                      properties:
+                        gene:
+                          type: object
+                          description: gene the transcript belongs to
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                            description:
+                              type: string
+                              description: Anntotation from Ensemble of the gene.
+                        end_pos:
+                          type: integer
+                          description: Endposition of the trancript.
+                        enst_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        transcript_type:
+                          type: string
+                          description: The transcript type includes both status (e.g. known) and biotype (e.g. protein coding).
+                        start_pos:
+                          type: integer
+                          description: Starting position of the gene.
+                        canonical_transcript:
+                          type: integer
+                          description: Is a canonical transcript
+                    transcript2:
+                      type: object
+                      description: The other part of the ceRNA interaction.
+                      properties:
+                        gene:
+                          type: object
+                          description: gene the transcript belongs to
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                            description:
+                              type: string
+                              description: Anntotation from Ensemble of the gene.
+                        end_pos:
+                          type: integer
+                          description: Endposition of the trancript.
+                        enst_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        transcript_type:
+                          type: string
+                          description: The transcript type includes both status (e.g. known) and biotype (e.g. protein coding).
+                        start_pos:
+                          type: integer
+                          description: Starting position of the gene.
+                        canonical_transcript:
+                          type: integer
+                          description: Is a canonical transcript
+                    mscor:
+                      type: number
+                      description: Multiple senstivity correlation (mscor) of the corresponding ceRNA interaction.
+                    p_value:
+                      type: number
+                      description: FDR adjusted p-value of the corresponding ceRNA interaction.
+                    sponge_run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
                           required:
                             - dataset_Id
                             - disease_name
@@ -663,6 +928,169 @@ paths:
                             disease_name:
                                 type: string
                                 description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        sponge_run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - sponge_run_ID
+  /ceRNAInteraction/findSpecificTranscripts:
+    get:
+      operationId: transcriptInteraction.read_specific_interaction
+      tags:
+        - ceRNANetwork
+      summary: Get all interactions between the given identifiers (enst_number).
+      description: Get all interactions between the given identifiers (enst_number).
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: false
+          schema:
+            type: string
+        - name: enst_number
+          in: query
+          description: A comma-separated list of enst number(s) of the transcripts(s) of interest(e.g. ENST00000259090)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: pValue
+          in: query
+          required: false
+          description: Threshold of the FDR adjusted p-value. Default is 0.05.
+          schema:
+            type: number
+            default: 0.05
+        - name: pValueDirection
+          in: query
+          required: false
+          description: Direction of the FDR adjusted p-value threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Get all interactions between the given identifiers (ensg_number or gene_symbol) - if existing.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    correlation:
+                      type: number
+                      description: Correlation of the corresponding ceRNA interaction.
+                    transcript1:
+                      type: object
+                      description: One of the two interacting ceRNAs.
+                      properties:
+                        gene:
+                          type: object
+                          description: gene the transcript belongs to
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                            description:
+                              type: string
+                              description: Anntotation from Ensemble of the gene.
+                        end_pos:
+                          type: integer
+                          description: Endposition of the trancript.
+                        enst_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        transcript_type:
+                          type: string
+                          description: The transcript type includes both status (e.g. known) and biotype (e.g. protein coding).
+                        start_pos:
+                          type: integer
+                          description: Starting position of the gene.
+                        canonical_transcript:
+                          type: integer
+                          description: Is a canonical transcript
+                    transcript2:
+                      type: object
+                      description: The other part of the ceRNA interaction.
+                      properties:
+                        gene:
+                          type: object
+                          description: gene the transcript belongs to
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                            description:
+                              type: string
+                              description: Anntotation from Ensemble of the gene.
+                        end_pos:
+                          type: integer
+                          description: Endposition of the trancript.
+                        enst_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        transcript_type:
+                          type: string
+                          description: The transcript type includes both status (e.g. known) and biotype (e.g. protein coding).
+                        start_pos:
+                          type: integer
+                          description: Starting position of the gene.
+                        canonical_transcript:
+                          type: integer
+                          description: Is a canonical transcript
+                    mscor:
+                      type: number
+                      description: Multiple senstivity correlation (mscor) of the corresponding ceRNA interaction.
+                    p_value:
+                      type: number
+                      description: FDR adjusted p-value of the corresponding ceRNA interaction.
+                    sponge_run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
                           required:
                             - dataset_ID
                             - disease_name
@@ -832,7 +1260,188 @@ paths:
                     node_degree:
                       type: number
                       description: Degree of the corresponding gene (considered as node) in the specific network.
-                    run:
+                    sponge_run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        sponge_run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - sponge_run_ID
+  /findceRNATranscripts:
+    get:
+      operationId: transcriptInteraction.read_all_transcript_network_analysis
+      tags:
+        - ceRNANetwork
+      summary: Get all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
+      description: Get all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: true
+          schema:
+            type: string
+        - name: enst_number
+          in: query
+          description: A comma-separated list of enst number(s) of the gene(s) of interest
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: transcript_type
+          in: query
+          description: Defines the type of transcript of interest (only one possibility choosable).
+          required: false
+          schema:
+            type: string
+            enum:
+              - 3prime_overlapping_ncRNA
+              - antisense
+              - antisense_RNA
+              - bidirectional_promoter_lncRNA
+              - IG_C_gene
+              - IG_C_pseudogene
+              - IG_V_gene
+              - IG_V_pseudogene
+              - lincRNA
+              - macro_lncRNA
+              - miRNA
+              - misc_RNA
+              - Mt_rRNA
+              - polymorphic_pseudogene
+              - processed_pseudogene
+              - processed_transcript
+              - protein_coding
+              - pseudogene
+              - ribozyme
+              - rRNA
+              - rRNA_pseudogene
+              - scaRNA
+              - scRNA
+              - sense_intronic
+              - sense_overlapping
+              - snoRNA
+              - snRNA
+              - TEC
+              - TR_C_gene
+              - TR_V_gene
+              - TR_V_pseudogene
+              - transcribed_processed_pseudogene
+              - transcribed_unitary_pseudogene
+              - transcribed_unprocessed_pseudogene
+              - translated_processed_pseudogene
+              - unitary_pseudogene
+              - unprocessed_pseudogene
+              - vaultRNA
+        - name: minBetweenness
+          in: query
+          description: Threshold of the betweenness.
+          required: false
+          schema:
+            type: number
+        - name: minNodeDegree
+          in: query
+          description: Threshold of the degree.
+          required: false
+          schema:
+            type: number
+        - name: minEigenvector
+          in: query
+          description: Threshold of the eigenvektor.
+          required: false
+          schema:
+            type: number
+        - name: sorting
+          in: query
+          required: false
+          description: Possibilities for sorting of the results.
+          schema:
+            type: string
+            enum:
+              - betweenness
+              - degree
+              - eigenvector
+        - name: descending
+          in: query
+          required: false
+          description: Descending (true) or ascending (false) ordering of the results.
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Read all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    betweenness:
+                      type: number
+                      description: Betweenness of the corresponding transcript (considered as node) in the specific network.
+                    eigenvector:
+                      type: number
+                      description: Eigenvector of the corresponding transcript (considered as node) in the specific network.
+                    transcript:
+                      type: object
+                      description: Information about the transcript that satisfies all filters.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Enst number of the transcript.
+                        gene:
+                          type: object
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene that the transcript is part of
+                            gene_symbol:
+                              type: string
+                              description: Symbol of the gene that the transcript is part of
+                      required:
+                        - enst_number
+                    node_degree:
+                      type: number
+                      description: Degree of the corresponding transcript (considered as node) in the specific network.
+                    sponge_run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:
@@ -945,6 +1554,66 @@ paths:
                       type: string
                     count_sign:
                       description: Number of times gene is involved in significant (p.adj < 0.05) interactions of the netwrk.
+                      type: string
+  /getTranscriptCount:
+    get:
+      operationId: transcriptInteraction.getTranscriptCounts
+      tags:
+        - ceRNANetwork
+      summary: Get the number of times a transcript of interest is involved in the complete network or just significant interactions.
+      description: Get the number of times a transcript of interest is involved in the complete network or just significant interactions.
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: false
+          schema:
+            type: string
+        - name: enst_number
+          in: query
+          description: A comma-separated list of enst number(s) of the transcript(s) of interest.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: minCountAll
+          in: query
+          description: Defines the minimal number of times a gene has to be involved in the complete network (e.g. the degree of the corresponding node must be greater than minCountAll).
+          required: false
+          schema:
+            type: integer
+        - name: minCountSign
+          in: query
+          description: Defines the minimal number of times a gene has to be involved in significant (p.adj < 0.05) interactions in the network.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Get the number of times a gene of interest is involved in the complete network or just significant interactions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    transcript:
+                      type: object
+                      description: A transcript.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Enst from Ensemble number of the transcript.
+                    count_all:
+                      description: Number of times the transcript is involved in the complete network (equals to degree).
+                      type: string
+                    count_sign:
+                      description: Number of times the transcript is involved in significant (p.adj < 0.05) interactions of the netwrk.
                       type: string
   /miRNAInteraction/findSpecific:
     get:
@@ -1272,6 +1941,93 @@ paths:
                         - ensg_number
                         - gene_symbol
                     run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: string
+                          description: Name of the cancer type/dataset.
+                        sponge_run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - sponge_run_ID
+                    mirna:
+                      type: object
+                      description: Information about the miRNA(s) of interest - source is miRBase
+                      properties:
+                        hs_nr:
+                          type: string
+                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
+                        mir_ID:
+                          type: string
+                          description: The accession number is the only truly stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear.
+                      required:
+                        - hs_nr
+                        - mir_ID
+  /miRNAInteraction/findceRNATranscripts:
+    get:
+      operationId: transcriptInteraction.read_mirna_for_specific_interaction
+      tags:
+        - ceRNANetwork
+      description: Get all miRNAs that contribute to all interactions between the given identifiers (enst_number).
+      summary: Get all miRNAs that contribute to all interactions between the given identifiers (enst_number).
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: true
+          schema:
+            type: string
+        - name: enst_number
+          in: query
+          description: A comma-separated list of enst number(s) of the transcript(s) of interest(e.g. ENST00000225538, ENST00000245907).
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: between
+          in: query
+          description: If false, all interactions where one of the interaction partners fits the given genes of interestwill be considered.If true, just interactions between the genes of interest will be considered.
+          required: true
+          schema:
+            type: boolean
+            default: true
+      responses:
+        "200":
+          description: Returns all interactions between the given identifications (ensg_number or gene_symbol)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    transcript:
+                      type: object
+                      description: Transcript of interest.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Ensg from Ensemble number of the gene.
+                        gene:
+                          type: object
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene that the transcript is part of
+                            gene_symbol:
+                              type: string
+                              description: Symbol of the gene that the transcript is part of
+                      required:
+                        - enst_number
+                    sponge_run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:
@@ -3119,30 +3875,3 @@ paths:
                     lfcSE:
                       type: number
                       description: Standard Error of Log Fold Change.
-  /stringSearch:
-    get:
-      operationId: externalInformation.getAutocomplete
-      tags:
-      - ExternalInformation
-      summary: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
-      description: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
-      parameters:
-      - $ref: '#/components/parameters/VersionParam'
-      - name: searchString
-        in: query
-        description: Prefix of a gene name/ensg number or mirna identification
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: Retrieve all possible matchings
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  properties:
-                    autocompleteSuggestion:
-                      type: string
-                      description: Possible autocompletion for the searchString

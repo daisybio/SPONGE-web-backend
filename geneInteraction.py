@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import os
 from flask import abort
-from sqlalchemy import desc
+from sqlalchemy import desc, or_, and_
 from sqlalchemy.sql import text
 import models
 from config import LATEST, db
@@ -50,7 +50,7 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = run.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+        run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
     
     run = run.all()
@@ -130,6 +130,7 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
                 sort.append(models.GeneInteraction.correlation.asc())
 
     # interaction_result = []
+
     interaction_result = models.GeneInteraction.query \
         .filter(*queries_1) \
         .order_by(*sort) \
@@ -209,7 +210,7 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = run.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+        run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .filter(models.SpongeRun.sponge_db_version == sponge_db_version) \
             
@@ -274,7 +275,7 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
 
     # if specific disease_name is given (should be because for this endpoint is it required):
     if disease_name is not None:
-        run = run.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+        run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
         
     run = run.all()
@@ -466,7 +467,7 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = run.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+        run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
     
     run = run.all()
@@ -571,7 +572,7 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = run.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+        run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
         
     run = run.all()

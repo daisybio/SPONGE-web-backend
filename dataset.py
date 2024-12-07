@@ -14,13 +14,14 @@ def get_datasets(data_origin=None, sponge_db_version: int = LATEST):
     """
     if data_origin is None:
         # Create the list of people from our data
-        data = models.Dataset.query \
-            .all()
+        query = models.Dataset.query
     else:
         # Get the dataset requested
-        data = models.Dataset.query \
-            .filter(models.Dataset.data_origin.like("%" + data_origin + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version) \
+        query = models.Dataset.query \
+            .filter(models.Dataset.data_origin.like("%" + data_origin + "%"))
+    
+    # filter for db version 
+    data = query.filter(models.Dataset.sponge_db_version == sponge_db_version) \
             .all()
 
     # Did we find a source?
@@ -42,13 +43,14 @@ def read(disease_name=None, sponge_db_version: int = LATEST):
 
     if disease_name is None:
         # Create the list of people from our data
-        data = models.Dataset.query \
-            .all()
+        query = models.Dataset.query 
     else:
         # Get the dataset requested
-        data = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version) \
+        query = models.Dataset.query \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+    
+    # filter for db version
+    data = query.filter(models.Dataset.sponge_db_version == sponge_db_version) \
             .all()
 
     # Did we find a dataset?

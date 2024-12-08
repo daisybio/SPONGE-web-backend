@@ -361,7 +361,6 @@ class SpongEffectsRun(db.Model):
     method = db.Column(db.String(32))
     cv_folds = db.Column(db.Integer)
     level = db.Column(db.String(32))
-    methods = db.Column(db.String(32))
 
 class SpongEffectsRunPerformance(db.Model):
     __tablename__ = "spongEffects_run_performance"

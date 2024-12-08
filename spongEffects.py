@@ -360,3 +360,52 @@ def upload_file():
     return jsonify(run_spongEffects(tmp_file.name, tmp_out_file.name, run_parameters,
                                     log=apply_log_scale, subtype_level=predict_subtypes))
 
+
+def get_spongeffects_runs(dataset_id: str = None, disease_name: str = None, include_empty_spongeffects: bool = False, sponge_db_version: int = LATEST):
+    """
+    API request for /spongEffects/getSpongEffectsRun
+    :param dataset_id: Dataset ID as string
+    :param disease_name: Disease name as string (fuzzy search)
+    :param include_empty: Include datasets/sponge runs without spongEffects runs
+    :return: spongEffects runs for given disease and disease information
+    """
+
+    # Construct the query using db.select
+    query = db.select(
+        models.SpongeRun,
+        models.SpongEffectsRun,
+        models.Dataset
+    ).join(
+        models.SpongEffectsRun, models.SpongeRun.sponge_run_ID == models.SpongEffectsRun.sponge_run_ID, isouter=True
+    ).join(
+        models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID, isouter=True
+    )
+
+    if disease_name is not None:
+        query = query.where(models.Dataset.disease_name.like(f"%{disease_name}%"))
+
+    if sponge_db_version is not None:
+        query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
+
+    # Execute the query
+    result = db.session.execute(query)
+
+    # Fetch results as a list of rows
+    data = result.fetchall()
+
+    # Did we find a dataset?
+    if len(data) > 0:
+        # Serialize the data for the response
+        combined_data = []
+        for sponge_run, sponge_effects_run, dataset in data:
+            if sponge_effects_run is None and not include_empty_spongeffects:
+                continue
+            # append all attributes but not the nested ones. Add all keys, use None values for missing attributes.
+            combined_data.append({
+                **{x: y for x,y in models.DatasetSchema().dump(dataset or models.Dataset()).items() if type(y) is not dict},
+                **{x: y for x,y in models.SpongEffectsRunSchema(exclude=['sponge_run']).dump(sponge_effects_run or models.SpongEffectsRun()).items() if type(y) is not dict},
+                **{x: y for x,y in models.SpongeRunSchema(exclude=['dataset']).dump(sponge_run or models.SpongeRun()).items() if type(y) is not dict}
+            })
+        return jsonify(combined_data)
+    else:
+        abort(404, 'No spongEffects run found for name: {disease_name}'.format(disease_name=disease_name))

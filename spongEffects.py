@@ -28,7 +28,7 @@ def get_spongEffects_run_ID(disease_name: str, level: str = "gene", sponge_db_ve
         " JOIN sponge_run sr on sEr.sponge_run_ID = sr.sponge_run_ID"
         " JOIN dataset d on sr.dataset_ID = d.dataset_ID"
         f" WHERE d.disease_name LIKE '%{disease_name}%'"
-        f" AND d.version = {sponge_db_version}"
+        f" AND d.sponge_db_version = {sponge_db_version}"
         f" AND level = '{level}'"
         " AND split_type = 'train'"
         " ORDER BY accuracy_upper DESC"
@@ -361,7 +361,7 @@ def upload_file():
                                     log=apply_log_scale, subtype_level=predict_subtypes))
 
 
-def get_spongeffects_runs(dataset_id: str = None, disease_name: str = None, include_empty_spongeffects: bool = False, sponge_db_version: int = LATEST):
+def get_spongeffects_runs(dataset_ID: str = None, disease_name: str = None, include_empty_spongeffects: bool = False, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsRun
     :param dataset_id: Dataset ID as string

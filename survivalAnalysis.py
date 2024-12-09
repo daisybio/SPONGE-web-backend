@@ -23,7 +23,7 @@ def get_patient_information(disease_name=None, sample_ID=None, sponge_db_version
     #    abort(404, "No samples found for given IDs)")
 
     # filter for database version 
-    query = models.Dataset.query.filter(models.Dataset.version == sponge_db_version)
+    query = models.Dataset.query.filter(models.Dataset.sponge_db_version == sponge_db_version)
 
     # save all needed queries to get correct results
     queries = []
@@ -102,7 +102,7 @@ def get_survival_rate(disease_name, ensg_number = None, gene_symbol = None, samp
             abort(404, "No samples found for given IDs)")
 
     # filter for database version
-    dataset_query = models.Dataset.query.filter(models.Dataset.version == sponge_db_version)
+    dataset_query = models.Dataset.query.filter(models.Dataset.sponge_db_version == sponge_db_version)
 
     # if specific disease_name is given:
     if disease_name is not None:
@@ -162,7 +162,7 @@ def get_survival_pValue(disease_name, ensg_number = None, gene_symbol = None, sp
         abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
 
     # filter for database version
-    dataset_query = models.Dataset.query.filter(models.Dataset.version == sponge_db_version)
+    dataset_query = models.Dataset.query.filter(models.Dataset.sponge_db_version == sponge_db_version)
 
     # if specific disease_name is given:
     if disease_name is not None:

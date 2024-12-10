@@ -3,7 +3,35 @@ import models
 from config import LATEST, db
 
 
-def get_datasets(dataset_id: str = None, disease_name: str = None, data_origin=None, sponge_db_version: int = LATEST):
+def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
+    
+    if query is None: 
+        query = db.select(models.Dataset)
+    for key, value in kwargs.items():
+        if type(value) == str:
+            query = query.where(getattr(models.Dataset, key).like("%" + value + "%"))
+        elif type(value) == int:
+            query = query.where(getattr(models.Dataset, key) == value)
+        elif type(value) == list:
+            query = query.where(getattr(models.Dataset, key).in_(value))
+        elif value is None:
+            if key == 'disease_subtype':
+                query = query.where(models.Dataset.disease_subtype.is_(None))
+            else: 
+                continue
+        else:
+            abort(404, "Unknown input type")
+
+    query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
+    data = db.session.execute(query).scalars().all()
+
+    if len(data) == 0:
+        abort(404, "No dataset found for given inputs")
+        
+    return data
+
+
+def get_datasets(dataset_ID: int = None, disease_name: str = None, data_origin=None, sponge_db_version: int = LATEST):
     """
         This function responds to a request for /sponge/datasets?data_origin={data_origin}&sponge_db_version={version}
         with one matching entry to the specified data_origin
@@ -17,18 +45,7 @@ def get_datasets(dataset_id: str = None, disease_name: str = None, data_origin=N
     # Query dataset table
     query = db.select(models.Dataset)
 
-    # Filter if provided
-    if dataset_id is not None:
-        query = query.where(models.Dataset.dataset_ID == dataset_id)
-    if disease_name is not None:
-        query = query.where(models.Dataset.disease_name.like("%" + disease_name + "%"))
-    if data_origin is not None:
-        query = query.where(models.Dataset.data_origin.like("%" + data_origin + "%"))
-
-    # filter for db version 
-    query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
-
-    data = db.session.execute(query).scalars().all()
+    data = _dataset_query(query, sponge_db_version, dataset_ID=dataset_ID, disease_name=disease_name, data_origin=data_origin)
 
     # Did we find a source?
     if len(data) > 0:
@@ -68,9 +85,9 @@ def get_datasets(dataset_id: str = None, disease_name: str = None, data_origin=N
 #         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
 
 
-def read_spongeRunInformation(disease_name=None, sponge_db_version: int = LATEST):
+def read_spongeRunInformation(dataset_ID: int = None, disease_name: str = None, sponge_db_version: int = LATEST):
     """
-    This function responds to a request for /sponge/spongeRunInformation/?disease_name={disease_name}&version={version}
+    This function responds to a request for /sponge/dataset/spongeRunInformation/?disease_name={disease_name}&sponge_db_version={sponge_db_version}
     with a matching entry to the specifed diesease_name
 
     :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)
@@ -78,11 +95,9 @@ def read_spongeRunInformation(disease_name=None, sponge_db_version: int = LATEST
     :return: all available runs + information for disease of interest
     """
 
-    data = models.SpongeRun.query \
-        .join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID) \
-        .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-        .filter(models.Dataset.sponge_db_version == sponge_db_version) \
-        .all()
+    query = db.select(models.SpongeRun).join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID)
+ 
+    data = _dataset_query(query, sponge_db_version, dataset_ID=dataset_ID, disease_name=disease_name)
 
     if len(data) > 0:
         # Serialize the data for the response

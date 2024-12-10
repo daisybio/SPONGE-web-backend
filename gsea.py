@@ -5,11 +5,73 @@ import base64
 import io 
 import matplotlib.pyplot as plt
 from config import LATEST
+from dataset import _dataset_query
 
 plt.switch_backend('agg')
 
-def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, sponge_db_version: int = LATEST):
+
+def _comparison_query(dataset_1, dataset_2, condition_1=None, condition_2=None):
+
+    # old:
+    # reverse = False
+    # if condition_1 is not None and condition_2 is not None:
+    #     comparison = models.Comparison.query \
+    #         .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
+    #         .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
+    #         .filter(models.Comparison.condition_1 == condition_1) \
+    #         .filter(models.Comparison.condition_2 == condition_2) \
+    #         .filter(models.Comparison.gene_transcript == "gene") \
+    #         .all()
+
+    #     if len(comparison) == 0:
+    #         comparison = models.Comparison.query \
+    #             .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
+    #             .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
+    #             .filter(models.Comparison.condition_1 == condition_2) \
+    #             .filter(models.Comparison.condition_2 == condition_1) \
+    #             .filter(models.Comparison.gene_transcript == "gene") \
+    #             .all()
+    #         reverse = True
+    #         if len(comparison) == 0:
+    #             abort(404, "No comparison found for given inputs")
+    # else:
+    #     abort(404, "Condition missing")
+
+    # new: 
+    reverse = False
+    comparison = models.Comparison.query \
+    .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
+    .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
+    .filter(models.Comparison.gene_transcript == "gene") 
+
+    # filter conditions
+    if condition_1 is not None:
+        comparison = comparison.filter(models.Comparison.condition_1 == condition_1)
+    if condition_2 is not None:
+        comparison = comparison.filter(models.Comparison.condition_2 == condition_2)
+    
+    comparison = comparison.all()
+
+    # check if comparison is named differently 
+    if len(comparison) == 0:
+        reverse = True
+        comparison = models.Comparison.query \
+            .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
+            .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
+            .filter(models.Comparison.gene_transcript == "gene") 
+        
+    if len(comparison) == 0:
+        abort(404, "No comparison found for given inputs")
+
+    return comparison.all(), reverse
+        
+
+def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int = None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, sponge_db_version: int = LATEST):
     """
+    This function responds to a request for /gseaSets
+    and returns all gene sets for which GSEA results are available for the given type, subtype and condition combination.
+    :param dataset_ID_1: dataset ID of the first part of comparison (alternatively, disease_name_1 can be used)
+    :param dataset_ID_2: dataset ID of the second part of comparison (alternatively, disease_name_2 can be used)
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
     :param disease_subtype_1: subtype of first part of comparison, overtype if none is provided (e.g. LMS) 
@@ -20,75 +82,29 @@ def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
     :return: gene sets with significant terms for the selected comparison
     """
 
-    queries = []
+    # check inputs
+    if dataset_ID_1 is None and disease_name_1 is None:
+        abort(404, "No dataset_ID_1 or disease_name_1 given")
+    if dataset_ID_2 is None and disease_name_2 is None:
+        abort(404, "No dataset_ID_2 or disease_name_2 given")
 
-    if disease_name_1 is not None:
-        dataset_1 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_1.lower() + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version)
+    # filter datasets
+    dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
+    dataset_2 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_2, disease_name=disease_name_2, disease_subtype=disease_subtype_2)
 
-        if disease_subtype_1 is None:
-            dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
-        else:
-            dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.like("%" + disease_subtype_1 + "%"))
+    # extract ids
+    dataset_1 = [x.dataset_ID for x in dataset_1]
+    dataset_2 = [x.dataset_ID for x in dataset_2]
 
-        dataset_1 = dataset_1.all()
-
-        dataset_1 = [x.dataset_ID for x in dataset_1]
-
-        print("Dataset: ", models.Dataset)
-
-        if len(dataset_1) == 0:
-            abort(404, f"No dataset with disease_name_1 {disease_name_1} and disease_subtype_1 {disease_subtype_1} found")
-    else:
-        abort(404, "No disease_name_1 given")
-
-    if disease_name_2 is not None:
-        dataset_2 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version)
-
-        if disease_subtype_2 is None:
-            dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))
-        else:
-            dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.like("%" + disease_subtype_2 + "%"))
-
-        dataset_2 = dataset_2.all()
-
-        dataset_2 = [x.dataset_ID for x in dataset_2]
-
-        if len(dataset_2) == 0:
-            abort(404, f"No dataset with disease_name_2 {disease_name_2} and disease_subtype_2 {disease_subtype_2} found")
-    else:
-        abort(404, "No disease_name_2 found")
-
-    if condition_1 is not None and condition_2 is not None:
-        comparison = models.Comparison.query \
-            .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
-            .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
-            .filter(models.Comparison.condition_1 == condition_1) \
-            .filter(models.Comparison.condition_2 == condition_2) \
-            .filter(models.Comparison.gene_transcript == "gene") \
-            .all()
-
-        if len(comparison) == 0:
-            comparison = models.Comparison.query \
-                .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
-                .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
-                .filter(models.Comparison.condition_1 == condition_2) \
-                .filter(models.Comparison.condition_2 == condition_1) \
-                .filter(models.Comparison.gene_transcript == "gene") \
-                .all()
-            if len(comparison) == 0:
-                abort(404, "No comparison found for given inputs")
-    else:
-        abort(404, "Condition missing")
-
+    # get comparisons
+    comparison, _ = _comparison_query(dataset_1, dataset_2, condition_1, condition_2)
+    if len(comparison) > 1:
+        Warning("Multiple comparisons found, using the first one.")
     comparison_ID = comparison[0].comparison_ID
 
     result = models.Gsea.query \
         .filter(models.Gsea.comparison_ID == comparison_ID) \
-        .all()
+        .all()    
                             
     if len(result) > 0:
         return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaSetSchema(many=True).dump(result))] 
@@ -97,8 +113,12 @@ def gsea_sets(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
 
 
 
-def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, sponge_db_version: int = LATEST):
+def gsea_terms(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, sponge_db_version: int = LATEST):
     """
+    This function responds to a request for /gseaTerms
+    and returns all terms for which GSEA results are available for the given gene set, type/subtype, and condition combination.
+    :param dataset_ID_1: dataset ID of the first part of comparison (alternatively, disease_name_1 can be used)
+    :param dataset_ID_2: dataset ID of the second part of comparison (alternatively, disease_name_2 can be used)
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
     :param disease_subtype_1: subtype of first part of comparison, overtype if none is provided (e.g. LMS) 
@@ -110,67 +130,24 @@ def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None,
     :return: names of the significantly enriched terms present in the gene set for the selected comparison
     """
 
+    # check inputs
+    if dataset_ID_1 is None and disease_name_1 is None:
+        abort(404, "No dataset_ID_1 or disease_name_1 given")
+    if dataset_ID_2 is None and disease_name_2 is None:
+        abort(404, "No dataset_ID_2 or disease_name_2 given")
 
-    if disease_name_1 is not None:
-        dataset_1 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version) 
+    # filter datasets
+    dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
+    dataset_2 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_2, disease_name=disease_name_2, disease_subtype=disease_subtype_2)
 
-        if disease_subtype_1 is None:
-            dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
-        else:
-            dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.like("%" + disease_subtype_1 + "%"))
+    # extract ids
+    dataset_1 = [x.dataset_ID for x in dataset_1]
+    dataset_2 = [x.dataset_ID for x in dataset_2]
 
-        dataset_1 = dataset_1.all()
-
-        dataset_1 = [x.dataset_ID for x in dataset_1]
-
-        if len(dataset_1) == 0:
-            abort(404, f"No dataset with disease_name_1 {disease_name_1} and disease_subtype_1 {disease_subtype_1} found")
-    else:
-        abort(404, "No disease_name_1 given")
-
-    if disease_name_2 is not None:
-        dataset_2 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version)
-
-        if disease_subtype_2 is None:
-            dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))
-        else:
-            dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.like("%" + disease_subtype_2 + "%"))
-
-        dataset_2 = dataset_2.all()
-
-        dataset_2 = [x.dataset_ID for x in dataset_2]
-
-        if len(dataset_2) == 0:
-            abort(404, f"No dataset with disease_name_2 {disease_name_2} and disease_subtype_2 {disease_subtype_2} found")
-    else:
-        abort(404, "No disease_name_2 found")
-
-    if condition_1 is not None and condition_2 is not None:
-        comparison = models.Comparison.query \
-            .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
-            .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
-            .filter(models.Comparison.condition_1 == condition_1) \
-            .filter(models.Comparison.condition_2 == condition_2) \
-            .filter(models.Comparison.gene_transcript == "gene") \
-            .all()
-
-        if len(comparison) == 0:
-            comparison = models.Comparison.query \
-                .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
-                .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
-                .filter(models.Comparison.condition_1 == condition_2) \
-                .filter(models.Comparison.condition_2 == condition_1) \
-                .filter(models.Comparison.gene_transcript == "gene") \
-                .all()
-            if len(comparison) == 0:
-                abort(404, "No comparison found for given inputs")
-    else:
-        abort(404, "Condition missing")
-
+    # get comparisons
+    comparison, _ = _comparison_query(dataset_1, dataset_2, condition_1, condition_2)
+    if len(comparison) > 1:
+        Warning("Multiple comparisons found, using the first one.")
     comparison_ID = comparison[0].comparison_ID
 
     result = models.Gsea.query \
@@ -184,8 +161,12 @@ def gsea_terms(disease_name_1=None, disease_name_2=None, disease_subtype_1=None,
         abort(404, "No data found.")
 
 
-def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, term=None, sponge_db_version: int = LATEST):
+def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, term=None, sponge_db_version: int = LATEST):
     """
+    This function responds to a request for /gseaResults
+    and returns GSEA results for the given gene set, type, subtype, and condition combination.
+    :param dataset_ID_1: dataset ID of the first part of comparison (alternatively, disease_name_1 can be used)
+    :param dataset_ID_2: dataset ID of the second part of comparison (alternatively, disease_name_2 can be used)
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
     :param disease_subtype_1: subtype of first part of comparison, overtype if none is provided (e.g. LMS) 
@@ -197,68 +178,25 @@ def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=Non
     :param sponge_db_version: version of the sponge database
     :return: Gene set enrichment results for the term and comparison
     """
-    if disease_name_1 is not None:
-        dataset_1 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version)
 
-        if disease_subtype_1 is None:
-            dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
-        else:
-            dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.like("%" + disease_subtype_1 + "%"))
+    # check inputs
+    if dataset_ID_1 is None and disease_name_1 is None:
+        abort(404, "No dataset_ID_1 or disease_name_1 given")
+    if dataset_ID_2 is None and disease_name_2 is None:
+        abort(404, "No dataset_ID_2 or disease_name_2 given")
 
-        dataset_1 = dataset_1.all()
+    # filter datasets
+    dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
+    dataset_2 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_2, disease_name=disease_name_2, disease_subtype=disease_subtype_2)
 
-        dataset_1 = [x.dataset_ID for x in dataset_1]
+    # extract ids
+    dataset_1 = [x.dataset_ID for x in dataset_1]
+    dataset_2 = [x.dataset_ID for x in dataset_2]
 
-        if len(dataset_1) == 0:
-            abort(404, f"No dataset with disease_name_1 {disease_name_1} and disease_subtype_1 {disease_subtype_1} found")
-    else:
-        abort(404, "No disease_name_1 given")
-
-    if disease_name_2 is not None:
-        dataset_2 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version) 
-
-        if disease_subtype_2 is None:
-            dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))
-        else:
-            dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.like("%" + disease_subtype_2 + "%"))
-
-        dataset_2 = dataset_2.all()
-
-        dataset_2 = [x.dataset_ID for x in dataset_2]
-
-        if len(dataset_2) == 0:
-            abort(404, f"No dataset with disease_name_2 {disease_name_2} and disease_subtype_2 {disease_subtype_2} found")
-    else:
-        abort(404, "No disease_name_2 found")
-        
-    reverse = False
-    if condition_1 is not None and condition_2 is not None:
-        comparison = models.Comparison.query \
-            .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
-            .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
-            .filter(models.Comparison.condition_1 == condition_1) \
-            .filter(models.Comparison.condition_2 == condition_2) \
-            .filter(models.Comparison.gene_transcript == "gene") \
-            .all()
-
-        if len(comparison) == 0:
-            comparison = models.Comparison.query \
-                .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
-                .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
-                .filter(models.Comparison.condition_1 == condition_2) \
-                .filter(models.Comparison.condition_2 == condition_1) \
-                .filter(models.Comparison.gene_transcript == "gene") \
-                .all()
-            reverse = True
-            if len(comparison) == 0:
-                abort(404, "No comparison found for given inputs")
-    else:
-        abort(404, "Condition missing")
-
+    # get comparisons
+    comparison, reverse = _comparison_query(dataset_1, dataset_2, condition_1, condition_2)
+    if len(comparison) > 1:
+        Warning("Multiple comparisons found, using the first one.")
     comparison_ID = comparison[0].comparison_ID
 
     result = models.Gsea.query \
@@ -285,8 +223,13 @@ def gsea_results(disease_name_1=None, disease_name_2=None, disease_subtype_1=Non
     else:
         abort(404, "No data found.")
 
-def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, term=None, gene_set=None, sponge_db_version: int = LATEST):
+
+def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, term=None, gene_set=None, sponge_db_version: int = LATEST):
     """
+    This function responds to a request for /gseaPlot
+    and returns a GSEA plot for the given gene set, type, subtype, and condition combination.
+    :param dataset_ID_1: dataset ID of the first part of comparison (alternatively, disease_name_1 can be used)
+    :param dataset_ID_2: dataset ID of the second part of comparison (alternatively, disease_name_2 can be used)
     :param disease_name_1: disease name of the first part of comparison (e.g. Sarcoma)
     :param disease_name_2: disease name of the second part of comparison (e.g. Sarcoma)
     :param disease_subtype_1: subtype of first part of comparison, overtype if none is provided (e.g. LMS) 
@@ -299,68 +242,24 @@ def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
     :return: Gene set enrichment plot for the term and comparison
     """
 
-    if disease_name_1 is not None:
-        dataset_1 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_1 + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version)
+    # check inputs
+    if dataset_ID_1 is None and disease_name_1 is None:
+        abort(404, "No dataset_ID_1 or disease_name_1 given")
+    if dataset_ID_2 is None and disease_name_2 is None:
+        abort(404, "No dataset_ID_2 or disease_name_2 given")
 
-        if disease_subtype_1 is None:
-            dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.is_(None))
-        else:
-            dataset_1 = dataset_1.filter(models.Dataset.disease_subtype.like("%" + disease_subtype_1 + "%"))
+    # filter datasets
+    dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
+    dataset_2 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_2, disease_name=disease_name_2, disease_subtype=disease_subtype_2)
 
-        dataset_1 = dataset_1.all()
+    # extract ids
+    dataset_1 = [x.dataset_ID for x in dataset_1]
+    dataset_2 = [x.dataset_ID for x in dataset_2]
 
-        dataset_1 = [x.dataset_ID for x in dataset_1]
-
-        if len(dataset_1) == 0:
-            abort(404, f"No dataset with disease_name_1 {disease_name_1} and disease_subtype_1 {disease_subtype_1} found")
-    else:
-        abort(404, "No disease_name_1 given")
-
-    if disease_name_2 is not None:
-        dataset_2 = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name_2 + "%")) \
-            .filter(models.Dataset.sponge_db_version == sponge_db_version)
-
-        if disease_subtype_2 is None:
-            dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.is_(None))
-        else:
-            dataset_2 = dataset_2.filter(models.Dataset.disease_subtype.like("%" + disease_subtype_2 + "%"))
-
-        dataset_2 = dataset_2.all()
-
-        dataset_2 = [x.dataset_ID for x in dataset_2]
-
-        if len(dataset_2) == 0:
-            abort(404, f"No dataset with disease_name_2 {disease_name_2} and disease_subtype_2 {disease_subtype_2} found")
-    else:
-        abort(404, "No disease_name_2 found")
-        
-    reverse = False
-    if condition_1 is not None and condition_2 is not None:
-        comparison = models.Comparison.query \
-            .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
-            .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
-            .filter(models.Comparison.condition_1 == condition_1) \
-            .filter(models.Comparison.condition_2 == condition_2) \
-            .filter(models.Comparison.gene_transcript == "gene") \
-            .all()
-
-        if len(comparison) == 0:
-            comparison = models.Comparison.query \
-                .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
-                .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
-                .filter(models.Comparison.condition_1 == condition_2) \
-                .filter(models.Comparison.condition_2 == condition_1) \
-                .filter(models.Comparison.gene_transcript == "gene") \
-                .all()
-            reverse = True
-            if len(comparison) == 0:
-                abort(404, "No comparison found for given inputs")
-    else:
-        abort(404, "Condition missing")
-
+    # get comparisons
+    comparison, reverse = _comparison_query(dataset_1, dataset_2, condition_1, condition_2)
+    if len(comparison) > 1:
+        Warning("Multiple comparisons found, using the first one.")
     comparison_ID = comparison[0].comparison_ID
 
     gsea = models.Gsea.query \
@@ -368,7 +267,6 @@ def gsea_plot(disease_name_1=None, disease_name_2=None, disease_subtype_1=None, 
         .filter(models.Gsea.term.like("%" + term + "%")) \
         .filter(models.Gsea.gene_set == gene_set) \
         .all()
-
 
     if len(gsea) > 0:
         gsea = models.GseaSchemaPlot(many=True).dump(gsea)

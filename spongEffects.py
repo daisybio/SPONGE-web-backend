@@ -14,42 +14,64 @@ import models
 from config import LATEST, db
 
 
-def get_spongEffects_run_ID(disease_name: str, level: str = "gene", sponge_db_version: int = LATEST):
+def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", sponge_db_version: int = LATEST):
     """
+
     :param disease_name: Disease name as string (fuzzy search)
     :param level: One of gene/transcript
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: spongEffects_run_ID for given disease name and level
     """
+     # old
+    # query = db.session.execute(
+    #     "SELECT sEr.spongEffects_run_ID from spongEffects_run_performance"
+    #     " JOIN spongEffects_run sEr on spongEffects_run_performance.spongEffects_run_ID = sEr.spongEffects_run_ID"
+    #     " JOIN sponge_run sr on sEr.sponge_run_ID = sr.sponge_run_ID"
+    #     " JOIN dataset d on sr.dataset_ID = d.dataset_ID"
+    #     f" WHERE d.disease_name LIKE '%{disease_name}%'"
+    #     f" AND d.sponge_db_version = {sponge_db_version}"
+    #     f" AND level = '{level}'"
+    #     " AND split_type = 'train'"
+    #     " ORDER BY accuracy_upper DESC"
+    #     " LIMIT 1;"
+    # ).fetchall()
 
-    query = db.session.execute(
-        "SELECT sEr.spongEffects_run_ID from spongEffects_run_performance"
-        " JOIN spongEffects_run sEr on spongEffects_run_performance.spongEffects_run_ID = sEr.spongEffects_run_ID"
-        " JOIN sponge_run sr on sEr.sponge_run_ID = sr.sponge_run_ID"
-        " JOIN dataset d on sr.dataset_ID = d.dataset_ID"
-        f" WHERE d.disease_name LIKE '%{disease_name}%'"
-        f" AND d.version = {sponge_db_version}"
-        f" AND level = '{level}'"
-        " AND split_type = 'train'"
-        " ORDER BY accuracy_upper DESC"
-        " LIMIT 1;"
-    ).fetchall()
+    # Build the query
+    query = db.select(models.SpongeRun.sponge_run_ID)
 
-    if len(query) > 0:
-        return query[0].spongEffects_run_ID
+    if dataset_ID is not None:
+        query = query.where(models.SpongeRun.dataset_ID == dataset_ID)
+    if disease_name is not None:
+        query = query.join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID).where(models.Dataset.disease_name.like(f"%{disease_name}%"))
+
+    # Execute the query and fetch the sponge_run_ID
+    sponge_run_ID = db.session.execute(query).scalar()
+
+    if not sponge_run_ID:
+        abort(404, f"No sponge run found for disease_name: {disease_name} and dataset_ID: {dataset_ID}")
+
+    # Build the query to get spong_effects_run_ID
+    query = db.select(models.SpongEffectsRun.spong_effects_run_ID).where(models.SpongEffectsRun.sponge_run_ID == sponge_run_ID)
+
+    # Execute the query and fetch the result
+    spong_effects_run_ID = db.session.execute(query).scalar()
+
+    if spong_effects_run_ID:
+        return spong_effects_run_ID
     else:
-        abort(404, "No spongEffects run found for given parameters")
+        abort(404, f"No spongEffects run found for sponge_run_ID: {sponge_run_ID}")
 
 
-def get_run_performance(disease_name: str, level: str, sponge_db_version: int = LATEST):
+def get_run_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getRunPerformance
+    :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param level: One of gene/transcript
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects model performances for given disease and level
     """
-    spongEffects_run_ID = get_spongEffects_run_ID(disease_name, level, sponge_db_version)
+    spongEffects_run_ID = get_spongEffects_run_ID(dataset_ID, disease_name, level, sponge_db_version)
     query = models.SpongEffectsRunPerformance.query \
         .join(models.SpongEffectsRun, models.SpongEffectsRun.spongEffects_run_ID == models.SpongEffectsRunPerformance.spongEffects_run_ID) \
         .filter(models.SpongEffectsRun.spongEffects_run_ID == spongEffects_run_ID) \
@@ -61,15 +83,16 @@ def get_run_performance(disease_name: str, level: str, sponge_db_version: int = 
         abort(404, 'No spongEffects model performance found for name: {disease_name}'.format(disease_name=disease_name))
 
 
-def get_run_class_performance(disease_name: str, level: str, sponge_db_version: int = LATEST):
+def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getRunClassPerformance
+    :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param level: One of gene/transcript
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects model class performances for given disease and level
     """
-    spongEffects_run_ID = get_spongEffects_run_ID(disease_name, level, sponge_db_version)
+    spongEffects_run_ID = get_spongEffects_run_ID(dataset_ID, disease_name, level, sponge_db_version)
     query = models.SpongEffectsRunClassPerformance.query \
         .join(models.SpongEffectsRunPerformance,
               models.SpongEffectsRunPerformance.spongEffects_run_performance_ID == models.SpongEffectsRunClassPerformance.spongEffects_run_performance_ID) \
@@ -81,10 +104,11 @@ def get_run_class_performance(disease_name: str, level: str, sponge_db_version: 
         abort(404, f'No spongEffects run class performance found for name: {disease_name}')
 
 
-def get_enrichment_score_class_distributions(disease_name: str, level: str, sponge_db_version: int = LATEST):
+def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/enrichmentScoreDistributions?disease_name={disease_name}
     Get spongEffects enrichment score distributions for a given disease_name
+    :param dataset_ID: Dataset ID as string
     :param disease_name: Name of the disease to filter for
     :param level: one of gene/transcript
     :param sponge_db_version: Database version (defaults to most recent version)
@@ -94,7 +118,7 @@ def get_enrichment_score_class_distributions(disease_name: str, level: str, spon
     if level not in ['gene', 'transcript']:
         abort(404, 'Provided level not recognised, please use one of gene/transcript')
     # extract spongEffects_run_ID
-    spongEffects_run_ID = get_spongEffects_run_ID(disease_name, level, sponge_db_version)
+    spongEffects_run_ID = get_spongEffects_run_ID(dataset_ID, disease_name, level, sponge_db_version)
     # extract density data for spongEffects run
     query = models.SpongEffectsEnrichmentClassDensity.query \
         .filter(models.SpongEffectsEnrichmentClassDensity.spongEffects_run_ID == spongEffects_run_ID) \
@@ -105,15 +129,16 @@ def get_enrichment_score_class_distributions(disease_name: str, level: str, spon
         abort(404, 'No spongEffects class enrichment score distribution data found for given parameters')
 
 
-def get_gene_modules(disease_name: str, sponge_db_version: int = LATEST):
+def get_gene_modules(dataset_ID: int = None, disease_name: str = None, sponge_db_version: int = LATEST):
     """
-    API request for /spongEffects/getGeneModules
+    API request for /spongEffects/getSpongEffectsGeneModules
+    :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects gene modules for given disease
     """
     # get spongEffects_run_ID
-    spongEffects_run_ID = get_spongEffects_run_ID(disease_name, "gene", sponge_db_version)
+    spongEffects_run_ID = get_spongEffects_run_ID(dataset_ID, disease_name, "gene", sponge_db_version)
     # get modules
     query = db.session.execute(
         "SELECT * FROM spongEffects_gene_module as A"
@@ -127,9 +152,10 @@ def get_gene_modules(disease_name: str, sponge_db_version: int = LATEST):
         abort(404, "No spongEffects modules found for given disease")
 
 
-def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
+def get_gene_module_members(dataset_ID: int = None, disease_name: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getGeneModuleMembers
+    :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param ensg_number: ENSG number of gene
     :param gene_symbol: Gene symbol
@@ -137,7 +163,7 @@ def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_sym
     :return: spongEffects gene module members for given disease and gene identifier
     """
     # get spongEffects_run_ID
-    spongEffects_run_ID = get_spongEffects_run_ID(disease_name, "gene", sponge_db_version)
+    spongEffects_run_ID = get_spongEffects_run_ID(dataset_ID, disease_name, "gene", sponge_db_version)
     # test if any of the two identification possibilities is given
     if ensg_number is None and gene_symbol is None:
         abort(404, "One of the two possible identification numbers must be provided")
@@ -177,9 +203,17 @@ def get_gene_module_members(disease_name: str, ensg_number: str = None, gene_sym
         abort(404, "No module members found for given disease name and gene identifier")
 
 
-def get_transcript_modules(disease_name: str, sponge_db_version: int = LATEST):
+def get_transcript_modules(dataset_ID: int = None, disease_name: str = None, sponge_db_version: int = LATEST):
+    """
+    API request for /spongEffects/getSpongEffectsTranscriptModules
+    :param dataset_ID: Dataset ID as string
+    :param disease_name: Disease name as string (fuzzy search)
+    :param sponge_db_version: Database version (defaults to most recent version)
+    :return: module hub elements for a given disease and level
+    """
+    
     # get spongEffects_run_ID
-    spongEffects_run_ID = get_spongEffects_run_ID(disease_name, "transcript", sponge_db_version)
+    spongEffects_run_ID = get_spongEffects_run_ID(dataset_ID, disease_name, "transcript", sponge_db_version)
 
     # get modules
     query = db.session.execute(
@@ -196,9 +230,10 @@ def get_transcript_modules(disease_name: str, sponge_db_version: int = LATEST):
         abort(404, "No spongEffects modules found for given disease")
 
 
-def get_transcript_module_members(disease_name: str, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
+def get_transcript_module_members(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getTranscriptModuleMembers
+    :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param enst_number: ENST number of transcript
     :param ensg_number: ENSG number of gene
@@ -207,7 +242,7 @@ def get_transcript_module_members(disease_name: str, enst_number: str = None, en
     :return: spongEffects transcript module members for given disease and gene identifier    
     """
     # get spongEffects_run_ID
-    spongEffects_run_ID = get_spongEffects_run_ID(disease_name, "gene", sponge_db_version)
+    spongEffects_run_ID = get_spongEffects_run_ID(dataset_ID, disease_name, "gene", sponge_db_version)
     # test if any of the two identification possibilities is given
     tests: list = [enst_number is not None, ensg_number is not None, gene_symbol is not None]
     if sum(tests) == 0:
@@ -216,12 +251,6 @@ def get_transcript_module_members(disease_name: str, enst_number: str = None, en
         abort(404,
               "More than one identification parameter is given. Please choose one out of (enst_number, ensg_number, or gene symbol)")
 
-    # create search engine
-    some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
-    # create a configured "Session" class
-    Session = sa.orm.sessionmaker(bind=some_engine)
-    # create a Session
-    session = Session()
     # determine search method
     search_key: str
     search_val: str
@@ -239,7 +268,7 @@ def get_transcript_module_members(disease_name: str, enst_number: str = None, en
     else:
         search_val = "'"+search_val+"'"
     # search DB
-    query = session.execute(
+    query = db.session.execute(
         "SELECT tA.enst_number as hub_enst_number, t.enst_number as member_enst_number"
         " gA.ensg_number AS hub_ensg_number, gA.gene_symbol AS hub_gene_symbol,"
         " g.ensg_number AS member_ensg_number, g.gene_symbol as member_gene_symbol"
@@ -251,9 +280,7 @@ def get_transcript_module_members(disease_name: str, enst_number: str = None, en
         " JOIN gene gA on gA.gene_ID = tA.gene_ID"
         f" WHERE tA.{search_key} IN ({search_val}) AND spongEffects_run_ID = {spongEffects_run_ID};"
     ).fetchall()
-    # clean up resources
-    session.close()
-    some_engine.dispose()
+
     if len(query) > 0:
         return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(query)
     else:
@@ -360,3 +387,55 @@ def upload_file():
     return jsonify(run_spongEffects(tmp_file.name, tmp_out_file.name, run_parameters,
                                     log=apply_log_scale, subtype_level=predict_subtypes))
 
+
+def get_spongeffects_runs(dataset_ID: str = None, disease_name: str = None, include_empty_spongeffects: bool = False, sponge_db_version: int = LATEST):
+    """
+    API request for /spongEffects/getSpongEffectsRun
+    :param dataset_ID: Dataset ID as string
+    :param disease_name: Disease name as string (fuzzy search)
+    :param include_empty: Include datasets/sponge runs without spongEffects runs
+    :return: spongEffects runs for given disease and disease information
+    """
+
+    # Construct the query using db.select
+    query = db.select(
+        models.SpongeRun,
+        models.SpongEffectsRun,
+        models.Dataset
+    ).join(
+        models.SpongEffectsRun, models.SpongeRun.sponge_run_ID == models.SpongEffectsRun.sponge_run_ID, isouter=True
+    ).join(
+        models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID, isouter=True
+    )
+
+    if dataset_ID is not None:
+        query = query.where(models.Dataset.dataset_ID == dataset_ID)
+
+    if disease_name is not None:
+        query = query.where(models.Dataset.disease_name.like(f"%{disease_name}%"))
+
+    if sponge_db_version is not None:
+        query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
+
+    # Execute the query
+    result = db.session.execute(query)
+
+    # Fetch results as a list of rows
+    data = result.fetchall()
+
+    # Did we find a dataset?
+    if len(data) > 0:
+        # Serialize the data for the response
+        combined_data = []
+        for sponge_run, sponge_effects_run, dataset in data:
+            if sponge_effects_run is None and not include_empty_spongeffects:
+                continue
+            # append all attributes but not the nested ones. Add all keys, use None values for missing attributes.
+            combined_data.append({
+                **{x: y for x,y in models.DatasetSchema().dump(dataset or models.Dataset()).items() if type(y) is not dict},
+                **{x: y for x,y in models.SpongEffectsRunSchema(exclude=['sponge_run']).dump(sponge_effects_run or models.SpongEffectsRun()).items() if type(y) is not dict},
+                **{x: y for x,y in models.SpongeRunSchema(exclude=['dataset']).dump(sponge_run or models.SpongeRun()).items() if type(y) is not dict}
+            })
+        return jsonify(combined_data)
+    else:
+        abort(404, 'No spongEffects run found for name: {disease_name}'.format(disease_name=disease_name))

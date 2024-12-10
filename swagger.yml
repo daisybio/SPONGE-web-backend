@@ -20,10 +20,22 @@ paths:
       operationId: dataset.get_datasets
       tags:
         - Dataset
-      summary: Get information on datasets for a given source
-      description: Get information on all datasets of a given source (e.g. TCGA) including subtype information
+      summary: Get information on one or more datasets
+      description: Get information on one or more datasets
       parameters:
         - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_id
+          in: query
+          description: The ID of the dataset
+          required: false
+          schema:
+            type: integer
+        - name: disease_name
+          in: query
+          description: Name of the disease
+          required: false
+          schema:
+            type: string
         - name: data_origin
           in: query
           description: Name of the data origin (e.g. TCGA)
@@ -56,53 +68,53 @@ paths:
                   disease_subtype:
                     type: string
                     description: Subtype of specific cancer type (NA if no relevant subtype is present)
-                  study_abbreviation:
-                    type: string
-                    description: Study abbreviation
-                  version:
+                  sponge_db_version:
                     type: integer
                     description: SPONGEdb version used
-                  number_of_samples:
-                    type: integer
-                    description: Number of samples per disease
-  /dataset:
-    get:
-      operationId: dataset.read
-      tags:
-      - Dataset
-      summary: Get information about all cancer types/datasets or specific one.
-      description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
-      parameters:
-      - $ref: '#/components/parameters/VersionParam'
-      - name: disease_name
-        in: query
-        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: false
-        schema:
-          type: string
-      responses:
-        "200":
-          description: Successfully read information about all cancer types/datasets or specific one from database.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  dataset_ID:
-                    type: integer
-                    description: Internal databse ID of the cancer type/dataset.
-                  disease_name:
-                    type: string
-                    description: Name of the camcer type/dataset.
-                  data_origin:
-                    type: string
-                    description: Cancer type/dataset origin (database name, etc.).
-                  disease_type:
-                    type: string
-                    description: Type of the disease (e.g. cancer).
-                  download_url:
-                    type: string
-                    description: URL to cancer type/dataset annotation.
+  # /dataset:
+  #   get:
+  #     operationId: dataset.read
+  #     tags:
+  #     - Dataset
+  #     summary: Get information about all cancer types/datasets or specific one.
+  #     description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
+  #     parameters:
+  #     - $ref: '#/components/parameters/VersionParam'
+  #     - name: disease_name
+  #       in: query
+  #       description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+  #       required: false
+  #       schema:
+  #         type: string
+  #     responses:
+  #       "200":
+  #         description: Successfully read information about all cancer types/datasets or specific one from database.
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 dataset_ID:
+  #                   type: integer
+  #                   description: Internal database ID of the cancer type/dataset.
+  #                 disease_name:
+  #                   type: string
+  #                   description: Name of the cancer type/dataset.
+  #                 data_origin:
+  #                   type: string
+  #                   description: Cancer type/dataset origin (database name, etc.).
+  #                 disease_type:
+  #                   type: string
+  #                   description: Type of the disease (e.g. cancer).
+  #                 download_url:
+  #                   type: string
+  #                   description: URL to cancer type/dataset annotation.
+  #                 disease_subtype:
+  #                   type: string
+  #                   description: Subtype of specific cancer type (NA if no relevant subtype is present)
+  #                 sponge_db_version:
+  #                   type: integer
+  #                   description: SPONGEdb version used
   /dataset/spongeRunInformation:
     get:
       operationId: dataset.read_spongeRunInformation
@@ -2929,6 +2941,132 @@ paths:
                     ense_number:
                       type: string
                       description: Ense number of the exon.
+  /spongEffects/getSpongEffectsRuns:
+    get:
+      operationId: spongEffects.get_spongeffects_runs
+      tags: 
+      - spongEffects
+      summary: Get all available spongEffects runs and their dataset informations
+      description: Get all available spongEffects runs and their dataset informations
+      parameters:
+      - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: disease_name
+        in: query
+        description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
+        required: false
+        schema:
+          type: string
+      - name: include_empty_spongeffects
+        in: query
+        description: If true (1), datasets with no spongEffects runs are included.
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: Get all available spongEffects runs and their dataset informations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    spongeEffects_run_ID: 
+                      type: integer
+                      description: Internal database ID for different SpongEffect runs. 
+                    m_scor_threshold:
+                      type: number
+                      description: Threshold for the m-score.
+                    p_adjust_threshold:
+                      type: number
+                      description: Threshold for the p-adjusted value.
+                    modules_cutoff:
+                      type: number
+                      description: Threshold for the modules.
+                    bin_size:
+                      type: number
+                      description: Threshold for the bin size.
+                    min_size:
+                      type: number
+                      description: Threshold for the min size.
+                    max_size:
+                      type: number
+                      description: Threshold for the max size.
+                    min_expr:
+                      type: number
+                      description: Threshold for the min expression.
+                    method:
+                      type: string
+                      description: Method used for the spongEffects run.
+                    cv_folds: 
+                      type: integer
+                      description: Number of cross-validation folds.
+                    level: 
+                      type: string
+                      description: Level used for the spongEffects run.
+                    sponge_run_ID:
+                      type: integer
+                      description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                    variance_cutoff:
+                      type: number
+                      description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Parameter name in SPONGE method is var.threshold)
+                    f_test:
+                      type: boolean
+                      description: If true (1), an F-test is performed on each model parameter to assess its importance for the model based on the RSS of the full model vs the RSS of the nested model without the miRNA in question.
+                    f_test_p_adj_threshold:
+                      type: number
+                      description: If F.test is TRUE (1), threshold to use for miRNAs to be included.
+                    coefficient_threshold:
+                      type: number
+                      description: Threshold to cross for a regression coefficient to be called significant. Depends on the parameter coefficient.direction.
+                    coefficient_direction: 
+                      type: string
+                      description: If "<", coefficient has to be lower than coefficient.threshold, if ">", coefficient has to be larger than threshold. If NULL, the absolute value of the coefficient has to be larger than the threshold.
+                    min_corr:
+                      type: number
+                      description: Consider only gene pairs with a minimum correlation specified here.
+                    number_of_datasets:
+                      type: integer
+                      description: The number of mscor coefficients to be sampled from each covariance matrix.
+                    number_of_samples:
+                      type: integer
+                      description: The number of samples available in the expression data.
+                    ks:
+                      type: string
+                      description: A sequence of gene-gene correlation values for which null models are computed.
+                    m_max:
+                      type: integer
+                      description: null models are build for each elt in ks for 1 to m_max miRNAs
+                    log_level:
+                      type: string
+                      description: The log level, can be one of "info", "debug", "error".
+                    sponge_db_version: 
+                      type: string
+                      description: Version of the SPONGE database.
+                    dataset_ID:
+                      type: integer
+                      description: Internal database ID of the cancer type/dataset.
+                    disease_name:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    data_origin:
+                      type: string
+                      description: Cancer type/dataset origin (database name, etc.).
+                    disease_type:
+                      type: string
+                      description: Type of the disease (e.g. cancer).
+                    download_url:
+                      type: string
+                      description: URL to cancer type/dataset annotation.
+                    disease_subtype:
+                      type: string
+                      description: Subtype of specific cancer type (NA if no relevant subtype is present)
   /spongEffects/getRunPerformance:
     get:
       operationId: spongEffects.get_run_performance

@@ -4107,13 +4107,13 @@ paths:
       description: Get differential expression results for the given gene, type, subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
-      - name: dataset_ID_1:
+      - name: dataset_ID_1
         in: query
         description: Internal database ID of the first cancer type/dataset.
         required: false
         schema:
           type: integer
-      - name: dataset_ID_2:
+      - name: dataset_ID_2
         in: query
         description: Internal database ID of the second cancer type/dataset.
         required: false
@@ -4217,13 +4217,13 @@ paths:
       description: Get differential expression results for the given transcript, type, subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
-      - name: dataset_ID_1:
+      - name: dataset_ID_1
         in: query
         description: Internal database ID of the first cancer type/dataset.
         required: false
         schema:
           type: integer
-      - name: dataset_ID_2:
+      - name: dataset_ID_2
         in: query
         description: Internal database ID of the second cancer type/dataset.
         required: false

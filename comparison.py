@@ -1,6 +1,64 @@
 from flask import abort
 import models
 from config import LATEST, db
+from dataset import _dataset_query
+
+
+def _comparison_query(dataset_1, dataset_2, condition_1=None, condition_2=None, gene_transcript="gene"):
+
+    # old:
+    # reverse = False
+    # if condition_1 is not None and condition_2 is not None:
+    #     comparison = models.Comparison.query \
+    #         .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
+    #         .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
+    #         .filter(models.Comparison.condition_1 == condition_1) \
+    #         .filter(models.Comparison.condition_2 == condition_2) \
+    #         .filter(models.Comparison.gene_transcript == "gene") \
+    #         .all()
+
+    #     if len(comparison) == 0:
+    #         comparison = models.Comparison.query \
+    #             .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
+    #             .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
+    #             .filter(models.Comparison.condition_1 == condition_2) \
+    #             .filter(models.Comparison.condition_2 == condition_1) \
+    #             .filter(models.Comparison.gene_transcript == "gene") \
+    #             .all()
+    #         reverse = True
+    #         if len(comparison) == 0:
+    #             abort(404, "No comparison found for given inputs")
+    # else:
+    #     abort(404, "Condition missing")
+
+    # new: 
+    reverse = False
+    comparison = models.Comparison.query \
+    .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
+    .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
+    .filter(models.Comparison.gene_transcript == gene_transcript) 
+
+    # filter conditions
+    if condition_1 is not None:
+        comparison = comparison.filter(models.Comparison.condition_1 == condition_1)
+    if condition_2 is not None:
+        comparison = comparison.filter(models.Comparison.condition_2 == condition_2)
+    
+    comparison = comparison.all()
+
+    # check if comparison is named differently 
+    if len(comparison) == 0:
+        reverse = True
+        comparison = models.Comparison.query \
+            .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
+            .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
+            .filter(models.Comparison.gene_transcript == gene_transcript) 
+        
+    if len(comparison) != 1:
+        abort(404, "No (unique) comparison found for given inputs")
+
+    return comparison.all(), reverse
+    
 
 def get_comparison(dataset_ID: str = None, disease_name: str = None, disease_subtype=None, sponge_db_version: int = LATEST):
     """
@@ -12,24 +70,8 @@ def get_comparison(dataset_ID: str = None, disease_name: str = None, disease_sub
     """
 
     # get dataset table
-    query = db.select(models.Dataset)
-
-    # do filtering
-    if dataset_ID is not None:
-        query = query.where(models.Dataset.dataset_ID == dataset_ID)
-    if disease_name is not None:
-        query = query.where(models.Dataset.disease_name.like("%" + disease_name + "%"))
-    if disease_subtype is None:
-        query = query.where(models.Dataset.disease_subtype.is_(None))
-    else:
-        query = query.where(models.Dataset.disease_subtype.like("%" + disease_subtype + "%"))
-
-    data = db.session.execute(query).scalars().all()
-
+    data = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
     dataset = [i.dataset_ID for i in data]
-
-    if len(dataset) == 0:
-        abort(404, "No dataset with given disease_name found")
 
     comparison_query = db.select(models.Comparison).where(models.Comparison.dataset_ID_1.in_(dataset) | models.Comparison.dataset_ID_2.in_(dataset))
 

@@ -6,65 +6,9 @@ import io
 import matplotlib.pyplot as plt
 from config import LATEST
 from dataset import _dataset_query
+from comparison import _comparison_query
 
-plt.switch_backend('agg')
-
-
-def _comparison_query(dataset_1, dataset_2, condition_1=None, condition_2=None):
-
-    # old:
-    # reverse = False
-    # if condition_1 is not None and condition_2 is not None:
-    #     comparison = models.Comparison.query \
-    #         .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
-    #         .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
-    #         .filter(models.Comparison.condition_1 == condition_1) \
-    #         .filter(models.Comparison.condition_2 == condition_2) \
-    #         .filter(models.Comparison.gene_transcript == "gene") \
-    #         .all()
-
-    #     if len(comparison) == 0:
-    #         comparison = models.Comparison.query \
-    #             .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
-    #             .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
-    #             .filter(models.Comparison.condition_1 == condition_2) \
-    #             .filter(models.Comparison.condition_2 == condition_1) \
-    #             .filter(models.Comparison.gene_transcript == "gene") \
-    #             .all()
-    #         reverse = True
-    #         if len(comparison) == 0:
-    #             abort(404, "No comparison found for given inputs")
-    # else:
-    #     abort(404, "Condition missing")
-
-    # new: 
-    reverse = False
-    comparison = models.Comparison.query \
-    .filter(models.Comparison.dataset_ID_1.in_(dataset_1)) \
-    .filter(models.Comparison.dataset_ID_2.in_(dataset_2)) \
-    .filter(models.Comparison.gene_transcript == "gene") 
-
-    # filter conditions
-    if condition_1 is not None:
-        comparison = comparison.filter(models.Comparison.condition_1 == condition_1)
-    if condition_2 is not None:
-        comparison = comparison.filter(models.Comparison.condition_2 == condition_2)
-    
-    comparison = comparison.all()
-
-    # check if comparison is named differently 
-    if len(comparison) == 0:
-        reverse = True
-        comparison = models.Comparison.query \
-            .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
-            .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
-            .filter(models.Comparison.gene_transcript == "gene") 
-        
-    if len(comparison) == 0:
-        abort(404, "No comparison found for given inputs")
-
-    return comparison.all(), reverse
-        
+plt.switch_backend('agg')    
 
 def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int = None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, sponge_db_version: int = LATEST):
     """
@@ -98,8 +42,6 @@ def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int =
 
     # get comparisons
     comparison, _ = _comparison_query(dataset_1, dataset_2, condition_1, condition_2)
-    if len(comparison) > 1:
-        Warning("Multiple comparisons found, using the first one.")
     comparison_ID = comparison[0].comparison_ID
 
     result = models.Gsea.query \
@@ -146,8 +88,6 @@ def gsea_terms(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_
 
     # get comparisons
     comparison, _ = _comparison_query(dataset_1, dataset_2, condition_1, condition_2)
-    if len(comparison) > 1:
-        Warning("Multiple comparisons found, using the first one.")
     comparison_ID = comparison[0].comparison_ID
 
     result = models.Gsea.query \
@@ -195,8 +135,6 @@ def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_nam
 
     # get comparisons
     comparison, reverse = _comparison_query(dataset_1, dataset_2, condition_1, condition_2)
-    if len(comparison) > 1:
-        Warning("Multiple comparisons found, using the first one.")
     comparison_ID = comparison[0].comparison_ID
 
     result = models.Gsea.query \
@@ -258,8 +196,6 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
 
     # get comparisons
     comparison, reverse = _comparison_query(dataset_1, dataset_2, condition_1, condition_2)
-    if len(comparison) > 1:
-        Warning("Multiple comparisons found, using the first one.")
     comparison_ID = comparison[0].comparison_ID
 
     gsea = models.Gsea.query \

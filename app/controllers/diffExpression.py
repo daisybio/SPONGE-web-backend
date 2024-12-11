@@ -1,8 +1,8 @@
 from flask import abort
-import models
-from config import LATEST
-from dataset import _dataset_query
-from comparison import _comparison_query
+import app.models as models
+from app.config import LATEST
+from app.controllers.dataset import _dataset_query
+from app.controllers.comparison import _comparison_query
 
 def get_diff_expr(dataset_ID_1: str = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, 
                   condition_2=None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):

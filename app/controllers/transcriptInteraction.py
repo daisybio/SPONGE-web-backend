@@ -3,8 +3,8 @@ import os
 from flask import abort
 from sqlalchemy import desc, or_, and_
 from sqlalchemy.sql import text
-import models
-from config import LATEST, db
+import app.models as models
+from app.config import LATEST, db
 
 
 def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=None, transcript_type=None, pValue=0.05, pValueDirection="<",

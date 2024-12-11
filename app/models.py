@@ -1,7 +1,7 @@
 from marshmallow import fields, Schema
 from sqlalchemy.orm import relationship
 
-from config import db, ma
+from app.config import db, ma
 
 
 class Dataset(db.Model):

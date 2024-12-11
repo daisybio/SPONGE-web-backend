@@ -1,6 +1,6 @@
-from config import *
+from app.config import *
 from werkzeug.exceptions import HTTPException
-import models, unittest
+import app.models as models, unittest
 with app.app_context(): 
     import survivalAnalysis
 from flask import abort

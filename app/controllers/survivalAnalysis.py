@@ -1,7 +1,7 @@
 from flask import abort
-import models
-from config import LATEST
-from dataset import _dataset_query
+import app.models as models
+from app.config import LATEST
+from app.controllers.dataset import _dataset_query
 
 def get_patient_information(dataset_ID: int = None, disease_name=None, sample_ID=None, sponge_db_version: int = LATEST):
     """

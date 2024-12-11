@@ -1,12 +1,12 @@
 from flask import abort
-import models
+import app.models as models
 from gseapy.plot import GSEAPlot
 import base64
 import io 
 import matplotlib.pyplot as plt
-from config import LATEST
-from dataset import _dataset_query
-from comparison import _comparison_query
+from app.config import LATEST
+from app.controllers.dataset import _dataset_query
+from app.controllers.comparison import _comparison_query
 
 plt.switch_backend('agg')    
 

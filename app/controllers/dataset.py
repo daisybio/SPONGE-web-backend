@@ -1,6 +1,6 @@
 from flask import abort
-import models
-from config import LATEST, db
+import app.models as models
+from app.config import LATEST, db
 
 
 def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):

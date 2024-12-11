@@ -1,10 +1,10 @@
-import models
+import app.models as models
 from flask import abort
 import numpy as np
 from sklearn import manifold
 import pandas as pd
-from config import LATEST
-from dataset import _dataset_query
+from app.config import LATEST
+from app.controllers.dataset import _dataset_query
 
 
 def get_network_results(dataset_ID: int = None, disease_name="Breast invasive carcinoma",

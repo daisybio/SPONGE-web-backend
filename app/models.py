@@ -1,7 +1,7 @@
 from marshmallow import fields, Schema
 from sqlalchemy.orm import relationship
 
-from config import db, ma
+from app.config import db, ma
 
 
 class Dataset(db.Model):
@@ -907,8 +907,8 @@ class TranscriptInteractionLongSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", )))
-    transcript1 = ma.Nested(lambda: TranscriptSchema(exclude="transcript_ID"))
-    transcript2 = ma.Nested(lambda: TranscriptSchema(exclude="transcript_ID"))
+    transcript_1 = ma.Nested(lambda: TranscriptSchema(exclude="transcript_ID"))
+    transcript_2 = ma.Nested(lambda: TranscriptSchema(exclude="transcript_ID"))
     
 # never used
 # class TranscriptInteractionShortSchema(ma.SQLAlchemyAutoSchema):
@@ -917,29 +917,29 @@ class TranscriptInteractionLongSchema(ma.SQLAlchemyAutoSchema):
 #         sqla_session = db.session
 
 #     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", )))
-#     transcript1 = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", )))
-#     transcript2 = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", )))
+#     transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", )))
+#     transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", )))
 
 
 class TranscriptInteractionDatasetLongSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = TranscriptInteraction
         sqla_session = db.session
-        fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript1", "transcript2"]
+        fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript_1", "transcript_2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript1 = ma.Nested(TranscriptSchema)
-    transcript2 = ma.Nested(TranscriptSchema)
+    transcript_1 = ma.Nested(TranscriptSchema)
+    transcript_2 = ma.Nested(TranscriptSchema)
 
 class TranscriptInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = TranscriptInteraction
         sqla_session = db.session
-        fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript1", "transcript2"]
+        fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript_1", "transcript_2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
-    transcript2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number")))
+    transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number")))
 
 
 class GeneEnrichmentScoreSchema(ma.SQLAlchemyAutoSchema):

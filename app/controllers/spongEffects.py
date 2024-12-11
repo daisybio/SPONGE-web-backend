@@ -4,14 +4,10 @@ import random
 import string
 import subprocess
 import tempfile
-
 from flask import request, jsonify, abort
-import sqlalchemy as sa
-
-import config
-import models
-
-from config import LATEST, db
+import app.config as config
+import app.models as models
+from app.config import LATEST, db
 
 
 def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", sponge_db_version: int = LATEST):

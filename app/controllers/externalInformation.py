@@ -1,10 +1,10 @@
 from flask import abort
-import models
+import app.models as models
 from flask import Response
 from sqlalchemy.sql import text
 from sqlalchemy import func, select, join
 from sqlalchemy.orm import aliased
-from config import LATEST, db 
+from app.config import LATEST, db 
 
 
 def getAutocomplete(searchString):

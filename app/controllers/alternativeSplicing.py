@@ -1,5 +1,5 @@
 from flask import abort
-import models
+import app.models as models
 from flask import Response
 
 def get_transcript_events(enst_number):

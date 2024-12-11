@@ -1,5 +1,5 @@
-from config import *
-import models, unittest
+from app.config import *
+import app.models as models, unittest
 with app.app_context(): 
     import dataset
 from flask import abort

@@ -1172,7 +1172,7 @@ paths:
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -1986,7 +1986,7 @@ paths:
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -2791,7 +2791,7 @@ paths:
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: sample_ID
@@ -2851,7 +2851,7 @@ paths:
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -2953,7 +2953,7 @@ paths:
       - name: disease_name
         in: query
         description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -3272,13 +3272,13 @@ paths:
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
-        required: true
+        required: false
         schema:
           type: integer
       - name: disease_name
         in: query
         description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-        required: true
+        required: false
         schema:
           type: string
       - name: level
@@ -3334,13 +3334,13 @@ paths:
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
-        required: true
+        required: false
         schema:
           type: integer
       - name: disease_name
         in: query
         description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-        required: true
+        required: false
         schema:
           type: string
       - name: level
@@ -3415,13 +3415,13 @@ paths:
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
-        required: true
+        required: false
         schema:
           type: integer
       - name: disease_name
         in: query
         description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-        required: true
+        required: false
         schema:
           type: string
       - name: level
@@ -3459,13 +3459,13 @@ paths:
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
-        required: true
+        required: false
         schema:
           type: integer
       - name: disease_name
         in: query
         description: Disease name
-        required: true
+        required: false
         schema:
           type: string
       responses:
@@ -3500,13 +3500,13 @@ paths:
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
-        required: true
+        required: false
         schema:
           type: integer
       - name: disease_name
         in: query
         description: Name of the disease
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -3553,13 +3553,13 @@ paths:
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
-        required: true
+        required: false
         schema:
           type: integer
       - name: disease_name
         in: query
         description: Disease name
-        required: true
+        required: false
         schema:
           type: string
       responses:
@@ -3864,13 +3864,13 @@ paths:
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -4047,13 +4047,13 @@ paths:
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -4107,16 +4107,28 @@ paths:
       description: Get differential expression results for the given gene, type, subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -4205,16 +4217,28 @@ paths:
       description: Get differential expression results for the given transcript, type, subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1

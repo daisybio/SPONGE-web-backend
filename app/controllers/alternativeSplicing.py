@@ -1,5 +1,5 @@
 from flask import abort
-import models
+import app.models as models
 from flask import Response
 
 def get_transcript_events(enst_number):
@@ -71,7 +71,7 @@ def get_event_positions(enst_number, event_type):
 
 def get_exons_for_position(start_pos: int, end_pos: int):
     """
-    This function response for the request: /sponge//alternativeSplicing/getExonsForPosition/
+    This function response for the request: /alternativeSplicing/getExonsForPosition/
     with genomic start and end positions
     :param start_pos: genomic start position
     :param end_pos: genomic end position
@@ -86,7 +86,7 @@ def get_exons_for_position(start_pos: int, end_pos: int):
         .filter(models.TranscriptElement.transcript_element_positions_ID.in_(transcript_element_positions_ids)) \
         .all()
     if len(result) > 0:
-        schema = models.networkAnalysisSchema(many=True)
+        schema = models.TranscriptElementSchema(many=True)
         return schema.dump(result)
     else:
         abort(404, "No data found that satisfies the given filters")

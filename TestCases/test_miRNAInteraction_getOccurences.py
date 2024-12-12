@@ -1,5 +1,5 @@
-from config import *
-import models, unittest
+from app.config import *
+import app.models as models, unittest
 with app.app_context(): 
     import geneInteraction
 from flask import abort
@@ -62,7 +62,7 @@ def test_read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, oc
     
         # database version 
     if db_version is not None: 
-        queries.append(models.Dataset.version == db_version)
+        queries.append(models.Dataset.sponge_db_version == db_version)
 
     if occurences is not None:
         queries.append(models.OccurencesMiRNA.occurences > occurences)

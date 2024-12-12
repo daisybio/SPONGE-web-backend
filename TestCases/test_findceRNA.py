@@ -1,5 +1,5 @@
-from config import *
-import models, unittest
+from app.config import *
+import app.models as models, unittest
 with app.app_context(): 
     import geneInteraction
 from flask import abort
@@ -80,7 +80,7 @@ def test_read_all_gene_network_analysis(disease_name=None, ensg_number=None, gen
     if gene_type is not None:
         queries.append(models.Gene.gene_type == gene_type)
     if db_version is not None: 
-        queries.append(models.Dataset.version == db_version)
+        queries.append(models.Dataset.sponge_db_version == db_version)
 
     # add all sorting if given:
     sort = [models.networkAnalysis.sponge_run_ID]

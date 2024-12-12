@@ -1,9 +1,11 @@
 from flask import abort
-import models
-from config import LATEST
+import app.models as models
+from app.config import LATEST, db
 
-def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
+def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
     """
+    Handles API call /exprValue/getceRNA to get gene expression values
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
     :param ensg_number: esng number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
@@ -45,6 +47,10 @@ def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, sponge_
     if disease_name is not None:
         dataset_query = dataset_query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+        
+    if dataset_ID is not None:
+        dataset_query = dataset_query \
+            .filter(models.Dataset.dataset_ID == dataset_ID)
     
     dataset = dataset_query.all()
 
@@ -64,13 +70,14 @@ def get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, sponge_
         abort(404, "No data found.")
 
 
-def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, version: int = LATEST):
+def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
     """
-    Handles API call to return transcript expressions
+    Handles API call /exprValue/getTranscriptExpr to return transcript expressions
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: Name of the disease
-    :param enst_number: Ensembl transcript ID(s)
-    :param ensg_number: Ensembl gene ID(s)
-    :param gene_symbol: gene symbol(s)
+    :param enst_number: Ensembl transcript ID
+    :param ensg_number: Ensembl gene ID
+    :param gene_symbol: gene symbol
     :param sponge_db_version: version of the database
     :return: expression values for given search parameters
     """
@@ -79,18 +86,18 @@ def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_n
     elif enst_number is not None:
         # query by enst_numbers only
         transcript = models.Transcript.query \
-            .filter(models.Transcript.enst_number.in_(enst_number)) \
+            .filter(models.Transcript.enst_number == enst_number) \
             .all()
-    elif ensg_number is not None or enst_number is not None:
+    elif ensg_number is not None or gene_symbol is not None:
         if ensg_number is not None:
             # query all transcripts with matching ensg_number
             gene = models.Gene.query \
-                .filter(models.Gene.ensg_number.in_(ensg_number)) \
+                .filter(models.Gene.ensg_number == ensg_number) \
                 .all()
         else:
             # query all transcripts with matching gene symbol
             gene = models.Gene.query \
-                .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
+                .filter(models.Gene.gene_symbol == gene_symbol) \
                 .all()
         if len(gene) > 0:
             gene_IDs = [i.gene_ID for i in gene]
@@ -115,6 +122,10 @@ def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_n
         dataset_query = dataset_query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
     
+    if dataset_ID is not None:
+        dataset_query = dataset_query \
+            .filter(models.Dataset.dataset_ID == dataset_ID)
+    
     dataset = dataset_query.all()
 
     if len(dataset) > 0:
@@ -124,9 +135,8 @@ def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_n
         abort(404, f"No dataset with given disease_name for the database version {sponge_db_version} found")
     
     # apply all filters
-    result = models.ExpressionDataTranscript.query \
-        .filter(*filters) \
-        .all()
+    query = db.select(models.ExpressionDataTranscript).filter(*filters)
+    result = db.session.execute(query).scalars().all()
 
     if len(result) > 0:
         return models.ExpressionDataTranscriptSchema(many=True).dump(result)
@@ -134,8 +144,10 @@ def get_transcript_expression(disease_name: str, enst_number: str = None, ensg_n
         abort(404, "No transcript expression data found for the given filters.")
 
 
-def get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None, sponge_db_version: int = LATEST):
+def get_mirna_expr(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, sponge_db_version: int = LATEST):
     """
+    Handles API call /exprValue/getmiRNA to get miRNA expression values
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
     :param mimat_number: comma-separated list of mimat_id(s) of miRNA of interest
     :param: hs_nr: comma-separated list of hs_number(s) of miRNA of interest
@@ -177,6 +189,10 @@ def get_mirna_expr(disease_name=None, mimat_number=None, hs_number=None, sponge_
     if disease_name is not None:
         dataset_query = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) 
+        
+    if dataset_ID is not None:
+        dataset_query = dataset_query \
+            .filter(models.Dataset.dataset_ID == dataset_ID)
     
     dataset = dataset_query.all()
 

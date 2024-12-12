@@ -1,7 +1,7 @@
 from marshmallow import fields, Schema
 from sqlalchemy.orm import relationship
 
-from config import db, ma
+from app.config import db, ma
 
 
 class Dataset(db.Model):
@@ -361,7 +361,6 @@ class SpongEffectsRun(db.Model):
     method = db.Column(db.String(32))
     cv_folds = db.Column(db.Integer)
     level = db.Column(db.String(32))
-    methods = db.Column(db.String(32))
 
 class SpongEffectsRunPerformance(db.Model):
     __tablename__ = "spongEffects_run_performance"
@@ -640,28 +639,29 @@ class TargetDatabasesSchema(ma.SQLAlchemyAutoSchema):
     sponge_run = ma.Nested(SpongeRunSchema)
 
 
-class AllSpongeRunInformationSchema(Schema):
-    sponge_run = fields.Nested(SpongeRunSchema)
-    target_databases = fields.Nested(lambda: TargetDatabasesSchema(only=("db_used", "url", "version")))
+# never used 
+# class AllSpongeRunInformationSchema(Schema):
+#     sponge_run = fields.Nested(SpongeRunSchema)
+#     target_databases = fields.Nested(lambda: TargetDatabasesSchema(only=("db_used", "url", "version")))
 
 
-class GeneInteractionLongSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = GeneInteraction
-        sqla_session = db.session
+# class GeneInteractionLongSchema(ma.SQLAlchemyAutoSchema):
+#     class Meta:
+#         model = GeneInteraction
+#         sqla_session = db.session
 
-    sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID")))
-    gene1 = ma.Nested(lambda: GeneSchema(exclude=("gene_ID")))
-    gene2 = ma.Nested(lambda: GeneSchema(exclude=("gene_ID")))
+#     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID")))
+#     gene1 = ma.Nested(lambda: GeneSchema(exclude=("gene_ID")))
+#     gene2 = ma.Nested(lambda: GeneSchema(exclude=("gene_ID")))
 
-class GeneInteractionShortSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = GeneInteraction
-        sqla_session = db.session
+# class GeneInteractionShortSchema(ma.SQLAlchemyAutoSchema):
+#     class Meta:
+#         model = GeneInteraction
+#         sqla_session = db.session
 
-    sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID")))
-    gene1 = ma.Nested(lambda: GeneSchema(only=("ensg_number")))
-    gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number")))
+#     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID")))
+#     gene1 = ma.Nested(lambda: GeneSchema(only=("ensg_number")))
+#     gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number")))
 
 class GeneInteractionDatasetLongSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -700,16 +700,17 @@ class SpongeRunForMirnaSchema(ma.SQLAlchemyAutoSchema):
         model = SpongeRun
         sqla_session = db.session
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("disease_name", )))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name", )))
 
-class GeneInteractionDatasetForMiRNSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = GeneInteraction
-        sqla_session = db.session
+# never used, unclear
+# class GeneInteractionDatasetForMiRNSchema(ma.SQLAlchemyAutoSchema):
+#     class Meta:
+#         model = GeneInteraction
+#         sqla_session = db.session
 
-    sponge_run = ma.Nested(lambda: SpongeRunForMirnaSchema(only=("sponge_run_ID","dataset")))
-    gene1 = ma.Nested(lambda:GeneSchema(only=("ensg_number", "gene_symbol")))
-    gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+#     sponge_run = ma.Nested(lambda: SpongeRunForMirnaSchema(only=("sponge_run_ID","dataset")))
+#     gene1 = ma.Nested(lambda:GeneSchema(only=("ensg_number", "gene_symbol")))
+#     gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 class miRNAInteractionSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -758,7 +759,7 @@ class geneExpressionSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["dataset", "expr_value", "gene", "sample_ID"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("disease_name", )))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 
@@ -768,7 +769,7 @@ class miRNAExpressionSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["dataset", "expr_value", "mirna", "sample_ID"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("disease_name", )))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
     mirna = ma.Nested(lambda: miRNASchema(only=("mir_ID", "hs_nr")))
 
 class occurencesMiRNASchema(ma.SQLAlchemyAutoSchema):
@@ -798,7 +799,7 @@ class PatientInformationSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["dataset", "sample_ID", "disease_status", "survival_time"]
         
-    dataset = ma.Nested(lambda: DatasetSchema(only=("disease_name", )))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
 
 class SurvivalRateSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -806,7 +807,7 @@ class SurvivalRateSchema(ma.SQLAlchemyAutoSchema):
         sql_session = db.session
         fields = ["dataset", "gene", "overexpression", "patient_information"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("disease_name", )))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
     patient_information = ma.Nested(lambda: PatientInformationSchema(only=("sample_ID", "disease_status", "survival_time")))
 
@@ -816,10 +817,20 @@ class SurvivalPValueSchema(ma.SQLAlchemyAutoSchema):
         sql_session = db.session
         fields = ["dataset", "gene", "pValue"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("disease_name", )))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataet_ID", "disease_name")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 class checkGeneInteractionProCancer(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        strict = True
+
+    data_origin = fields.String()
+    disease_name = fields.String()
+    disease_subtype = fields.String()
+    sponge_run_ID = fields.Integer()
+    include = fields.Integer()
+
+class checkTranscriptInteractionProCancer(ma.SQLAlchemyAutoSchema):
     class Meta:
         strict = True
 
@@ -906,39 +917,39 @@ class TranscriptInteractionLongSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", )))
-    transcript1 = ma.Nested(lambda: TranscriptSchema(exclude="transcript_ID"))
-    transcript2 = ma.Nested(lambda: TranscriptSchema(exclude="transcript_ID"))
+    transcript_1 = ma.Nested(lambda: TranscriptSchema(exclude="transcript_ID"))
+    transcript_2 = ma.Nested(lambda: TranscriptSchema(exclude="transcript_ID"))
+    
+# never used
+# class TranscriptInteractionShortSchema(ma.SQLAlchemyAutoSchema):
+#     class Meta:
+#         model = TranscriptInteraction
+#         sqla_session = db.session
 
-class TranscriptInteractionShortSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = TranscriptInteraction
-        sqla_session = db.session
-
-    sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", )))
-    transcript1 = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", )))
-    transcript2 = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", )))
+#     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", )))
+#     transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", )))
+#     transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", )))
 
 
 class TranscriptInteractionDatasetLongSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = TranscriptInteraction
         sqla_session = db.session
-        fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript1", "transcript2"]
+        fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript_1", "transcript_2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript1 = ma.Nested(TranscriptSchema)
-    transcript2 = ma.Nested(TranscriptSchema)
+    transcript_1 = ma.Nested(TranscriptSchema)
+    transcript_2 = ma.Nested(TranscriptSchema)
 
 class TranscriptInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = TranscriptInteraction
         sqla_session = db.session
-        fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript1", "transcript2"]
+        fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript_1", "transcript_2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
     transcript1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
     transcript2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
-
 
 class GeneEnrichmentScoreSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -976,7 +987,7 @@ class ExpressionDataTranscriptSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["dataset", "transcript", "expr_value", "sample_ID"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("disease_name", )))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
     transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 

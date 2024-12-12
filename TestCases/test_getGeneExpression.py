@@ -1,5 +1,5 @@
-from config import *
-import models, unittest
+from app.config import *
+import app.models as models, unittest
 with app.app_context(): 
     import expressionValues
 from flask import abort
@@ -45,7 +45,7 @@ def test_get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, db
     if disease_name is not None:
         dataset = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .filter(models.Dataset.version == db_version) \
+            .filter(models.Dataset.sponge_db_version == db_version) \
             .all()
 
         if len(dataset) > 0:

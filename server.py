@@ -3,13 +3,17 @@ Main module of the server file
 """
 
 # local modules
-import config
+import app.config as config
+import os
+from connexion.resolver import RelativeResolver
+
 
 # Get the application instance
 connex_app = config.connex_app
 
 # Read the swagger.yml file to configure the endpoints
-connex_app.add_api("swagger.yml")
+swagger_file = os.path.join(os.path.dirname(__file__), "swagger.yml")
+connex_app.add_api(swagger_file, resolver=RelativeResolver('app.controllers'), options={"swagger_ui": True})
 
 # create a URL route in our application for "/"
 @connex_app.route("/")

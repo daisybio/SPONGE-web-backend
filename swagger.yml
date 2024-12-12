@@ -20,10 +20,22 @@ paths:
       operationId: dataset.get_datasets
       tags:
         - Dataset
-      summary: Get information on datasets for a given source
-      description: Get information on all datasets of a given source (e.g. TCGA) including subtype information
+      summary: Get information on one or more datasets
+      description: Get information on one or more datasets
       parameters:
         - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
+        - name: disease_name
+          in: query
+          description: Name of the disease
+          required: false
+          schema:
+            type: string
         - name: data_origin
           in: query
           description: Name of the data origin (e.g. TCGA)
@@ -56,53 +68,53 @@ paths:
                   disease_subtype:
                     type: string
                     description: Subtype of specific cancer type (NA if no relevant subtype is present)
-                  study_abbreviation:
-                    type: string
-                    description: Study abbreviation
-                  version:
+                  sponge_db_version:
                     type: integer
                     description: SPONGEdb version used
-                  number_of_samples:
-                    type: integer
-                    description: Number of samples per disease
-  /dataset:
-    get:
-      operationId: dataset.read
-      tags:
-      - Dataset
-      summary: Get information about all cancer types/datasets or specific one.
-      description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
-      parameters:
-      - $ref: '#/components/parameters/VersionParam'
-      - name: disease_name
-        in: query
-        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: false
-        schema:
-          type: string
-      responses:
-        "200":
-          description: Successfully read information about all cancer types/datasets or specific one from database.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  dataset_ID:
-                    type: integer
-                    description: Internal databse ID of the cancer type/dataset.
-                  disease_name:
-                    type: string
-                    description: Name of the camcer type/dataset.
-                  data_origin:
-                    type: string
-                    description: Cancer type/dataset origin (database name, etc.).
-                  disease_type:
-                    type: string
-                    description: Type of the disease (e.g. cancer).
-                  download_url:
-                    type: string
-                    description: URL to cancer type/dataset annotation.
+  # /dataset:
+  #   get:
+  #     operationId: dataset.read
+  #     tags:
+  #     - Dataset
+  #     summary: Get information about all cancer types/datasets or specific one.
+  #     description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
+  #     parameters:
+  #     - $ref: '#/components/parameters/VersionParam'
+  #     - name: disease_name
+  #       in: query
+  #       description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+  #       required: false
+  #       schema:
+  #         type: string
+  #     responses:
+  #       "200":
+  #         description: Successfully read information about all cancer types/datasets or specific one from database.
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 dataset_ID:
+  #                   type: integer
+  #                   description: Internal database ID of the cancer type/dataset.
+  #                 disease_name:
+  #                   type: string
+  #                   description: Name of the cancer type/dataset.
+  #                 data_origin:
+  #                   type: string
+  #                   description: Cancer type/dataset origin (database name, etc.).
+  #                 disease_type:
+  #                   type: string
+  #                   description: Type of the disease (e.g. cancer).
+  #                 download_url:
+  #                   type: string
+  #                   description: URL to cancer type/dataset annotation.
+  #                 disease_subtype:
+  #                   type: string
+  #                   description: Subtype of specific cancer type (NA if no relevant subtype is present)
+  #                 sponge_db_version:
+  #                   type: integer
+  #                   description: SPONGEdb version used
   /dataset/spongeRunInformation:
     get:
       operationId: dataset.read_spongeRunInformation
@@ -112,10 +124,16 @@ paths:
       description: Retrieve all used parameters of the SPONGE method to create published results for the cancer type/dataset of interest.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       responses:
@@ -185,6 +203,12 @@ paths:
       description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type.
@@ -262,6 +286,12 @@ paths:
       description: Tests for specific gene (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: ensg_number
         in: query
         description: Ensg number of the gene of interest (e.g. ENSG00000259090).
@@ -295,6 +325,48 @@ paths:
                     sponge_run_ID:
                       type: integer
                       description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+  /ceRNAInteraction/checkTranscriptInteraction:
+    get:
+      operationId: transcriptInteraction.test_transcript_interaction
+      tags:
+        - ceRNANetwork
+      summary: Tests for specific transcript  if has at least one interaction in each cancer type/dataset.
+      description: Tests for specific transcript (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
+        - name: enst_number
+          in: query
+          description: Enst number of the transcript of interest.
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tests for specific gene (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
+          content:
+            application/json:
+              schema:
+                type: object
+                items:
+                  properties:
+                    data_origin:
+                      type: string
+                      description: Origin of the dataset.
+                    disease_name:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    include:
+                      type: integer
+                      description: Result of the test. 0 means the gene is not included in the corresponding ceRNA interaction network. 1 mean the gene is a part of the ceRNA network.
+                    sponge_run_ID:
+                      type: integer
+                      description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
   /ceRNAInteraction/findAll:
     get:
       operationId: geneInteraction.read_all_genes
@@ -304,6 +376,12 @@ paths:
       description: Get all ceRNA interactions by given identifications (ensg_number, gene_symbol or gene_type), specific cancer type/dataset or different filter possibilities according different statistical values (e.g. FDR adjusted p-value).
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -566,6 +644,12 @@ paths:
       description: Get all ceRNA interactions by given identifications (enst_number or transcript_type), specific cancer type/dataset or different filter possibilities according different statistical values (e.g. FDR adjusted p-value).
       parameters:
         - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
         - name: disease_name
           in: query
           description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -831,6 +915,12 @@ paths:
       description: Get all interactions between the given identifiers (ensg_number or gene_symbol).
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -946,6 +1036,12 @@ paths:
       description: Get all interactions between the given identifiers (enst_number).
       parameters:
         - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
         - name: disease_name
           in: query
           description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1109,10 +1205,16 @@ paths:
       description: Get all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -1294,10 +1396,16 @@ paths:
       description: Get all ceRNAs in a disease of interest (search not for a specific ceRNA, but search for all ceRNAs satisfying filter functions)
       parameters:
         - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
         - name: disease_name
           in: query
           description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-          required: true
+          required: false
           schema:
             type: string
         - name: enst_number
@@ -1475,6 +1583,12 @@ paths:
       description: Get the number of times a gene of interest is involved in the complete network or just significant interactions.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1541,8 +1655,18 @@ paths:
                       type: object
                       properties:
                         dataset:
-                          type: string
-                          description: Name of the cancer type/dataset.
+                          type: object
+                          description: Dataset ID and disease name.
+                          properties: 
+                            dataset_ID: 
+                              type: integer
+                              description: Internal database ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
                         sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
@@ -1564,6 +1688,12 @@ paths:
       description: Get the number of times a transcript of interest is involved in the complete network or just significant interactions.
       parameters:
         - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
         - name: disease_name
           in: query
           description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1753,6 +1883,172 @@ paths:
                       required:
                       - dataset
                       - sponge_run_ID
+  /miRNAInteraction/findSpecificTranscripts:
+    get:
+      operationId: transcriptInteraction.read_all_to_one_mirna
+      tags:
+        - ceRNANetwork
+      summary: Get all ceRNA interactions where miRNA of interest contribute to.
+      description: Get all ceRNA interactions where miRNA(s) of interest (different identifiers available - e.g. hs number or mimat number) contribute to.
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: false
+          schema:
+            type: string
+        - name: mimat_number
+          in: query
+          description: The mimat_id of the miRNA of interest (e.g. MIMAT0000076) - this or the hs_number is needed.
+          required: false
+          schema:
+            type: string
+        - name: hs_number
+          in: query
+          description: The hs_number of the miRNA of interest (e.g. hsa-miR-21-5p) - this or the mimat_numbers is needed.
+          required: false
+          schema:
+            type: string
+        - name: pValue
+          in: query
+          required: false
+          description: Threshold of the FDR adjusted p-value. Default is 0.05.
+          schema:
+            type: number
+            default: 0.05
+        - name: pValueDirection
+          in: query
+          required: false
+          description: Direction of the FDR adjusted p-value threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: mscor
+          in: query
+          required: false
+          description: Threshold of the 'multiple sensitivity correlation' (mscor).
+          schema:
+            type: number
+        - name: mscorDirection
+          in: query
+          required: false
+          description: Direction of the mscor threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: correlation
+          in: query
+          required: false
+          description: Threshold of the correlation.
+          schema:
+            type: number
+        - name: correlationDirection
+          in: query
+          required: false
+          description: Direction of the correlation threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Get all interactions between the given identifiers (ensg_number or gene_symbol) - if existing.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    correlation:
+                      type: number
+                      description: Correlation of the corresponding ceRNA interaction.
+                    transcript1:
+                      type: object
+                      description: transcript of the first part of the ceRNA interaction.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Ensg from Ensemble number of the gene.
+                        gene:
+                          type: object
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene that the transcript is part of
+                            gene_symbol:
+                              type: string
+                              description: Symbol of the gene that the transcript is part of
+                    transcript2:
+                      type: object
+                      description: transcript of the second part of the ceRNA interaction.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Ensg from Ensemble number of the gene.
+                        gene:
+                          type: object
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene that the transcript is part of
+                            gene_symbol:
+                              type: string
+                              description: Symbol of the gene that the transcript is part of
+                    mscor:
+                      type: number
+                      description: Multiple senstivity correlation (mscor) of the corresponding ceRNA interaction.
+                    p_value:
+                      type: number
+                      description: FDR adjusted p-value of the corresponding ceRNA interaction.
+                    sponge_run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        sponge_run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - sponge_run_ID
   /miRNAInteraction/getOccurence:
     get:
       operationId: geneInteraction.read_all_mirna
@@ -1762,6 +2058,12 @@ paths:
       description: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -1874,6 +2176,127 @@ paths:
                       required:
                         - dataset
                         - sponge_run_ID
+  /miRNAInteraction/getOccurenceTranscripts:
+    get:
+      operationId: transcriptInteraction.read_all_mirna
+      tags:
+        - ceRNANetwork
+      summary: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
+      description: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          schema:
+            type: string
+        - name: mimat_number
+          in: query
+          description: A comma-separated list of mimat_id(s) of the miRNA(s) of interest (e.g. MIMAT0000076, MIMAT0000261) (this or the hs_number(s) is/are needed).
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: hs_number
+          in: query
+          description: A comma-separated list of hs_number(s) of the miRNA(s) of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p) (this or the mimat_number(s) is/are needed).
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: occurences
+          in: query
+          description: Threshold of amount of contributions a miRNA should have to be considered.
+          required: false
+          schema:
+            type: integer
+        - name: sorting
+          in: query
+          required: false
+          description: Possibilities for sorting of the results.
+          schema:
+            type: string
+            enum:
+              - occurences
+        - name: descending
+          in: query
+          required: false
+          description: Descending (true) or ascending (false) ordering of the results.
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Read all ceRNA interactions where miRNA of interesest in
+            the searched disease (if provided) contributes to.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    mirna:
+                      type: object
+                      description: Information about the miRNA(s) of interest - source is miRBase
+                      properties:
+                        hs_nr:
+                          type: string
+                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
+                        mir_ID:
+                          type: string
+                          description: The accession number is the only truly stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear.
+                      required:
+                        - hs_nr
+                        - mir_ID
+                    occurences:
+                      type: integer
+                      description: Occurences of the miRNA.
+                    sponge_run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        sponge_run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - sponge_run_ID
   /miRNAInteraction/findceRNA:
     get:
       operationId: geneInteraction.read_mirna_for_specific_interaction
@@ -1883,10 +2306,16 @@ paths:
       summary: Get all miRNAs that contribute to all interactions between the given identifiers (ensg_number or gene_symbol).
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -1945,8 +2374,12 @@ paths:
                       type: object
                       properties:
                         dataset:
-                          type: string
-                          description: Name of the cancer type/dataset.
+                          type: object
+                          description: Dataset ID and disease name.
+                          properties: 
+                            dataset_ID: 
+                              type: integer
+                              description: Internal database ID of the cancer type/dataset.
                         sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
@@ -1975,10 +2408,16 @@ paths:
       summary: Get all miRNAs that contribute to all interactions between the given identifiers (enst_number).
       parameters:
         - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
         - name: disease_name
           in: query
           description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-          required: true
+          required: false
           schema:
             type: string
         - name: enst_number
@@ -2032,8 +2471,12 @@ paths:
                       type: object
                       properties:
                         dataset:
-                          type: string
-                          description: Name of the cancer type/dataset.
+                          type: object
+                          description: Dataset ID and disease name.
+                          properties: 
+                            dataset_ID: 
+                              type: integer
+                              description: Internal database ID of the cancer type/dataset.
                         sponge_run_ID:
                           type: integer
                           description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
@@ -2062,10 +2505,16 @@ paths:
       description: Get all expression values for gene(s) of interest.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -2100,8 +2549,15 @@ paths:
                 items:
                   properties:
                     dataset:
-                      type: string
-                      description: Name of the cancer type/dataset.
+                      type: object
+                      description: Dataset ID and disease name.
+                      properties: 
+                        dataset_ID: 
+                          type: integer
+                          description: Internal database ID of the cancer type/dataset.
+                        disease_name: 
+                          type: string
+                          description: Name of the cancer type.
                     expr_value:
                       type: number
                       description: Specific expression value for unique gene and sample_ID.
@@ -2130,6 +2586,12 @@ paths:
       description: Get transcript expressions for transcript IDs, gene IDs, or gene symbols
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the disease, will return all expression data if not specified
@@ -2138,19 +2600,19 @@ paths:
           type: string
       - name: enst_number
         in: query
-        description: Ensembl transcript ID(s)
+        description: Ensembl transcript ID
         required: false
         schema:
           type: string
       - name: ensg_number
         in: query
-        description: Ensembl gene ID(s)
+        description: Ensembl gene ID
         required: false
         schema:
           type: string
       - name: gene_symbol
         in: query
-        description: Gene symbol(s)
+        description: Gene symbol
         required: false
         schema:
           type: string
@@ -2164,8 +2626,15 @@ paths:
                 items:
                   properties:
                     dataset:
-                      type: string
-                      description: Name of the cancer type/dataset.
+                      type: object
+                      description: Dataset ID and disease name.
+                      properties: 
+                        dataset_ID: 
+                          type: integer
+                          description: Internal database ID of the cancer type/dataset.
+                        disease_name: 
+                          type: string
+                          description: Name of the cancer type.
                     transcript:
                       type: string
                       description: Ensembl transcript ID
@@ -2185,7 +2654,7 @@ paths:
                     sample_ID:
                       type: string
                       description: ID of the specific sample.
-  /exprValue/getmirNA:
+  /exprValue/getmiRNA:
     get:
       operationId: expressionValues.get_mirna_expr
       tags:
@@ -2194,15 +2663,21 @@ paths:
       description: Get all expression values for miRNA(s) of interest.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: mimat_number
         in: query
-        description: A comma-separated list of mimat_numbers(s) of the miRNA(s) of interest (e.g. MIMAT0000076, MIMAT0000261)
+        description: mimat_numbers(s) of the miRNA(s) of interest (e.g. MIMAT0000076, MIMAT0000261)
         required: false
         schema:
           type: array
@@ -2232,8 +2707,15 @@ paths:
                 items:
                   properties:
                     dataset:
-                      type: string
-                      description: Name of the cancer type/dataset.
+                      type: object
+                      description: Dataset ID and disease name.
+                      properties: 
+                        dataset_ID: 
+                          type: integer
+                          description: Internal database ID of the cancer type/dataset.
+                        disease_name: 
+                          type: string
+                          description: Name of the cancer type.
                     expr_value:
                       type: number
                       description: Specific expression value for unique gene and sample_ID.
@@ -2629,10 +3111,16 @@ paths:
       description: Get all available clinical information for patients/samples.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: sample_ID
@@ -2656,8 +3144,15 @@ paths:
                 items:
                   properties:
                     dataset:
-                      type: string
-                      description: Name of the cancer type/dataset.
+                      type: object
+                      description: Dataset ID and disease name.
+                      properties: 
+                        dataset_ID: 
+                          type: integer
+                          description: Internal database ID of the cancer type/dataset.
+                        disease_name: 
+                          type: string
+                          description: Name of the cancer type.
                     disease_status:
                       type: integer
                       description: Information about the disease status (0 = patient is dead, 1 = patient is alive) at the end of observation.
@@ -2676,10 +3171,16 @@ paths:
       description: Get all raw data for kaplan meier plots.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -2725,8 +3226,15 @@ paths:
                 items:
                   properties:
                     dataset:
-                      type: string
-                      description: Name of the cancer type/dataset.
+                      type: object
+                      description: Dataset ID and disease name.
+                      properties: 
+                        dataset_ID: 
+                          type: integer
+                          description: Internal database ID of the cancer type/dataset.
+                        disease_name: 
+                          type: string
+                          description: Name of the cancer type.
                     gene:
                       type: object
                       description: Information about the gene.
@@ -2765,10 +3273,16 @@ paths:
       description: Retrieve pValues from log rank test based on raw survival analysis data
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -2803,8 +3317,15 @@ paths:
                 items:
                   properties:
                     dataset:
-                      type: string
-                      description: information about the dataset
+                      type: object
+                      description: Dataset ID and disease name.
+                      properties: 
+                        dataset_ID: 
+                          type: integer
+                          description: Internal database ID of the cancer type/dataset.
+                        disease_name: 
+                          type: string
+                          description: Name of the cancer type.
                     gene:
                       type: object
                       description: Information about the gene.
@@ -2926,9 +3447,148 @@ paths:
                 type: array
                 items:
                   properties:
+                    transcript_element_positions:
+                      type: object
+                      description: Information about the exon.
+                      properties:
+                        start_pos:
+                          type: integer
+                          description: start position of the exon.
+                        end_pos:
+                          type: integer
+                          description: end position of the exon.
+                    type: 
+                      type: string
+                      description: Type of the exon.
                     ense_number:
                       type: string
                       description: Ense number of the exon.
+  /spongEffects/getSpongEffectsRuns:
+    get:
+      operationId: spongEffects.get_spongeffects_runs
+      tags: 
+      - spongEffects
+      summary: Get all available spongEffects runs and their dataset informations
+      description: Get all available spongEffects runs and their dataset informations
+      parameters:
+      - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: disease_name
+        in: query
+        description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
+        required: false
+        schema:
+          type: string
+      - name: include_empty_spongeffects
+        in: query
+        description: If true (1), datasets with no spongEffects runs are included.
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: Get all available spongEffects runs and their dataset informations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    spongeEffects_run_ID: 
+                      type: integer
+                      description: Internal database ID for different SpongEffect runs. 
+                    m_scor_threshold:
+                      type: number
+                      description: Threshold for the m-score.
+                    p_adjust_threshold:
+                      type: number
+                      description: Threshold for the p-adjusted value.
+                    modules_cutoff:
+                      type: number
+                      description: Threshold for the modules.
+                    bin_size:
+                      type: number
+                      description: Threshold for the bin size.
+                    min_size:
+                      type: number
+                      description: Threshold for the min size.
+                    max_size:
+                      type: number
+                      description: Threshold for the max size.
+                    min_expr:
+                      type: number
+                      description: Threshold for the min expression.
+                    method:
+                      type: string
+                      description: Method used for the spongEffects run.
+                    cv_folds: 
+                      type: integer
+                      description: Number of cross-validation folds.
+                    level: 
+                      type: string
+                      description: Level used for the spongEffects run.
+                    sponge_run_ID:
+                      type: integer
+                      description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                    variance_cutoff:
+                      type: number
+                      description: Only consider genes and miRNA with variance > var.threshold. If this parameter is NULL no variance filtering is performed (Parameter name in SPONGE method is var.threshold)
+                    f_test:
+                      type: boolean
+                      description: If true (1), an F-test is performed on each model parameter to assess its importance for the model based on the RSS of the full model vs the RSS of the nested model without the miRNA in question.
+                    f_test_p_adj_threshold:
+                      type: number
+                      description: If F.test is TRUE (1), threshold to use for miRNAs to be included.
+                    coefficient_threshold:
+                      type: number
+                      description: Threshold to cross for a regression coefficient to be called significant. Depends on the parameter coefficient.direction.
+                    coefficient_direction: 
+                      type: string
+                      description: If "<", coefficient has to be lower than coefficient.threshold, if ">", coefficient has to be larger than threshold. If NULL, the absolute value of the coefficient has to be larger than the threshold.
+                    min_corr:
+                      type: number
+                      description: Consider only gene pairs with a minimum correlation specified here.
+                    number_of_datasets:
+                      type: integer
+                      description: The number of mscor coefficients to be sampled from each covariance matrix.
+                    number_of_samples:
+                      type: integer
+                      description: The number of samples available in the expression data.
+                    ks:
+                      type: string
+                      description: A sequence of gene-gene correlation values for which null models are computed.
+                    m_max:
+                      type: integer
+                      description: null models are build for each elt in ks for 1 to m_max miRNAs
+                    log_level:
+                      type: string
+                      description: The log level, can be one of "info", "debug", "error".
+                    sponge_db_version: 
+                      type: string
+                      description: Version of the SPONGE database.
+                    dataset_ID:
+                      type: integer
+                      description: Internal database ID of the cancer type/dataset.
+                    disease_name:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    data_origin:
+                      type: string
+                      description: Cancer type/dataset origin (database name, etc.).
+                    disease_type:
+                      type: string
+                      description: Type of the disease (e.g. cancer).
+                    download_url:
+                      type: string
+                      description: URL to cancer type/dataset annotation.
+                    disease_subtype:
+                      type: string
+                      description: Subtype of specific cancer type (NA if no relevant subtype is present)
   /spongEffects/getRunPerformance:
     get:
       operationId: spongEffects.get_run_performance
@@ -2938,10 +3598,16 @@ paths:
       description: Get best spongEffects run performance for selected disease
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-        required: true
+        required: false
         schema:
           type: string
       - name: level
@@ -2994,10 +3660,16 @@ paths:
       description: Get detailed spongEffects model performance information for given disease type
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-        required: true
+        required: false
         schema:
           type: string
       - name: level
@@ -3069,10 +3741,16 @@ paths:
       description: Get enrichment score class distributions of a trained spongEffects model for a given disease
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the disease (e.g. Pan-cancer, Testicular germ cell tumor, ...)
-        required: true
+        required: false
         schema:
           type: string
       - name: level
@@ -3107,10 +3785,16 @@ paths:
       description: Extract module hub elements for a given disease and level
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Disease name
-        required: true
+        required: false
         schema:
           type: string
       responses:
@@ -3142,10 +3826,16 @@ paths:
       description: Get connected nodes of specified ceRNA hub(s)
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the disease
-        required: true
+        required: false
         schema:
           type: string
       - name: ensg_number
@@ -3189,10 +3879,16 @@ paths:
       description: Extract module hub elements for a given disease and level
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Disease name
-        required: true
+        required: false
         schema:
           type: string
       responses:
@@ -3310,6 +4006,12 @@ paths:
       description: Get all comparisons involving the specified disease name and the subtype.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name
         in: query
         description: Name of the disease type. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
@@ -3407,16 +4109,28 @@ paths:
       description: Get all gene sets for which GSEA results are available for the given type, subtype and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -3432,13 +4146,13 @@ paths:
       - name: condition_1
         in: query
         description: Condition of the first part of the GSEA analysis (e.g. "disease" or "normal").
-        required: true
+        required: false
         schema:
           type: string
       - name: condition_2
         in: query
         description: Condition of the second dataset of the GSEA analysis (e.g. "disease" or "normal").
-        required: true
+        required: false
         schema:
           type: string
 
@@ -3464,16 +4178,28 @@ paths:
       description: Get all terms for which GSEA results are available for the given gene set, type/subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -3635,16 +4361,28 @@ paths:
       description: Get GSEA plot for the given gene set, type/subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -3698,16 +4436,28 @@ paths:
       description: Get differential expression results for the given gene, type, subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -3796,16 +4546,28 @@ paths:
       description: Get differential expression results for the given transcript, type, subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1

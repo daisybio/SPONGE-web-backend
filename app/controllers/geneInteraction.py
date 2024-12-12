@@ -3,16 +3,17 @@ import os
 from flask import abort
 from sqlalchemy import desc, or_, and_
 from sqlalchemy.sql import text
-import models
-from config import LATEST, db
+import app.models as models
+from app.config import LATEST, db
 
 
-def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=0.05,
+def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
                    sorting=None, descending=True, limit=100, offset=0, information=True, sponge_db_version: int = LATEST):
     """
-    This function responds to a request for /sponge/ceRNAInteraction/findAll
+    This function responds to a request for /ceRNAInteraction/findAll
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
     :param ensg_number: esng number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
@@ -53,6 +54,9 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
     
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+    
     run = run.all()
 
     if len(run) > 0:
@@ -60,7 +64,7 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         queries_1.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
         queries_2.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        abort(404, "No dataset with given disease_name / dataset_ID found")
 
     gene = []
     # if ensg_numer is given to specify gene(s), get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -159,11 +163,12 @@ def read_all_genes(disease_name=None, ensg_number=None, gene_symbol=None, gene_t
         abort(404, "No information with given parameters found")
 
 
-def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, pValue=0.05,
+def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, pValue=0.05,
                               pValueDirection="<", limit=100, offset=0, sponge_db_version: int = LATEST):
     """
-      This function responds to a request for /sponge/ceRNAInteraction/findSpecific
+      This function responds to a request for /ceRNAInteraction/findSpecific
       and returns all interactions between the given identifications (ensg_number or gene_symbol)
+      :param dataset_ID: dataset_ID of interest
       :param disease_name: disease_name of interest
       :param ensg_number: esng number of the genes of interest
       :param gene_symbol: gene symbol of the genes of interest
@@ -212,7 +217,9 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .filter(models.SpongeRun.sponge_db_version == sponge_db_version) \
+    
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
             
     run = run.all()
 
@@ -241,12 +248,13 @@ def read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=N
         abort(404, "No information with given parameters found")
 
 
-def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None,
+def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None,
                                    minBetweenness=None, minNodeDegree=None, minEigenvector=None,
                                    sorting=None, descending=True, limit=100, offset=0, sponge_db_version: int = LATEST):
     """
-    This function responds to a request for /sponge/findceRNA
+    This function responds to a request for /findceRNA
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved and satisfies the given filters
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: isease_name of interest
     :param gene_type: defines the type of gene of interest
     :param ensg_number: esng number of the genes of interest
@@ -277,6 +285,9 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+            
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
         
     run = run.all()
 
@@ -354,8 +365,10 @@ def read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_sym
         abort(404, "Not data found that satisfies the given filters")
 
 
-def testGeneInteraction(ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
+def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
     """
+    This function responds to a request for /ceRNAInteraction/checkGeneInteraction
+    :param dataset_ID: dataset_ID of interest
     :param ensg_number: ensg number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
     :return: lists of all cancer types gene of interest has at least one interaction in the corresponding ceRNA II network
@@ -387,7 +400,10 @@ def testGeneInteraction(ensg_number=None, gene_symbol=None, sponge_db_version: i
         abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
 
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
-    run = db.session.execute(text(f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}")).fetchall()
+    run = db.session.execute(text(f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"))
+
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
 
     result = []
     for r in run:
@@ -413,10 +429,13 @@ def testGeneInteraction(ensg_number=None, gene_symbol=None, sponge_db_version: i
     return schema.dump(result)
 
 
-def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, pValue=0.05,
+def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, pValue=0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
                    limit=100, offset=0, sponge_db_version: int = LATEST):
     """
+    This function responds to a request for /miRNAInteraction/findSpecific
+    and returns all interactions the given miRNA is involved in
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
     :param mimat_number: mimat_id( of miRNA of interest
     :param: hs_nr: hs_number of miRNA of interest
@@ -468,7 +487,10 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
     # if specific disease_name is given:
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+        
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
     
     run = run.all()
 
@@ -524,9 +546,12 @@ def read_all_to_one_mirna(disease_name=None, mimat_number=None, hs_number=None, 
         abort(404, "No data found with input parameter")
 
 
-def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occurences=None, sorting=None, descending=None,
+def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, occurences=None, sorting=None, descending=None,
                    limit=100, offset=0, sponge_db_version: int = LATEST):
     """
+    Handles API request for /miRNAInteraction/getOccurence
+    and returns all miRNA that are involved in the disease of interest
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
     :param mimat_number: comma-separated list of mimat_id(s) of miRNA of interest
     :param: hs_nr: comma-separated list of hs_number(s) of miRNA of interest
@@ -573,7 +598,10 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
     # if specific disease_name is given:
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+        
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
         
     run = run.all()
         
@@ -607,10 +635,11 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
         abort(404, "No information with given parameters found")
 
 
-def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, between=False, sponge_db_version: int = LATEST):
+def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, between=False, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNA
     and returns all miRNAs thar contribute to all interactions between the given identifications (ensg_number or gene_symbol)
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
     :param ensg_number: esng number of the genes of interest
     :param gene_symbol: gene symbol of the genes of interest
@@ -638,7 +667,10 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
     # if specific disease_name is given:
     if disease_name is not None:
         run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+        
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
     
     run = run.all()
 
@@ -708,10 +740,11 @@ def read_mirna_for_specific_interaction(disease_name=None, ensg_number=None, gen
         abort(404, "No data found with input parameter")
 
 
-def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCountAll=None, minCountSign=None, sponge_db_version: int = LATEST):
+def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, minCountAll=None, minCountSign=None, sponge_db_version: int = LATEST):
     """
-    This function responds to a request for /geneCounts
+    This function responds to a request for /getGeneCount
     and returns gene(s) of interest with respective counts in disease of interest.
+    :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
     :param ensg_number: ensg number of the genes of interest
     :param gene_symbol: gene symbol of the genes of interest
@@ -741,6 +774,9 @@ def getGeneCounts(disease_name=None, ensg_number=None, gene_symbol=None, minCoun
     if disease_name is not None:
         run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+        
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
     
     run = run.all()
 

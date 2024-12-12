@@ -1,14 +1,17 @@
-import models
+import app.models as models
 from flask import abort
 import numpy as np
 from sklearn import manifold
 import pandas as pd
-from config import LATEST
+from app.config import LATEST
+from app.controllers.dataset import _dataset_query
 
 
-def get_network_results(disease_name="Breast invasive carcinoma",
+def get_network_results(dataset_ID: int = None, disease_name="Breast invasive carcinoma",
                         level="gene", sponge_db_version=LATEST):
     """
+    This function handles the query for /networkResults
+    and returns information about all available datasets to start browsing or search for a specific cancer type/dataset.
     :param disease_name: disease_name of interest
     :param version: version of the database
     :param level: "gene" or "transcript"
@@ -22,10 +25,7 @@ def get_network_results(disease_name="Breast invasive carcinoma",
     if level is None:
         abort(404, "A level must be provided")
 
-    dataset = models.Dataset.query \
-        .filter(models.Dataset.disease_name == disease_name) \
-        .filter(models.Dataset.sponge_db_version == sponge_db_version) \
-        .all()
+    dataset = _dataset_query(disease_name=disease_name, sponge_db_version=sponge_db_version, dataset_ID=dataset_ID)
 
     if len(dataset) == 0:
         abort(404, f"No Dataset entries found for given cancer type: {disease_name}")

@@ -261,7 +261,7 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
     run = run.all()
     if len(run) > 0:
         run_IDs = [i.sponge_run_ID for i in run]
-        queries.append(models.networkAnalysis.sponge_run_ID.in_(run_IDs))
+        queries.append(models.networkAnalysisTranscript.sponge_run_ID.in_(run_IDs))
     else:
         abort(404, "No dataset with given disease_name found")
 

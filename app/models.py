@@ -948,8 +948,8 @@ class TranscriptInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
         fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript_1", "transcript_2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
-    transcript2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
 
 class GeneEnrichmentScoreSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

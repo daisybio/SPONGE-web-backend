@@ -811,7 +811,7 @@ paths:
                     correlation:
                       type: number
                       description: Correlation of the corresponding ceRNA interaction.
-                    transcript1:
+                    transcript_1:
                       type: object
                       description: One of the two interacting ceRNAs.
                       properties:
@@ -843,7 +843,7 @@ paths:
                         canonical_transcript:
                           type: integer
                           description: Is a canonical transcript
-                    transcript2:
+                    transcript_2:
                       type: object
                       description: The other part of the ceRNA interaction.
                       properties:
@@ -1101,7 +1101,7 @@ paths:
                     correlation:
                       type: number
                       description: Correlation of the corresponding ceRNA interaction.
-                    transcript1:
+                    transcript_1:
                       type: object
                       description: One of the two interacting ceRNAs.
                       properties:
@@ -1133,7 +1133,7 @@ paths:
                         canonical_transcript:
                           type: integer
                           description: Is a canonical transcript
-                    transcript2:
+                    transcript_2:
                       type: object
                       description: The other part of the ceRNA interaction.
                       properties:

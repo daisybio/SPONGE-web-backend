@@ -481,6 +481,14 @@ def read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occuren
         abort(404, "No information with given parameters found")
 
 
+def test_transcript_interaction(enst_number=None, sponge_db_version: int = LATEST):
+    """
+        :param enst_number: ensg number of the gene of interest
+        :return: lists of all cancer types transcript of interest has at least one interaction in the corresponding ceRNA II network
+    """
+
+
+
 def read_mirna_for_specific_interaction(disease_name=None, enst_number=None, between=False):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNATranscripts

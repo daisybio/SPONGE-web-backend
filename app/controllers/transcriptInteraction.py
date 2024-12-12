@@ -163,11 +163,12 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
     if limit > 1000:
         abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
 
-    transcript = models.transcript.query
+    transcript_query = db.select(models.Transcript)
 
     if enst_number is not None:
-            transcript = transcript.filter(models.Transcript.enst_number.in_(enst_number)) \
-            .all()
+            transcript_query = transcript_query.where(models.Transcript.enst_number.in_(enst_number))
+
+    transcript = db.session.execute(transcript_query).scalars().all()
 
     if len(transcript) > 0:
         transcript_IDs = [t.transcript_ID for t in transcript]

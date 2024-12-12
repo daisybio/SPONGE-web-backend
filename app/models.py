@@ -322,9 +322,9 @@ class TranscriptInteraction(db.Model):
     sponge_run = relationship("SpongeRun", foreign_keys=[sponge_run_ID])
 
     transcript_ID_1 = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
-    transcript1 = relationship("Transcript", foreign_keys=[transcript_ID_1])
+    transcript_1 = relationship("Transcript", foreign_keys=[transcript_ID_1])
     transcript_ID_2 = db.Column(db.Integer, db.ForeignKey('transcript.transcript_ID'), nullable=False)
-    transcript2 = relationship("Transcript", foreign_keys=[transcript_ID_2])
+    transcript_2 = relationship("Transcript", foreign_keys=[transcript_ID_2])
 
     p_value = db.Column(db.Float)
     mscor = db.Column(db.Float)
@@ -948,8 +948,8 @@ class TranscriptInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
         fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript_1", "transcript_2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
-    transcript2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
 
 class GeneEnrichmentScoreSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

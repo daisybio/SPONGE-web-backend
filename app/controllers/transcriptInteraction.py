@@ -7,7 +7,8 @@ import app.models as models
 from app.config import LATEST, db
 
 
-def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=None, transcript_type=None, pValue=0.05, pValueDirection="<",
+def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=None, transcript_type=None, pValue=0.05,
+                         pValueDirection="<",
                          mscor=None,
                          mscorDirection="<", correlation=None, correlationDirection="<", sorting=None,
                          descending=True, limit=100, offset=0, information=True, sponge_db_version: int = LATEST):
@@ -48,7 +49,7 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
+
     if dataset_ID is not None:
         run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
 
@@ -124,7 +125,6 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
             else:
                 sort.append(models.TranscriptInteraction.correlation.asc())
 
-
     interaction_results = models.TranscriptInteraction.query \
         .filter(*queries_1) \
         .order_by(*sort) \
@@ -146,7 +146,8 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
         abort(404, "No information with given parameters found")
 
 
-def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_number=None, pValue=0.05, pValueDirection="<", limit=100,
+def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_number=None, pValue=0.05,
+                              pValueDirection="<", limit=100,
                               offset=0):
     """
     This function responds to a request for /ceRNAInteraction/findSpecificTranscripts
@@ -167,9 +168,9 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
 
     # transcript = []
     # if enst_number is not None:
-        # transcript = models.Transcript.query \
-        #     .filter(models.Transcript.enst_number.in_(enst_number)) \
-        #     .all()
+    # transcript = models.Transcript.query \
+    #     .filter(models.Transcript.enst_number.in_(enst_number)) \
+    #     .all()
 
     transcript = models.Transcript.query.all()
 
@@ -181,14 +182,14 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
     # save all needed queries to get correct results
     queries = [sa.and_(models.TranscriptInteraction.transcript_ID_1.in_(transcript_IDs),
                        models.TranscriptInteraction.transcript_ID_2.in_(transcript_IDs))]
-    
+
     run = db.select(models.SpongeRun)
 
     # if specific disease_name is given
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
+
     if dataset_ID is not None:
         run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
 
@@ -218,7 +219,8 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
         abort(404, "No information with given parameters found")
 
 
-def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=None, enst_number=None, transcript_type=None,
+def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=None, enst_number=None,
+                                         transcript_type=None,
                                          minBetweenness=None, minNodeDegree=None, minEigenvector=None,
                                          sorting=None, descending=None, limit=100, offset=0,
                                          sponge_db_version: int = LATEST):
@@ -252,14 +254,14 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
     if disease_name is not None:
         run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
+
     if dataset_ID is not None:
         run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
 
     run = run.all()
     if len(run) > 0:
         run_IDs = [i.sponge_run_ID for i in run]
-        queries.append(models.networkAnalysis.sponge_run_ID.in_(run_IDs))
+        queries.append(models.networkAnalysisTranscript.sponge_run_ID.in_(run_IDs))
     else:
         abort(404, "No dataset with given disease_name found")
 
@@ -372,7 +374,7 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
+
     if dataset_ID is not None:
         run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
 
@@ -430,7 +432,8 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
         abort(404, "No data found with input parameter")
 
 
-def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, occurences=None, sorting=None, descending=None,
+def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, occurences=None,
+                   sorting=None, descending=None,
                    limit=100, offset=0):
     """
     :param dataset_ID: dataset_ID of the dataset of interest
@@ -477,7 +480,7 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
+
     if dataset_ID is not None:
         run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
 
@@ -513,6 +516,53 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
         abort(404, "No information with given parameters found")
 
 
+def test_transcript_interaction(dataset_ID: int = None, enst_number=None, sponge_db_version: int = LATEST):
+    """
+        :param enst_number: ensg number of the gene of interest
+        :return: lists of all cancer types transcript of interest has at least one interaction in the corresponding ceRNA II network
+    """
+    transcripts = models.Transcript.query \
+        .filter(models.Transcript.enst_number == enst_number) \
+        .all()
+
+    if len(transcripts) > 0:
+        transcript_ID = [t.transcript_ID for t in transcripts]
+    else:
+        abort(404, "No transcripts found for given enst_number(s)")
+
+    run = db.session.execute(text(
+        f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"))
+
+    if dataset_ID is not None:
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+
+    result = []
+    for r in run:
+        tmp = db.session.execute(
+            text("SELECT EXISTS(SELECT * FROM interactions_transcripttranscript where sponge_run_ID = " + str(r.sponge_run_ID) +
+                 " and transcript_ID_1 = " + str(transcript_ID[0]) + " limit 1) as include;")).fetchone()
+
+        if (tmp[0] == 1):
+            check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "disease_subtype": r.disease_subtype,
+                     "sponge_run_ID": r.sponge_run_ID, "include": tmp[0]}
+        else:
+            tmp2 = db.session.execute(
+                text("SELECT EXISTS(SELECT * FROM interactions_transcripttranscript where sponge_run_ID = " + str(
+                    r.sponge_run_ID) +
+                     " and transcript_ID_2 = " + str(transcript_ID[0]) + " limit 1) as include;")).fetchone()
+
+            if (tmp2[0] == 1):
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "disease_subtype": r.disease_subtype, "sponge_run_ID": r.sponge_run_ID,
+                         "include": 1}
+            else:
+                check = {"data_origin": r.data_origin, "disease_name": r.disease_name, "disease_subtype": r.disease_subtype, "sponge_run_ID": r.sponge_run_ID,
+                         "include": 0}
+
+        result.append(check)
+
+    schema = models.checkTranscriptInteractionProCancer(many=True)
+    return schema.dump(result)
+
 def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=None, enst_number=None, between=False):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNATranscripts
@@ -529,14 +579,14 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
 
     queries = []
     run_IDs = []
-        
+
     run = db.select(models.SpongeRun)
 
     # if specific disease_name is given
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
+
     if dataset_ID is not None:
         run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
 
@@ -601,7 +651,8 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
         abort(404, "No data found with input parameter")
 
 
-def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=None, minCountAll=None, minCountSign=None):
+def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=None, minCountAll=None,
+                        minCountSign=None):
     """
     This function responds to a request for /transcriptCounts
     and returns transcript(s) of interest with respective counts in disease of interest.
@@ -615,14 +666,14 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
     """
 
     queries = []
-    
+
     run = db.select(models.SpongeRun)
 
     # if specific disease_name is given
     if disease_name is not None:
         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
+
     if dataset_ID is not None:
         run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
 
@@ -661,7 +712,6 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
     else:
         abort(404, "No data found with input parameter")
 
-
 # def get_distinc_ceRNA_sets(dataset_ID: int = None, disease_name: int = None):
 #     # scheint nichts zu machen und nicht fertig implementiert zu sein?
 #     """
@@ -680,7 +730,7 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
 #     if disease_name is not None:
 #         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
 #             .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
+
 #     if dataset_ID is not None:
 #         run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
 

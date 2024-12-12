@@ -325,6 +325,48 @@ paths:
                     sponge_run_ID:
                       type: integer
                       description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+  /ceRNAInteraction/checkTranscriptInteraction:
+    get:
+      operationId: transcriptInteraction.test_transcript_interaction
+      tags:
+        - ceRNANetwork
+      summary: Tests for specific transcript  if has at least one interaction in each cancer type/dataset.
+      description: Tests for specific transcript (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
+        - name: enst_number
+          in: query
+          description: Enst number of the transcript of interest.
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tests for specific gene (identified by ensg number or gene symbol) if has at least one interaction in each cancer type/dataset.
+          content:
+            application/json:
+              schema:
+                type: object
+                items:
+                  properties:
+                    data_origin:
+                      type: string
+                      description: Origin of the dataset.
+                    disease_name:
+                      type: string
+                      description: Name of the cancer type/dataset.
+                    include:
+                      type: integer
+                      description: Result of the test. 0 means the gene is not included in the corresponding ceRNA interaction network. 1 mean the gene is a part of the ceRNA network.
+                    sponge_run_ID:
+                      type: integer
+                      description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
   /ceRNAInteraction/findAll:
     get:
       operationId: geneInteraction.read_all_genes
@@ -1841,6 +1883,172 @@ paths:
                       required:
                       - dataset
                       - sponge_run_ID
+  /miRNAInteraction/findSpecificTranscripts:
+    get:
+      operationId: transcriptInteraction.read_all_to_one_mirna
+      tags:
+        - ceRNANetwork
+      summary: Get all ceRNA interactions where miRNA of interest contribute to.
+      description: Get all ceRNA interactions where miRNA(s) of interest (different identifiers available - e.g. hs number or mimat number) contribute to.
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: false
+          schema:
+            type: string
+        - name: mimat_number
+          in: query
+          description: The mimat_id of the miRNA of interest (e.g. MIMAT0000076) - this or the hs_number is needed.
+          required: false
+          schema:
+            type: string
+        - name: hs_number
+          in: query
+          description: The hs_number of the miRNA of interest (e.g. hsa-miR-21-5p) - this or the mimat_numbers is needed.
+          required: false
+          schema:
+            type: string
+        - name: pValue
+          in: query
+          required: false
+          description: Threshold of the FDR adjusted p-value. Default is 0.05.
+          schema:
+            type: number
+            default: 0.05
+        - name: pValueDirection
+          in: query
+          required: false
+          description: Direction of the FDR adjusted p-value threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: mscor
+          in: query
+          required: false
+          description: Threshold of the 'multiple sensitivity correlation' (mscor).
+          schema:
+            type: number
+        - name: mscorDirection
+          in: query
+          required: false
+          description: Direction of the mscor threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: correlation
+          in: query
+          required: false
+          description: Threshold of the correlation.
+          schema:
+            type: number
+        - name: correlationDirection
+          in: query
+          required: false
+          description: Direction of the correlation threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Get all interactions between the given identifiers (ensg_number or gene_symbol) - if existing.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    correlation:
+                      type: number
+                      description: Correlation of the corresponding ceRNA interaction.
+                    transcript1:
+                      type: object
+                      description: transcript of the first part of the ceRNA interaction.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Ensg from Ensemble number of the gene.
+                        gene:
+                          type: object
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene that the transcript is part of
+                            gene_symbol:
+                              type: string
+                              description: Symbol of the gene that the transcript is part of
+                    transcript2:
+                      type: object
+                      description: transcript of the second part of the ceRNA interaction.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Ensg from Ensemble number of the gene.
+                        gene:
+                          type: object
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg number of the gene that the transcript is part of
+                            gene_symbol:
+                              type: string
+                              description: Symbol of the gene that the transcript is part of
+                    mscor:
+                      type: number
+                      description: Multiple senstivity correlation (mscor) of the corresponding ceRNA interaction.
+                    p_value:
+                      type: number
+                      description: FDR adjusted p-value of the corresponding ceRNA interaction.
+                    sponge_run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        sponge_run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - sponge_run_ID
   /miRNAInteraction/getOccurence:
     get:
       operationId: geneInteraction.read_all_mirna
@@ -1944,6 +2152,127 @@ paths:
                       type: integer
                       description: Occurences of the miRNA.
                     run:
+                      description: Information about specific run and corresponding cancer type/dataset.
+                      type: object
+                      properties:
+                        dataset:
+                          type: object
+                          properties:
+                            data_origin:
+                              type: string
+                              description: Origin of the dataset.
+                            dataset_ID:
+                              type: integer
+                              description: Internal databse ID of the cancer type/dataset.
+                            disease_name:
+                              type: string
+                              description: Name of the cancer type/dataset.
+                          required:
+                            - dataset_ID
+                            - disease_name
+                        sponge_run_ID:
+                          type: integer
+                          description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+                      required:
+                        - dataset
+                        - sponge_run_ID
+  /miRNAInteraction/getOccurenceTranscripts:
+    get:
+      operationId: transcriptInteraction.read_all_mirna
+      tags:
+        - ceRNANetwork
+      summary: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
+      description: Get all mirna involved in cancer type/dataset of interest (searchs not for a specific miRNA, but search for all miRNA satisfying filter functions).
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          schema:
+            type: string
+        - name: mimat_number
+          in: query
+          description: A comma-separated list of mimat_id(s) of the miRNA(s) of interest (e.g. MIMAT0000076, MIMAT0000261) (this or the hs_number(s) is/are needed).
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: hs_number
+          in: query
+          description: A comma-separated list of hs_number(s) of the miRNA(s) of interest (e.g. hsa-miR-21-5p, hsa-miR-183-5p) (this or the mimat_number(s) is/are needed).
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 0
+          explode: false
+          style: form
+        - name: occurences
+          in: query
+          description: Threshold of amount of contributions a miRNA should have to be considered.
+          required: false
+          schema:
+            type: integer
+        - name: sorting
+          in: query
+          required: false
+          description: Possibilities for sorting of the results.
+          schema:
+            type: string
+            enum:
+              - occurences
+        - name: descending
+          in: query
+          required: false
+          description: Descending (true) or ascending (false) ordering of the results.
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Read all ceRNA interactions where miRNA of interesest in
+            the searched disease (if provided) contributes to.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    mirna:
+                      type: object
+                      description: Information about the miRNA(s) of interest - source is miRBase
+                      properties:
+                        hs_nr:
+                          type: string
+                          description: The names/identifiers in the database are of the form hsa-mir-121. The first three letters signify the organism. The mature miRNA is designated miR-121 in the database.
+                        mir_ID:
+                          type: string
+                          description: The accession number is the only truly stable identifier for an entry -- miRNA names may change from those published as relationships between sequences become clear.
+                      required:
+                        - hs_nr
+                        - mir_ID
+                    occurences:
+                      type: integer
+                      description: Occurences of the miRNA.
+                    sponge_run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:

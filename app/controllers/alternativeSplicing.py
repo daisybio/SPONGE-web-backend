@@ -27,7 +27,7 @@ def get_transcript_events(enst_number):
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.AlternativeSplicingEventTranscripts(many=True).dump(interaction_result)
+        return models.AlternativeSplicingEventsTranscriptsSchema(many=True).dump(interaction_result)
     else:
         return Response("{"
                         "\"detail\": \"No event types with given parameters found!\","

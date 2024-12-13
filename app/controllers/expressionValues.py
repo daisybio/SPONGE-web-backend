@@ -86,18 +86,18 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
     elif enst_number is not None:
         # query by enst_numbers only
         transcript = models.Transcript.query \
-            .filter(models.Transcript.enst_number == enst_number) \
+            .filter(models.Transcript.enst_number.in_(enst_number)) \
             .all()
     elif ensg_number is not None or gene_symbol is not None:
         if ensg_number is not None:
             # query all transcripts with matching ensg_number
             gene = models.Gene.query \
-                .filter(models.Gene.ensg_number == ensg_number) \
+                .filter(models.Gene.ensg_number.in_(enst_number)) \
                 .all()
         else:
             # query all transcripts with matching gene symbol
             gene = models.Gene.query \
-                .filter(models.Gene.gene_symbol == gene_symbol) \
+                .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
                 .all()
         if len(gene) > 0:
             gene_IDs = [i.gene_ID for i in gene]

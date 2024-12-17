@@ -3796,8 +3796,8 @@ paths:
       operationId: spongEffects.get_gene_modules
       tags:
       - spongEffects
-      summary: Extract module hub elements for a given disease and level
-      description: Extract module hub elements for a given disease and level
+      summary: Extract module hub elements for a given disease, center gene, and level
+      description: Extract module hub elements for a given disease, center gene, and level
       parameters:
       - $ref: '#/components/parameters/VersionParam'
       - name: dataset_ID
@@ -3809,6 +3809,24 @@ paths:
       - name: disease_name
         in: query
         description: Disease name
+        required: false
+        schema:
+          type: string
+      - name: gene_ID
+        in: query
+        description: Internal database ID of the gene.
+        required: false
+        schema:
+          type: integer
+      - name: ensg_number
+        in: query
+        description: Ensembl gene ID
+        required: false
+        schema:
+          type: string
+      - name: gene_symbol
+        in: query
+        description: Gene symbol
         required: false
         schema:
           type: string
@@ -3853,6 +3871,12 @@ paths:
         required: false
         schema:
           type: string
+      - name: gene_ID
+        in: query
+        description: Internal database ID of the gene.
+        required: false
+        schema:
+          type: integer
       - name: ensg_number
         in: query
         description: Ensembl gene ID
@@ -3873,18 +3897,15 @@ paths:
               schema:
                 type: object
                 properties:
-                  hub_ensg_number:
-                    type: string
-                    description: Ensembl gene ID of hub node
-                  hub_gene_symbol:
-                    type: string
-                    description: Gene symbol of hub node
-                  member_ensg_number:
-                    type: string
-                    description: Ensembl gene ID of module member
-                  member_gene_symbol:
-                    type: string
-                    description: Gene symbol of module member
+                  spongEffects_gene_module_members_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects gene module members.
+                  spongEffects_gene_module_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects gene module.
+                  gene_ID: 
+                    type: integer
+                    description: Internal database ID of the gene.
   /spongEffects/getSpongEffectsTranscriptModules:
     get:
       operationId: spongEffects.get_transcript_modules
@@ -3906,6 +3927,36 @@ paths:
         required: false
         schema:
           type: string
+      - name: gene_ID
+        in: query
+        description: Internal database ID of the gene.
+        required: false
+        schema:
+          type: integer
+      - name: ensg_number
+        in: query
+        description: Ensembl gene ID
+        required: false
+        schema:
+          type: string
+      - name: gene_symbol
+        in: query
+        description: Gene symbol
+        required: false
+        schema:
+          type: string
+      - name: transcript_ID
+        in: query
+        description: Internal database ID of the transcript.
+        required: false
+        schema:
+          type: integer
+      - name: enst_number
+        in: query
+        description: Ensembl transcript ID
+        required: false
+        schema:
+          type: string
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -3914,25 +3965,89 @@ paths:
               schema:
                 type: object
                 properties:
-                  enst_number:
-                    type: string
-                    description: Enst number of the transcript of the gene of interest.
-                  gene:
-                    type: object
-                    description: Information about the gene.
-                    properties:
-                      ensg_number:
-                        type: string
-                        description: Ensg number of the gene.
-                      gene_symbol:
-                        type: string
-                        description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                  spongEffects_transcript_module_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects transcript module.
+                  spongEffects_run_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects run.
+                  transcript_ID:
+                    type: integer
+                    description: Internal database ID of the transcript.
                   mean_gini_decrease:
                     type: number
                     description: Mean decrease in Gini-index
                   mean_accuracy_decrease:
                     type: number
                     description: Mean decrease in accuracy
+  /spongEffects/getSpongEffectsTranscriptModuleMembers:
+    get:
+      operationId: spongEffects.get_transcript_module_members
+      tags:
+      - spongEffects
+      summary: Get connected nodes of specified ceRNA hub(s)
+      description: Get connected nodes of specified ceRNA hub(s)
+      parameters:
+      - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: disease_name
+        in: query
+        description: Name of the disease
+        required: false
+        schema:
+          type: string
+      - name: gene_ID
+        in: query
+        description: Internal database ID of the gene.
+        required: false
+        schema:
+          type: integer
+      - name: ensg_number
+        in: query
+        description: Ensembl gene ID
+        required: false
+        schema:
+          type: string
+      - name: gene_symbol
+        in: query
+        description: Gene symbol
+        required: false
+        schema:
+          type: string
+      - name: transcript_ID
+        in: query
+        description: Internal database ID of the transcript.
+        required: false
+        schema:
+          type: integer
+      - name: enst_number
+        in: query
+        description: Ensembl transcript ID
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Successfully extracted all module members of hub node(s)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spongEffects_transcript_module_members_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects transcript module members.
+                  spongEffects_transcript_module_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects transcript module.
+                  transcript_ID:
+                    type: integer
+                    description: Internal database ID of the transcript.
   /spongEffects/predictCancerType:
     post:
       operationId: spongEffects.upload_file

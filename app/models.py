@@ -1032,49 +1032,47 @@ class SpongEffectsEnrichmentClassDensitySchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
 
 
-class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = SpongEffectsTranscriptModule
-        sqla_session = db.session
-
-    enst_number = fields.String()
-    ensg_number = fields.String()
-    gene_symbol = fields.String()
-    chromosome_name = fields.String()
-    description = fields.String()
-
 class SpongEffectsGeneModuleSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = SpongEffectsGeneModule
         sqla_session = db.session
-
-    ensg_number = fields.String()
-    gene_symbol = fields.String()
-    chromosome_name = fields.String()
-    description = fields.String()
+        fields = ['spongEffects_gene_module_ID', 
+                  'spongEffects_run_ID', 
+                  'gene_ID',
+                  'mean_gini_decrease',
+                  'mean_accuracy_decrease']
 
 
 class SpongEffectsGeneModuleMembersSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         strict = True
+        model = SpongEffectsGeneModuleMembers
+        sqla_session = db.session
+        fields = ['spongEffects_gene_module_members_ID', 
+                  'spongEffects_gene_module_ID', 
+                  'gene_ID']
 
-    hub_ensg_number = fields.String()
-    hub_gene_symbol = fields.String()
-    member_ensg_number = fields.String()
-    member_gene_symbol = fields.String()
+
+class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = SpongEffectsTranscriptModule
+        sqla_session = db.session
+        fields = ['spongEffects_transcript_module_ID', 
+                  'spongEffects_run_ID', 
+                  'transcript_ID',
+                  'mean_gini_decrease',
+                  'mean_accuracy_decrease']
 
 
 class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         strict = True
+        model = SpongEffectsTranscriptModuleMembers
+        sqla_session = db.session
+        fields = ['spongEffects_transcript_module_members_ID',
+                  'spongEffects_transcript_module',
+                   'transcript_ID']
 
-    hub_enst_number = fields.String()
-    hub_ensg_number = fields.String()
-    hub_gene_symbol = fields.String()
-
-    member_enst_number = fields.String()
-    member_ensg_number = fields.String()
-    member_gene_symbol = fields.String()
 
 class DESchema(ma.SQLAlchemyAutoSchema):
     class Meta:

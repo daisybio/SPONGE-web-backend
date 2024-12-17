@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 from flask import request, jsonify, abort
 import app.config as config
+from app.controllers.externalInformation import get_genes, get_transcripts
 import app.models as models
 from app.config import LATEST, db
 
@@ -32,14 +33,9 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     #     " LIMIT 1;"
     # ).fetchall()
 
-    # Build the query
-    query = db.select(models.SpongeRun.sponge_run_ID)
+    query = db.select(models.SpongeRun.sponge_run_ID).join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID)
 
-    # join with dataset if necessary 
-    if dataset_ID is not None or disease_name is not None:
-        query = query.join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID)
-
-    # filter for sponge_db_version
+    # Filter for sponge_db_version
     query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
 
     if dataset_ID is not None:
@@ -54,7 +50,7 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
         abort(404, f"No sponge run found for disease_name: {disease_name} and dataset_ID: {dataset_ID}")
 
     # Build the query to get spong_effects_run_ID
-    query = db.select(models.SpongEffectsRun.spongEffects_run_ID).where(models.SpongEffectsRun.sponge_run_ID.in_(sponge_run_IDs))
+    query = db.select(models.SpongEffectsRun).where(models.SpongEffectsRun.sponge_run_ID.in_(sponge_run_IDs))
 
     # filter for level 
     if level is not None:
@@ -63,9 +59,10 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     # Execute the query and fetch the result
     spong_effects_run_IDs = db.session.execute(query).scalars().all()
 
+    spong_effects_run_IDs = [spong_effects_run_ID.spongEffects_run_ID for spong_effects_run_ID in spong_effects_run_IDs]
+
     if len(spong_effects_run_IDs) == 0:
         abort(404, f"No spongEffects run found for sponge_run_ID: {sponge_run_IDs}")
-
     else:
         return spong_effects_run_IDs
 
@@ -137,26 +134,28 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
         abort(404, 'No spongEffects class enrichment score distribution data found for given parameters')
 
 
-def get_gene_modules(dataset_ID: int = None, disease_name: str = None, sponge_db_version: int = LATEST):
+def get_gene_modules(dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsGeneModules
     :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param sponge_db_version: Database version (defaults to most recent version)
+    :param gene_ID: Gene ID as string
+    :param ensg_number: ENSG number of gene
+    :param gene_symbol: Gene symbol
     :return: Best spongEffects gene modules for given disease
     """
     # get spongEffects_run_ID
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, "gene", sponge_db_version)
-    # get modules
-    # query = db.session.execute(
-    #     "SELECT * FROM spongEffects_gene_module as A"
-    #     " JOIN gene g ON A.gene_ID = g.gene_ID"
-    #     f" WHERE spongEffects_run_ID = {spongEffects_run_ID}"
-    #     " ORDER BY mean_accuracy_decrease DESC, mean_accuracy_decrease DESC;"
-    # ).fetchall()
 
+    # get the gene ids
+    gene_data = get_genes(gene_ID, ensg_number, gene_symbol)
+    gene_IDs = [gene.gene_ID for gene in gene_data]
+    
+    # get the modules
     query = db.select(models.SpongEffectsGeneModule) \
         .where(models.SpongEffectsGeneModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
+        .where(models.SpongEffectsGeneModule.gene_ID.in_(gene_IDs)) \
         .order_by(models.SpongEffectsGeneModule.mean_accuracy_decrease.desc(), models.SpongEffectsGeneModule.mean_accuracy_decrease.desc())
 
     query = db.session.execute(query).scalars().all()
@@ -167,11 +166,12 @@ def get_gene_modules(dataset_ID: int = None, disease_name: str = None, sponge_db
         abort(404, "No spongEffects modules found for given disease")
 
 
-def get_gene_module_members(dataset_ID: int = None, disease_name: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
+def get_gene_module_members(dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
     """
-    API request for /spongEffects/getGeneModuleMembers
+    API request for /spongEffects/getSpongEffectsGeneModuleMembers
     :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
+    :param gene_ID: Gene ID as string
     :param ensg_number: ENSG number of gene
     :param gene_symbol: Gene symbol
     :param sponge_db_version: Database version (defaults to most recent version)
@@ -179,59 +179,55 @@ def get_gene_module_members(dataset_ID: int = None, disease_name: str = None, en
     """
     # get spongEffects_run_ID
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, "gene", sponge_db_version)
-    # test if any of the two identification possibilities is given
-    if ensg_number is None and gene_symbol is None:
-        abort(404, "One of the two possible identification numbers must be provided")
 
-    if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identification parameter is given. Please choose one out of (ensg_number, gene symbol)")
+    # get the gene ids
+    gene_data = get_genes(gene_ID, ensg_number, gene_symbol)
+    gene_IDs = [gene.gene_ID for gene in gene_data]
 
-    # determine search method
-    if ensg_number is not None:
-        search_key: str = "ensg_number"
-        search_val = ensg_number
-    else:
-        search_key: str = "gene_symbol"
-        search_val = gene_symbol
-
-    search_split = search_val.split(",")
-    if len(search_split) > 0:
-        search_val = ["'"+s+"'" for s in search_split]
-        search_val = ",".join(search_val)
-    else:
-        search_val = "'"+search_val+"'"
-    # search DB
-    # query = db.session.execute(
-    #     "SELECT gA.ensg_number AS hub_ensg_number, gA.gene_symbol AS hub_gene_symbol,"
-    #     " g.ensg_number AS member_ensg_number, g.gene_symbol as member_gene_symbol"
-    #     " FROM spongEffects_gene_module_members as A"
-    #     " JOIN spongEffects_gene_module sEgm on A.spongEffects_gene_module_ID = sEgm.spongEffects_gene_module_ID"
-    #     " JOIN gene g on g.gene_ID = A.gene_ID"
-    #     " JOIN gene gA on gA.gene_ID = sEgm.gene_ID"
-    #     f" WHERE gA.{search_key} IN ({search_val}) AND spongEffects_run_ID = {spongEffects_run_ID};"
-    # ).fetchall()
-
-    query = db.select(models.SpongEffectsGeneModuleMembers) \
-        .join(models.SpongEffectsGeneModule, models.SpongEffectsGeneModuleMembers.spongEffects_gene_module_ID == models.SpongEffectsGeneModule.spongEffects_gene_module_ID) \
-        .join(models.Gene, models.SpongEffectsGeneModuleMembers.gene_ID == models.Gene.gene_ID) \
-        .join(models.Gene, models.SpongEffectsGeneModule.gene_ID == models.Gene.gene_ID) \
+    # get the modules
+    module_query = db.select(models.SpongEffectsGeneModule) \
         .where(models.SpongEffectsGeneModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
-        .where(getattr(models.Gene, search_key).in_(search_val))
+        .where(models.SpongEffectsGeneModule.gene_ID.in_(gene_IDs))
+    module_data = db.session.execute(module_query).scalars().all()
+    module_IDs = [module.spongEffects_gene_module_ID for module in module_data]
+
+    # get the members
+    query = db.select(models.SpongEffectsGeneModuleMembers) \
+        .where(models.SpongEffectsGeneModuleMembers.spongEffects_gene_module_ID.in_(module_IDs))
+
+    # # get the members directly by joins (this is slower):
+    # query = db.select(models.SpongEffectsGeneModuleMembers) \
+    #     .join(models.SpongEffectsGeneModule, models.SpongEffectsGeneModuleMembers.spongEffects_gene_module_ID == models.SpongEffectsGeneModule.spongEffects_gene_module_ID) \
+    #     .join(models.Gene, models.SpongEffectsGeneModule.gene_ID == models.Gene.gene_ID) \
+    #     .where(models.SpongEffectsGeneModule.spongEffects_run_ID.in_(spongEffects_run_IDs))
+
+    # if ensg_number is not None:
+    #     query = query.where(models.Gene.ensg_number == ensg_number)
+
+    # if gene_symbol is not None:
+    #     query = query.where(models.Gene.gene_symbol == gene_symbol)
+
+    # elif gene_ID is not None:
+    #     query.where(models.Gene.gene_ID == gene_ID)
+
+    data = db.session.execute(query).scalars().all()
     
-    query = db.session.execute(query).scalars().all()
-    
-    if len(query) > 0:
-        return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(query)
+    if len(data) > 0:
+        return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(data)
     else:
         abort(404, "No module members found for given disease name and gene identifier")
 
 
-def get_transcript_modules(dataset_ID: int = None, disease_name: str = None, sponge_db_version: int = LATEST):
+def get_transcript_modules(dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsTranscriptModules
     :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
+    :param gene_ID: Gene ID as string
+    :param ensg_number: ENSG number of gene
+    :param gene_symbol: Gene symbol
+    :param transcript_ID: Transcript ID as string
+    :param enst_number: ENST number of transcript
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: module hub elements for a given disease and level
     """
@@ -239,19 +235,13 @@ def get_transcript_modules(dataset_ID: int = None, disease_name: str = None, spo
     # get spongEffects_run_ID
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, "transcript", sponge_db_version)
 
-    # get modules
-    # query = db.session.execute(
-    #     "SELECT * FROM spongEffects_transcript_module as A"
-    #     " JOIN transcript t ON A.transcript_ID = t.transcript_ID"
-    #     " JOIN gene g ON t.gene_ID = g.gene_ID"
-    #     f" WHERE spongEffects_run_ID = {spongEffects_run_ID}"
-    #     " ORDER BY mean_accuracy_decrease DESC, mean_accuracy_decrease DESC;"
-    # ).fetchall()
+    # get the transcripts
+    transcript_data = get_transcripts(gene_ID, ensg_number, gene_symbol, transcript_ID, enst_number)
+    transcript_IDs = [transcript.transcript_ID for transcript in transcript_data]
 
     query = db.select(models.SpongEffectsTranscriptModule) \
-        .join(models.Transcript, models.SpongEffectsTranscriptModule.transcript_ID == models.Transcript.transcript_ID) \
-        .join(models.Gene, models.Transcript.gene_ID == models.Gene.gene_ID) \
         .where(models.SpongEffectsTranscriptModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
+        .where(models.SpongEffectsTranscriptModule.transcript_ID.in_(transcript_IDs)) \
         .order_by(models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc(), models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc())
     
     query = db.session.execute(query).scalars().all()
@@ -262,72 +252,45 @@ def get_transcript_modules(dataset_ID: int = None, disease_name: str = None, spo
         abort(404, "No spongEffects modules found for given disease")
 
 
-def get_transcript_module_members(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
+def get_transcript_module_members(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST, limit: int = 1000):
     """
     API request for /spongEffects/getTranscriptModuleMembers
+    :param spongEffects_transcript_module_ID: Transcript module ID as string
     :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
-    :param enst_number: ENST number of transcript
+    :param gene_ID: Gene ID as string
     :param ensg_number: ENSG number of gene
     :param gene_symbol: Gene symbol
+    :param transcript_ID: Transcript ID as string
+    :param enst_number: ENST number of transcript
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: spongEffects transcript module members for given disease and gene identifier    
     """
     # get spongEffects_run_ID
-    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, "gene", sponge_db_version)
-    # test if any of the two identification possibilities is given
-    tests: list = [enst_number is not None, ensg_number is not None, gene_symbol is not None]
-    if sum(tests) == 0:
-        abort(404, "One of the three possible identification numbers must be provided")
-    elif sum(tests) > 1:
-        abort(404,
-              "More than one identification parameter is given. Please choose one out of (enst_number, ensg_number, or gene symbol)")
+    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, "transcript", sponge_db_version)
 
-    # determine search method
-    search_key: str
-    search_val: str
-    if tests[0]:
-        search_key = "enst_number"
-        search_val = enst_number
-    elif tests[1]:
-        search_key = "ensg_number"
-        search_val = ensg_number
-    else:
-        search_key = "gene_symbol"
-        search_val = gene_symbol
-    if isinstance(search_val, list):
-        search_val = "','".join(search_val)
-    else:
-        search_val = "'"+search_val+"'"
-    # search DB
-    # query = db.session.execute(
-    #     "SELECT tA.enst_number as hub_enst_number, t.enst_number as member_enst_number"
-    #     " gA.ensg_number AS hub_ensg_number, gA.gene_symbol AS hub_gene_symbol,"
-    #     " g.ensg_number AS member_ensg_number, g.gene_symbol as member_gene_symbol"
-    #     " FROM spongEffects_transcript_module_members as A"
-    #     " JOIN spongEffects_transcript_module sEtm on A.spongEffects_transcript_module_ID = sEtm.spongEffects_transcript_module_ID"
-    #     " JOIN transcript t on t.transcript_ID = A.transcript_ID"
-    #     " JOIN transcript tA on tA.transcript_ID = sEtm.transcript_ID"
-    #     " JOIN gene g on g.gene_ID = t.gene_ID"
-    #     " JOIN gene gA on gA.gene_ID = tA.gene_ID"
-    #     f" WHERE tA.{search_key} IN ({search_val}) AND spongEffects_run_ID = {spongEffects_run_ID};"
-    # ).fetchall()
+    # get the transcripts
+    transcript_data = get_transcripts(None, ensg_number, gene_symbol, None, enst_number)
+    transcript_IDs = [transcript.transcript_ID for transcript in transcript_data]
 
-    query = db.select(models.SpongEffectsTranscriptModuleMembers) \
-        .join(models.SpongEffectsTranscriptModule, models.SpongEffectsTranscriptModuleMembers.spongEffects_transcript_module_ID == models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID) \
-        .join(models.Transcript, models.SpongEffectsTranscriptModuleMembers.transcript_ID == models.Transcript.transcript_ID) \
-        .join(models.Transcript, models.SpongEffectsTranscriptModule.transcript_ID == models.Transcript.transcript_ID) \
-        .join(models.Gene, models.Transcript.gene_ID == models.Gene.gene_ID) \
-        .join(models.Gene, models.SpongEffectsTranscriptModule.gene_ID == models.Gene.gene_ID) \
+    # get the modules
+    modules_query = db.select(models.SpongEffectsTranscriptModule) \
         .where(models.SpongEffectsTranscriptModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
-        .where(getattr(models.Gene, search_key).in_(search_val))
-    
-    query = db.session.execute(query).scalars().all()
+        .where(models.SpongEffectsTranscriptModule.transcript_ID.in_(transcript_IDs))
+    module_data = db.session.execute(modules_query).scalars().all()
+    module_IDs = [module.spongEffects_transcript_module_ID for module in module_data]
 
-    if len(query) > 0:
-        return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(query)
+    # get the members
+    query = db.select(models.SpongEffectsTranscriptModuleMembers) \
+        .where(models.SpongEffectsTranscriptModuleMembers.spongEffects_transcript_module_ID.in_(module_IDs))
+
+    data = db.session.execute(query).scalars().all()
+
+    if len(data) > 0:
+        return models.SpongEffectsTranscriptModuleMembersSchema(many=True).dump(data)
     else:
         abort(404, "No module members found for given disease name and gene identifier")
+
 
 def generate_random_filename(length=12, extension=None):
     """
@@ -420,6 +383,8 @@ def upload_file():
     if uploaded_file.filename == '':
         abort(404, "File upload failed")
     # create tmp upload file
+    if not os.path.exists(config.UPLOAD_DIR):
+        os.makedirs(config.UPLOAD_DIR)
     tempfile.tempdir = config.UPLOAD_DIR
     tmp_file = tempfile.NamedTemporaryFile(prefix="upload_", suffix=".txt")
     # save file to uploads folder

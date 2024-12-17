@@ -340,3 +340,49 @@ def getGeneTranscripts(ensg_number):
                         "\"title\": \"Accepted\","
                         "\"type\": \"about:blank\"}",
                         status=202)
+    
+
+def get_genes(gene_ID: int = None, ensg_number: str = None, gene_symbol: str = None, execute=True):
+    """
+    Function to retrieve all genes with the given parameters
+    :param gene_ID: int
+    :param ensg_number: str
+    :param gene_symbol: str
+    :return: list of all genes with the given parameters
+    """
+    
+    gene_query = db.select(models.Gene) 
+    if ensg_number is not None:
+        gene_query = gene_query.where(models.Gene.ensg_number == ensg_number)
+    if gene_symbol is not None:
+        gene_query = gene_query.where(models.Gene.gene_symbol == gene_symbol)
+    if gene_ID is not None:
+        gene_query = gene_query.where(models.Gene.gene_ID == gene_ID)
+
+    if execute: 
+        gene_data = db.session.execute(gene_query).scalars().all()
+        return gene_data
+    else: 
+        return gene_query
+
+
+def get_transcripts(gene_ID: int = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: str = None, execute=True):
+    """
+    Function to retrieve all transcripts with the given parameters
+    :param transcript_ID: int
+    :param enst_number: str
+    :return: list of all transcripts with the given parameters
+    """
+
+    gene_data = get_genes(gene_ID=gene_ID, ensg_number=ensg_number, gene_symbol=gene_symbol)
+    gene_IDs = [gene.gene_ID for gene in gene_data]
+    
+    transcript_query = db.select(models.Transcript).where(models.Transcript.gene_ID.in_(gene_IDs))
+    if enst_number is not None:
+        transcript_query = transcript_query.where(models.Transcript.enst_number == enst_number)
+    if transcript_ID is not None:
+        transcript_query = transcript_query.where(models.Transcript.transcript_ID == transcript_ID)
+    
+    transcript_data = db.session.execute(transcript_query).scalars().all()
+
+    return transcript_data

@@ -1038,9 +1038,11 @@ class SpongEffectsGeneModuleSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ['spongEffects_gene_module_ID', 
                   'spongEffects_run_ID', 
-                  'gene_ID',
+                  'gene',
                   'mean_gini_decrease',
                   'mean_accuracy_decrease']
+        
+    gene = ma.Nested(lambda: GeneSchema(only=("gene_ID", "ensg_number", "gene_symbol")))
 
 
 class SpongEffectsGeneModuleMembersSchema(ma.SQLAlchemyAutoSchema):
@@ -1050,7 +1052,9 @@ class SpongEffectsGeneModuleMembersSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ['spongEffects_gene_module_members_ID', 
                   'spongEffects_gene_module_ID', 
-                  'gene_ID']
+                  'gene']
+        
+    gene = ma.Nested(lambda: GeneSchema(only=("gene_ID", "ensg_number", "gene_symbol")))
 
 
 class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):
@@ -1059,9 +1063,11 @@ class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ['spongEffects_transcript_module_ID', 
                   'spongEffects_run_ID', 
-                  'transcript_ID',
+                  'transcript',
                   'mean_gini_decrease',
                   'mean_accuracy_decrease']
+        
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", "enst_number")))
 
 
 class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
@@ -1071,7 +1077,9 @@ class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ['spongEffects_transcript_module_members_ID',
                   'spongEffects_transcript_module_ID',
-                   'transcript_ID']
+                   'transcript']
+        
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", "enst_number")))
 
 
 class DESchema(ma.SQLAlchemyAutoSchema):

@@ -3915,6 +3915,12 @@ paths:
       description: Extract module hub elements for a given disease and level
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: spongEffects_transcript_module_ID
+        in: query
+        description: Internal database ID of the spongEffects transcript module.
+        required: false
+        schema:
+          type: integer
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
@@ -3989,6 +3995,12 @@ paths:
       description: Get connected nodes of specified ceRNA hub(s)
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: spongEffects_transcript_module_ID
+        in: query
+        description: Internal database ID of the spongEffects transcript module.
+        required: false
+        schema:
+          type: integer
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.

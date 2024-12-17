@@ -1070,7 +1070,7 @@ class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
         model = SpongEffectsTranscriptModuleMembers
         sqla_session = db.session
         fields = ['spongEffects_transcript_module_members_ID',
-                  'spongEffects_transcript_module',
+                  'spongEffects_transcript_module_ID',
                    'transcript_ID']
 
 

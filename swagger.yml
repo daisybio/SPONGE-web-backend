@@ -3838,12 +3838,22 @@ paths:
               schema:
                 type: object
                 properties:
-                  ensg_number:
-                    type: string
-                    description: Ensg number of the gene.
-                  gene_symbol:
-                    type: string
-                    description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                  spongEffects_gene_module_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects gene module.
+                  gene:
+                    type: object
+                    description: Information about the gene.
+                    properties:
+                      gene_ID: 
+                        type: integer
+                        description: Internal database ID of the gene.
+                      ensg_number:
+                        type: string
+                        description: Ensg number of the gene.
+                      gene_symbol:
+                        type: string
+                        description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
                   mean_gini_decrease:
                     type: number
                     description: Mean decrease in Gini-index
@@ -3903,9 +3913,19 @@ paths:
                   spongEffects_gene_module_ID:
                     type: integer
                     description: Internal database ID of the spongEffects gene module.
-                  gene_ID: 
-                    type: integer
-                    description: Internal database ID of the gene.
+                  gene: 
+                    type: object
+                    description: Information about the gene.
+                    properties:
+                      gene_ID: 
+                        type: integer
+                        description: Internal database ID of the gene.
+                      ensg_number:
+                        type: string
+                        description: Ensg number of the gene.
+                      gene_symbol:
+                        type: string
+                        description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
   /spongEffects/getSpongEffectsTranscriptModules:
     get:
       operationId: spongEffects.get_transcript_modules
@@ -3977,9 +3997,16 @@ paths:
                   spongEffects_run_ID:
                     type: integer
                     description: Internal database ID of the spongEffects run.
-                  transcript_ID:
-                    type: integer
-                    description: Internal database ID of the transcript.
+                  transcript:
+                    type: object
+                    description: Information about the transcript.
+                    properties:
+                      transcript_ID:
+                        type: integer
+                        description: Internal database ID of the transcript.
+                      enst_number:
+                        type: string
+                        description: Enst number of the transcript.
                   mean_gini_decrease:
                     type: number
                     description: Mean decrease in Gini-index
@@ -4057,9 +4084,16 @@ paths:
                   spongEffects_transcript_module_ID:
                     type: integer
                     description: Internal database ID of the spongEffects transcript module.
-                  transcript_ID:
-                    type: integer
-                    description: Internal database ID of the transcript.
+                  transcript:
+                    type: object
+                    description: Information about the transcript.
+                    properties:
+                      transcript_ID:
+                        type: integer
+                        description: Internal database ID of the transcript.
+                      enst_number:
+                        type: string
+                        description: Enst number of the transcript.
   /spongEffects/predictCancerType:
     post:
       operationId: spongEffects.upload_file

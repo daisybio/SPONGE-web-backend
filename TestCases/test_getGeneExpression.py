@@ -1,13 +1,16 @@
-from config import *
-import models, expressionValues, unittest
+from app.config import *
+import app.models as models, unittest
+with app.app_context(): 
+    import expressionValues
 from flask import abort
 from werkzeug.exceptions import HTTPException
 
-def test_get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None):
+def test_get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None, db_version=2):
     """
     :param disease_name: disease_name of interest
     :param ensg_number: esng number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
+    :param db_version: database version
     :return: all expression values for the genes of interest
     """
 
@@ -42,6 +45,7 @@ def test_get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None):
     if disease_name is not None:
         dataset = models.Dataset.query \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
+            .filter(models.Dataset.sponge_db_version == db_version) \
             .all()
 
         if len(dataset) > 0:
@@ -55,7 +59,7 @@ def test_get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None):
         .all()
 
     if len(result) > 0:
-        return models.geneExpressionSchema(many=True).dump(result).data
+        return models.geneExpressionSchema(many=True).dump(result)
     else:
         abort(404, "No data found.")
 
@@ -64,6 +68,15 @@ def test_get_gene_expr(disease_name=None, ensg_number=None, gene_symbol=None):
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
 
     def test_abort_error_disease(self):
         app.config["TESTING"] = True

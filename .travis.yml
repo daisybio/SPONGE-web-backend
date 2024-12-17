@@ -9,7 +9,7 @@ branches:
   - master
   
 env:
-  - SPONGE_DB_URI=mysql://root:@localhost/sponge
+  - SPONGE_DB_URI=mysql://user:@localhost/SPONGEdb_v2
 
 before_script:
   - mysql -u root --password="" < TestCases/travis_sponge.sql

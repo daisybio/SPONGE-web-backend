@@ -1,5 +1,7 @@
-from config import *
-import models, dataset, unittest
+from app.config import *
+import app.models as models, unittest
+with app.app_context(): 
+    import dataset
 from flask import abort
 from werkzeug.exceptions import HTTPException
 
@@ -25,7 +27,7 @@ def test_read(disease_name=None):
     # Did we find a dataset?
     if len(data) > 0:
         # Serialize the data for the response
-        return models.DatasetSchema(many=True).dump(data).data
+        return models.DatasetSchema(many=True).dump(data)
     else:
         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
 
@@ -35,6 +37,15 @@ def test_read(disease_name=None):
 
 class TestDataset(unittest.TestCase):
 
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
+        
     def test_get_dataset_information_all(self):
         app.config["TESTING"] = True
         self.app = app.test_client()

@@ -1,6 +1,8 @@
-from config import *
+from app.config import *
 from werkzeug.exceptions import HTTPException
-import models, externalInformation, unittest
+import app.models as models, unittest
+with app.app_context(): 
+    import externalInformation
 from flask import abort
 
 def test_getAutocomplete(searchString):
@@ -16,7 +18,7 @@ def test_getAutocomplete(searchString):
             .all()
         print(data)
         if len(data) > 0:
-            return models.GeneSchemaENSG(many=True).dump(data).data
+            return models.GeneSchemaENSG(many=True).dump(data)
         else:
             abort(404, "No ensg number found for the given String")
     elif searchString.startswith("HSA") or searchString.startswith("hsa"):
@@ -24,7 +26,7 @@ def test_getAutocomplete(searchString):
             .filter(models.miRNA.hs_nr.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.miRNASchemaHS(many=True).dump(data).data
+            return models.miRNASchemaHS(many=True).dump(data)
         else:
             abort(404, "No hsa number found for the given String")
     elif searchString.startswith("MIMAT") or searchString.startswith("mimat"):
@@ -32,7 +34,7 @@ def test_getAutocomplete(searchString):
             .filter(models.miRNA.mir_ID.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.miRNASchemaMimat(many=True).dump(data).data
+            return models.miRNASchemaMimat(many=True).dump(data)
         else:
             abort(404, "No mimat number found for the given String")
     else:
@@ -40,7 +42,7 @@ def test_getAutocomplete(searchString):
             .filter(models.Gene.gene_symbol.ilike(searchString + "%")) \
             .all()
         if len(data) > 0:
-            return models.GeneSchemaSymbol(many=True).dump(data).data
+            return models.GeneSchemaSymbol(many=True).dump(data)
         else:
             abort(404, "No gene symbol found for the given String")
 
@@ -49,6 +51,15 @@ def test_getAutocomplete(searchString):
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
 
     def test_abort_error_no_ensg(self):
         app.config["TESTING"] = True

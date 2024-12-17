@@ -1,11 +1,13 @@
-from config import *
-import models, geneInteraction, unittest
+from app.config import *
+import app.models as models, unittest
+with app.app_context(): 
+    import geneInteraction
 from flask import abort
 from sqlalchemy import desc
 from werkzeug.exceptions import HTTPException
 
 def test_read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, occurences=None, sorting=None, descending=None,
-                   limit=15000, offset=0):
+                   limit=15000, offset=0, db_version=2):
     """
     :param disease_name: disease_name of interest
     :param mimat_number: comma-separated list of mimat_id(s) of miRNA of interest
@@ -49,14 +51,18 @@ def test_read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, oc
 
     # if specific disease_name is given:
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
-            queries.append(models.OccurencesMiRNA.run_ID.in_(run_IDs))
+            run_IDs = [i.sponge_run_ID for i in run]
+            queries.append(models.OccurencesMiRNA.sponge_run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
+    
+        # database version 
+    if db_version is not None: 
+        queries.append(models.Dataset.sponge_db_version == db_version)
 
     if occurences is not None:
         queries.append(models.OccurencesMiRNA.occurences > occurences)
@@ -77,7 +83,7 @@ def test_read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, oc
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all
-        return models.occurencesMiRNASchema(many=True).dump(interaction_result).data
+        return models.occurencesMiRNASchema(many=True).dump(interaction_result)
     else:
         abort(404, "No information with given parameters found")
 
@@ -86,6 +92,15 @@ def test_read_all_mirna(disease_name=None, mimat_number=None, hs_number=None, oc
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
 
     def test_abort_error_disease(self):
         app.config["TESTING"] = True
@@ -134,7 +149,7 @@ class TestDataset(unittest.TestCase):
 
         with self.assertRaises(HTTPException) as http_error:
             # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_all_mirna(disease_name="head and neck squamous cell carcinoma", mimat_number=['MIMAT0004482']), 404)
+            self.assertEqual(geneInteraction.read_all_mirna(disease_name="head and neck squamous cell carcinoma", mimat_number=['MIMAT0004482'], db_version=1), 404)
 
     def test_miRNA_Interaction_getOccurences_disease_and_mimat_number(self):
         app.config["TESTING"] = True

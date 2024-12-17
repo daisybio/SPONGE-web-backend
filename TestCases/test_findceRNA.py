@@ -1,11 +1,13 @@
-from config import *
-import models, geneInteraction, unittest
+from app.config import *
+import app.models as models, unittest
+with app.app_context(): 
+    import geneInteraction
 from flask import abort
 from werkzeug.exceptions import HTTPException
 
 def test_read_all_gene_network_analysis(disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None,
                                    minBetweenness=None, minNodeDegree=None, minEigenvector=None,
-                                   sorting=None, descending=True, limit=100, offset=0):
+                                   sorting=None, descending=True, limit=100, offset=0, db_version=2):
     """
     This function responds to a request for /sponge/findceRNA
     and returns all interactions the given identification (ensg_number or gene_symbol) in all available datasets is in involved and satisfies the given filters
@@ -21,6 +23,7 @@ def test_read_all_gene_network_analysis(disease_name=None, ensg_number=None, gen
     :param limit: number of results that shouls be shown
     :param offset: startpoint from where results should be shown
     :return: all ceRNAInteractions in the dataset of interest that satisfy the given filters
+    :db_version: database version
     """
 
     # test limit
@@ -32,13 +35,13 @@ def test_read_all_gene_network_analysis(disease_name=None, ensg_number=None, gen
 
     # if specific disease_name is given (should be because for this endpoint is it required):
     if disease_name is not None:
-        run = models.Run.query.join(models.Dataset, models.Dataset.dataset_ID == models.Run.dataset_ID) \
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             .all()
 
         if len(run) > 0:
-            run_IDs = [i.run_ID for i in run]
-            queries.append(models.networkAnalysis.run_ID.in_(run_IDs))
+            run_IDs = [i.sponge_run_ID for i in run]
+            queries.append(models.networkAnalysis.sponge_run_ID.in_(run_IDs))
         else:
             abort(404, "No dataset with given disease_name found")
 
@@ -76,9 +79,11 @@ def test_read_all_gene_network_analysis(disease_name=None, ensg_number=None, gen
         queries.append(models.networkAnalysis.eigenvector > minEigenvector)
     if gene_type is not None:
         queries.append(models.Gene.gene_type == gene_type)
+    if db_version is not None: 
+        queries.append(models.Dataset.sponge_db_version == db_version)
 
     # add all sorting if given:
-    sort = [models.networkAnalysis.run_ID]
+    sort = [models.networkAnalysis.sponge_run_ID]
     if sorting is not None:
         if sorting == "betweenness":
             if descending:
@@ -105,7 +110,7 @@ def test_read_all_gene_network_analysis(disease_name=None, ensg_number=None, gen
 
     if len(result) > 0:
         schema = models.networkAnalysisSchema(many=True)
-        return schema.dump(result).data
+        return schema.dump(result)
     else:
         abort(404, "Not data found that satisfies the given filters")
 
@@ -114,6 +119,16 @@ def test_read_all_gene_network_analysis(disease_name=None, ensg_number=None, gen
 ########################################################################################################################
 
 class TestDataset(unittest.TestCase):
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+
+    def tearDown(self):
+        self.app_context.pop()
+
     def test_abort_error_disease(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
@@ -151,7 +166,7 @@ class TestDataset(unittest.TestCase):
         self.app = app.test_client()
 
         # retrieve correct database response to request
-        mock_response = test_read_all_gene_network_analysis(disease_name='bladder urothelial carcinoma', gene_type='protein_coding', limit=50)
+        mock_response = test_read_all_gene_network_analysis(disease_name='bladder urothelial carcinoma', gene_type='protein_coding', limit=50, db_version=1)
 
         # retrieve current API response to request
         api_response = geneInteraction.read_all_gene_network_analysis(disease_name='bladder urothelial carcinoma',

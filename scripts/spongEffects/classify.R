@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-packages <- c("SPONGE", "doParallel", "foreach", "dplyr", "randomForest", "argparser", "jsonlite", "ggplot2", "GSVA")
+packages <- c("SPONGE", "dplyr", "argparser", "jsonlite")
 load_packages <- sapply(packages, function(p) {
   suppressWarnings(suppressPackageStartupMessages(library(p, character.only = T)))
 })

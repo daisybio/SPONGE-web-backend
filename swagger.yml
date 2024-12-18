@@ -4,7 +4,8 @@ info:
   version: 2.0.0
   title: SPONGE REST-API documentation
 servers:
-  - url: /
+  - url: /sponge-api
+    description: Main (production) server
 components:
   parameters:
     VersionParam:

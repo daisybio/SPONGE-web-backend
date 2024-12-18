@@ -1042,7 +1042,7 @@ class SpongEffectsGeneModuleSchema(ma.SQLAlchemyAutoSchema):
                   'mean_gini_decrease',
                   'mean_accuracy_decrease']
         
-    gene = ma.Nested(lambda: GeneSchema(only=("gene_ID", "ensg_number", "gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 
 class SpongEffectsGeneModuleMembersSchema(ma.SQLAlchemyAutoSchema):
@@ -1054,7 +1054,7 @@ class SpongEffectsGeneModuleMembersSchema(ma.SQLAlchemyAutoSchema):
                   'spongEffects_gene_module_ID', 
                   'gene']
         
-    gene = ma.Nested(lambda: GeneSchema(only=("gene_ID", "ensg_number", "gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 
 class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):

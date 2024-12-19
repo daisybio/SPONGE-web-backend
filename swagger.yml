@@ -2328,7 +2328,7 @@ paths:
                       required:
                         - ensg_number
                         - gene_symbol
-                    run:
+                    sponge_run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:
@@ -2358,6 +2358,9 @@ paths:
                       required:
                         - hs_nr
                         - mir_ID
+                    coefficient:
+                      type: number
+                      description: Coefficient of the corresponding ceRNA interaction.
   /miRNAInteraction/findceRNATranscripts:
     get:
       operationId: transcriptInteraction.read_mirna_for_specific_interaction

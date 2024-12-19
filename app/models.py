@@ -607,6 +607,22 @@ class GseaRankingGenes(db.Model):
     gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'))
     gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
 
+class PsiVec(db.Model):
+    __tablename__ = 'psivec'
+    psivec_ID = db.Column(db.Integer, primary_key=True)
+
+    alternative_splicing_event_transcripts_ID = db.Column(db.Integer, db.ForeignKey('alternative_splicing_event_transcripts.alternative_splicing_event_transcripts_ID'), nullable=False)
+    alternative_splicing_event_transcripts = relationship("AlternativeSplicingEventTranscripts", foreign_keys=[alternative_splicing_event_transcripts_ID])
+
+    sample_ID = db.Column(db.String(32))
+    psi_value = db.Column(db.Float)
+
+
+
+####################################
+############# SCHEMAS ##############
+####################################
+
 class DatasetSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Dataset
@@ -1158,3 +1174,11 @@ class ComparisonSchema(ma.SQLAlchemyAutoSchema):
 
     dataset_1 = ma.Nested(DatasetSchema)
     dataset_2 = ma.Nested(DatasetSchema)
+
+class PsiVecSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = PsiVec
+        sqla_session = db.session
+
+    alternative_splicing_event_transcripts = ma.Nested(AlternativeSplicingEventsTranscriptsSchema)
+

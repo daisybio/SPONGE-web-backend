@@ -74,50 +74,6 @@ paths:
                   sponge_db_version:
                     type: integer
                     description: SPONGEdb version used
-  # /dataset:
-  #   get:
-  #     operationId: dataset.read
-  #     tags:
-  #     - Dataset
-  #     summary: Get information about all cancer types/datasets or specific one.
-  #     description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
-  #     parameters:
-  #     - $ref: '#/components/parameters/VersionParam'
-  #     - name: disease_name
-  #       in: query
-  #       description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-  #       required: false
-  #       schema:
-  #         type: string
-  #     responses:
-  #       "200":
-  #         description: Successfully read information about all cancer types/datasets or specific one from database.
-  #         content:
-  #           application/json:
-  #             schema:
-  #               type: object
-  #               properties:
-  #                 dataset_ID:
-  #                   type: integer
-  #                   description: Internal database ID of the cancer type/dataset.
-  #                 disease_name:
-  #                   type: string
-  #                   description: Name of the cancer type/dataset.
-  #                 data_origin:
-  #                   type: string
-  #                   description: Cancer type/dataset origin (database name, etc.).
-  #                 disease_type:
-  #                   type: string
-  #                   description: Type of the disease (e.g. cancer).
-  #                 download_url:
-  #                   type: string
-  #                   description: URL to cancer type/dataset annotation.
-  #                 disease_subtype:
-  #                   type: string
-  #                   description: Subtype of specific cancer type (NA if no relevant subtype is present)
-  #                 sponge_db_version:
-  #                   type: integer
-  #                   description: SPONGEdb version used
   /dataset/spongeRunInformation:
     get:
       operationId: dataset.read_spongeRunInformation
@@ -3481,6 +3437,71 @@ paths:
                     ense_number:
                       type: string
                       description: Ense number of the exon.
+  /alternativeSplicing/getPsiValues:
+    get:
+      operationId: alternativeSplicing.get_psi_values
+      tags:
+      - AlternativeSplicing
+      summary: Retrieve all psi values for a specific event type of a transcript of interest.
+      description: Retrieve all psi values for a specific event type of a transcript of interest.
+      parameters:
+      - name: transcript_ID
+        in: query
+        description: Internal database ID of the transcript of interest.
+        required: false
+        schema:
+          type: integer
+      - name: enst_number
+        in: query
+        description: A enst number of a transcript of interest (e.g. ENST00000387314)
+        required: false
+        schema:
+          type: string
+      - name: psivec_ID
+        in: query
+        description: Internal database ID of the psi values of the transcript of interest.
+        required: false
+        schema:
+          type: integer
+      - name: alternative_splicing_event_transcripts_ID
+        in: query
+        description: Internal database ID of the alternative splicing event transcripts of the transcript of interest.
+        required: false
+        schema:
+          type: integer
+      - name: sample_ID
+        in: query
+        description: A sample ID to filter for
+        schema:
+          type: string
+        required: false
+      - name: limit
+        in: query
+        description: Limit the number of results. Defaults to 100.
+        schema:
+          type: integer
+        required: false
+      responses:
+        "200":
+          description: Retrieve all psi values for a specific event type of a transcript of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    psivec_ID:
+                      type: integer
+                      description: Internal database ID of the psi values of the transcript of interest.
+                    alternative_splicing_event_transcripts_ID:
+                      type: integer
+                      description: Internal database ID of the alternative splicing event transcripts of the transcript of interest.
+                    sample_ID:
+                      type: string
+                      description: ID of the specific sample.
+                    psi_value:
+                      type: number
+                      description: Psi value of the specific event type.
   /spongEffects/getSpongEffectsRuns:
     get:
       operationId: spongEffects.get_spongeffects_runs

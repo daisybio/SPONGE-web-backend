@@ -6,6 +6,8 @@ info:
 servers:
   - url: /sponge-api
     description: Main (production) server
+  - url: /sponge-api-dev
+    description: Internal staging server for testing
 components:
   parameters:
     VersionParam:
@@ -3846,9 +3848,6 @@ paths:
                     type: object
                     description: Information about the gene.
                     properties:
-                      gene_ID: 
-                        type: integer
-                        description: Internal database ID of the gene.
                       ensg_number:
                         type: string
                         description: Ensg number of the gene.
@@ -3918,9 +3917,6 @@ paths:
                     type: object
                     description: Information about the gene.
                     properties:
-                      gene_ID: 
-                        type: integer
-                        description: Internal database ID of the gene.
                       ensg_number:
                         type: string
                         description: Ensg number of the gene.
@@ -4002,9 +3998,6 @@ paths:
                     type: object
                     description: Information about the transcript.
                     properties:
-                      transcript_ID:
-                        type: integer
-                        description: Internal database ID of the transcript.
                       enst_number:
                         type: string
                         description: Enst number of the transcript.
@@ -4089,9 +4082,6 @@ paths:
                     type: object
                     description: Information about the transcript.
                     properties:
-                      transcript_ID:
-                        type: integer
-                        description: Internal database ID of the transcript.
                       enst_number:
                         type: string
                         description: Enst number of the transcript.

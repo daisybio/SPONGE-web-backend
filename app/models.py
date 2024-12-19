@@ -1067,7 +1067,7 @@ class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):
                   'mean_gini_decrease',
                   'mean_accuracy_decrease']
         
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", "enst_number")))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
 
 
 class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
@@ -1079,7 +1079,7 @@ class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
                   'spongEffects_transcript_module_ID',
                    'transcript']
         
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("transcript_ID", "enst_number")))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
 
 
 class DESchema(ma.SQLAlchemyAutoSchema):

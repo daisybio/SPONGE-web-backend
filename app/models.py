@@ -1012,7 +1012,7 @@ class AlternativeSplicingEventsTranscriptsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = AlternativeSplicingEventTranscripts
         sqla_session = db.session
-        fields = ["transcript", "event_name", "event_type"]
+        fields = ['alternative_splicing_event_transcripts_ID', "transcript", "event_name", "event_type"]
 
     transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
 

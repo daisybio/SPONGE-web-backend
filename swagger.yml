@@ -3344,6 +3344,19 @@ paths:
                 type: array
                 items:
                   properties:
+                    alternative_splicing_event_transcripts_ID:
+                      type: integer
+                      description: Internal database ID of the alternative splicing event transcripts of the transcript of interest.
+                    transcript:
+                      type: object
+                      description: Information about the transcript.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Enst number of the transcript.
+                    event_name:
+                      type: string
+                      description: Name of the event.
                     event_type:
                       type: string
                       description: Name(s) of the event type(s)
@@ -3493,9 +3506,26 @@ paths:
                     psivec_ID:
                       type: integer
                       description: Internal database ID of the psi values of the transcript of interest.
-                    alternative_splicing_event_transcripts_ID:
-                      type: integer
-                      description: Internal database ID of the alternative splicing event transcripts of the transcript of interest.
+                    alternative_splicing_event_transcripts:
+                      type: object
+                      description: Information about the alternative splicing event transcripts.
+                      properties:
+                        alternative_splicing_event_transcripts_ID:
+                          type: integer
+                          description: Internal database ID of the alternative splicing event transcripts of the transcript of interest.
+                        transcript:
+                          type: object
+                          description: Information about the transcript.
+                          properties:
+                            enst_number:
+                              type: string
+                              description: Enst number of the transcript.
+                        event_name:
+                          type: string
+                          description: Name of the event.
+                        event_type:
+                          type: string
+                          description: Name(s) of the event type(s)
                     sample_ID:
                       type: string
                       description: ID of the specific sample.

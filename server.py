@@ -13,10 +13,10 @@ connex_app = config.connex_app
 
 # Read the swagger.yml file to configure the endpoints
 swagger_file = os.path.join(os.path.dirname(__file__), "swagger.yml")
-connex_app.add_api(swagger_file, resolver=RelativeResolver('app.controllers'), options={"swagger_ui": True})
+connex_app.add_api(swagger_file, resolver=RelativeResolver('app.controllers'))
 
 # create a URL route in our application for "/"
-@connex_app.route("/")
+@connex_app.route("/sponge-api/")
 def home():
     return "SPONGEdb API"
 

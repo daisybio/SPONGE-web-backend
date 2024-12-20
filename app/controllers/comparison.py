@@ -44,20 +44,26 @@ def _comparison_query(dataset_1, dataset_2, condition_1=None, condition_2=None, 
     if condition_2 is not None:
         comparison = comparison.filter(models.Comparison.condition_2 == condition_2)
     
-    comparison = comparison.all()
+    comparisons = comparison.all()
 
     # check if comparison is named differently 
-    if len(comparison) == 0:
+    if len(comparisons) == 0:
         reverse = True
         comparison = models.Comparison.query \
             .filter(models.Comparison.dataset_ID_1.in_(dataset_2)) \
             .filter(models.Comparison.dataset_ID_2.in_(dataset_1)) \
             .filter(models.Comparison.gene_transcript == gene_transcript) 
-        
-    if len(comparison) != 1:
-        abort(404, "No (unique) comparison found for given inputs")
 
-    return comparison.all(), reverse
+        comparisons = comparison.all()    
+    
+    # error if no comparison found
+    if len(comparisons) == 0:
+        abort(404, "No comparison found for given inputs")
+
+    if len(comparisons) > 1:
+        abort(404, "Multiple comparisons found for given inputs")
+
+    return comparisons, reverse
     
 
 def get_comparison(dataset_ID: str = None, disease_name: str = None, disease_subtype=None, sponge_db_version: int = LATEST):

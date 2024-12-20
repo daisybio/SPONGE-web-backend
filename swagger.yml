@@ -4,7 +4,10 @@ info:
   version: 2.0.0
   title: SPONGE REST-API documentation
 servers:
-  - url: /
+  - url: /sponge-api
+    description: Main (production) server
+  - url: /sponge-api-dev
+    description: Internal staging server for testing
 components:
   parameters:
     VersionParam:
@@ -71,50 +74,6 @@ paths:
                   sponge_db_version:
                     type: integer
                     description: SPONGEdb version used
-  # /dataset:
-  #   get:
-  #     operationId: dataset.read
-  #     tags:
-  #     - Dataset
-  #     summary: Get information about all cancer types/datasets or specific one.
-  #     description: Get information about all available datasets to start browsing or search for a specific cancer type/dataset.
-  #     parameters:
-  #     - $ref: '#/components/parameters/VersionParam'
-  #     - name: disease_name
-  #       in: query
-  #       description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-  #       required: false
-  #       schema:
-  #         type: string
-  #     responses:
-  #       "200":
-  #         description: Successfully read information about all cancer types/datasets or specific one from database.
-  #         content:
-  #           application/json:
-  #             schema:
-  #               type: object
-  #               properties:
-  #                 dataset_ID:
-  #                   type: integer
-  #                   description: Internal database ID of the cancer type/dataset.
-  #                 disease_name:
-  #                   type: string
-  #                   description: Name of the cancer type/dataset.
-  #                 data_origin:
-  #                   type: string
-  #                   description: Cancer type/dataset origin (database name, etc.).
-  #                 disease_type:
-  #                   type: string
-  #                   description: Type of the disease (e.g. cancer).
-  #                 download_url:
-  #                   type: string
-  #                   description: URL to cancer type/dataset annotation.
-  #                 disease_subtype:
-  #                   type: string
-  #                   description: Subtype of specific cancer type (NA if no relevant subtype is present)
-  #                 sponge_db_version:
-  #                   type: integer
-  #                   description: SPONGEdb version used
   /dataset/spongeRunInformation:
     get:
       operationId: dataset.read_spongeRunInformation
@@ -2369,7 +2328,7 @@ paths:
                       required:
                         - ensg_number
                         - gene_symbol
-                    run:
+                    sponge_run:
                       description: Information about specific run and corresponding cancer type/dataset.
                       type: object
                       properties:
@@ -2399,6 +2358,9 @@ paths:
                       required:
                         - hs_nr
                         - mir_ID
+                    coefficient:
+                      type: number
+                      description: Coefficient of the corresponding ceRNA interaction.
   /miRNAInteraction/findceRNATranscripts:
     get:
       operationId: transcriptInteraction.read_mirna_for_specific_interaction
@@ -3385,6 +3347,19 @@ paths:
                 type: array
                 items:
                   properties:
+                    alternative_splicing_event_transcripts_ID:
+                      type: integer
+                      description: Internal database ID of the alternative splicing event transcripts of the transcript of interest.
+                    transcript:
+                      type: object
+                      description: Information about the transcript.
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Enst number of the transcript.
+                    event_name:
+                      type: string
+                      description: Name of the event.
                     event_type:
                       type: string
                       description: Name(s) of the event type(s)
@@ -3478,6 +3453,88 @@ paths:
                     ense_number:
                       type: string
                       description: Ense number of the exon.
+  /alternativeSplicing/getPsiValues:
+    get:
+      operationId: alternativeSplicing.get_psi_values
+      tags:
+      - AlternativeSplicing
+      summary: Retrieve all psi values for a specific event type of a transcript of interest.
+      description: Retrieve all psi values for a specific event type of a transcript of interest.
+      parameters:
+      - name: transcript_ID
+        in: query
+        description: Internal database ID of the transcript of interest.
+        required: false
+        schema:
+          type: integer
+      - name: enst_number
+        in: query
+        description: A enst number of a transcript of interest (e.g. ENST00000387314)
+        required: false
+        schema:
+          type: string
+      - name: psivec_ID
+        in: query
+        description: Internal database ID of the psi values of the transcript of interest.
+        required: false
+        schema:
+          type: integer
+      - name: alternative_splicing_event_transcripts_ID
+        in: query
+        description: Internal database ID of the alternative splicing event transcripts of the transcript of interest.
+        required: false
+        schema:
+          type: integer
+      - name: sample_ID
+        in: query
+        description: A sample ID to filter for
+        schema:
+          type: string
+        required: false
+      - name: limit
+        in: query
+        description: Limit the number of results. Defaults to 100.
+        schema:
+          type: integer
+        required: false
+      responses:
+        "200":
+          description: Retrieve all psi values for a specific event type of a transcript of interest.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    psivec_ID:
+                      type: integer
+                      description: Internal database ID of the psi values of the transcript of interest.
+                    alternative_splicing_event_transcripts:
+                      type: object
+                      description: Information about the alternative splicing event transcripts.
+                      properties:
+                        alternative_splicing_event_transcripts_ID:
+                          type: integer
+                          description: Internal database ID of the alternative splicing event transcripts of the transcript of interest.
+                        transcript:
+                          type: object
+                          description: Information about the transcript.
+                          properties:
+                            enst_number:
+                              type: string
+                              description: Enst number of the transcript.
+                        event_name:
+                          type: string
+                          description: Name of the event.
+                        event_type:
+                          type: string
+                          description: Name(s) of the event type(s)
+                    sample_ID:
+                      type: string
+                      description: ID of the specific sample.
+                    psi_value:
+                      type: number
+                      description: Psi value of the specific event type.
   /spongEffects/getSpongEffectsRuns:
     get:
       operationId: spongEffects.get_spongeffects_runs
@@ -3845,9 +3902,6 @@ paths:
                     type: object
                     description: Information about the gene.
                     properties:
-                      gene_ID: 
-                        type: integer
-                        description: Internal database ID of the gene.
                       ensg_number:
                         type: string
                         description: Ensg number of the gene.
@@ -3917,9 +3971,6 @@ paths:
                     type: object
                     description: Information about the gene.
                     properties:
-                      gene_ID: 
-                        type: integer
-                        description: Internal database ID of the gene.
                       ensg_number:
                         type: string
                         description: Ensg number of the gene.
@@ -4001,9 +4052,6 @@ paths:
                     type: object
                     description: Information about the transcript.
                     properties:
-                      transcript_ID:
-                        type: integer
-                        description: Internal database ID of the transcript.
                       enst_number:
                         type: string
                         description: Enst number of the transcript.
@@ -4088,9 +4136,6 @@ paths:
                     type: object
                     description: Information about the transcript.
                     properties:
-                      transcript_ID:
-                        type: integer
-                        description: Internal database ID of the transcript.
                       enst_number:
                         type: string
                         description: Enst number of the transcript.
@@ -4322,13 +4367,13 @@ paths:
       - name: condition_1
         in: query
         description: Condition of the first part of the GSEA analysis (e.g. "disease" or "normal").
-        required: false
+        required: true
         schema:
           type: string
       - name: condition_2
         in: query
         description: Condition of the second dataset of the GSEA analysis (e.g. "disease" or "normal").
-        required: false
+        required: true
         schema:
           type: string
 
@@ -4429,16 +4474,28 @@ paths:
       description: Get GSEA results for the given gene set, type, subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -4509,15 +4566,35 @@ paths:
                       type: string
                       description: Name of the term.
                     lead_genes:
-                      type: array
-                      items:
-                        type: string
-                        description: Name of a gene in the leading edge.
+                      type: object
+                      properties:
+                        gsea_lead_genes_ID:
+                          type: integer
+                          description: Internal database ID of the leading edge gene.
+                        gene:
+                          type: object
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensembl gene ID of the leading edge gene.
+                            gene_symbol:
+                              type: string
+                              description: Gene symbol of the leading edge gene.
                     matched_genes:
                       type: object
-                      items:
-                        type: string
-                        description: Name of a matched gene.
+                      properties:
+                        gsea_matched_genes_ID:
+                          type: integer
+                          description: Internal database ID of the matched gene.
+                        gene:
+                          type: object
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensembl gene ID of the matched gene.
+                            gene_symbol:
+                              type: string
+                              description: Gene symbol of the matched gene.
                     res:
                       type: object
                       properties:

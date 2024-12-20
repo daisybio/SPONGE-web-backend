@@ -9,6 +9,7 @@ import app.config as config
 from app.controllers.externalInformation import get_genes, get_transcripts
 import app.models as models
 from app.config import LATEST, db
+from server import logger
 
 
 def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", sponge_db_version: int = LATEST):
@@ -361,6 +362,7 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
         process = subprocess.run(cmd, capture_output=True, text=True, check=True)
         # get prediction output
         stderr = process.stderr
+        logger.info(stderr)
         with open(out_path, 'r') as json_file:
             return json.load(json_file)
     except subprocess.CalledProcessError as e:

@@ -1,7 +1,6 @@
 from flask import abort
 import app.models as models
 from flask import Response
-from app.config import db
 
 def get_transcript_events(enst_number):
     """
@@ -89,53 +88,6 @@ def get_exons_for_position(start_pos: int, end_pos: int):
     if len(result) > 0:
         schema = models.TranscriptElementSchema(many=True)
         return schema.dump(result)
-    else:
-        abort(404, "No data found that satisfies the given filters")
-
-
-def get_psi_values(transcript_ID: str = None, enst_number: str =None, psivec_ID: int = None, alternative_splicing_event_transcripts_ID: str = None, sample_ID: str = None, limit=100):
-    """
-    This function response for the request: /alternativeSplicing/getPsiValue/
-    with the possibility to filter by psivec_ID, alternative
-    splicing event transcripts ID and sample ID
-    :param psivec_ID: ID of the psivec
-    :param alternative_splicing_event_transcripts_ID: ID of the alternative splicing event transcripts
-    :param sample_ID: ID of the sample
-    :return: psi value for the given parameters, ordered by psi value
-    """
-    # Build the transcript query
-    transcript_query = db.select(models.Transcript.transcript_ID)
-    if transcript_ID:
-        transcript_query = transcript_query.where(models.Transcript.transcript_ID == transcript_ID)
-    if enst_number:
-        transcript_query = transcript_query.where(models.Transcript.enst_number == enst_number)
-
-    # Build the alternative splicing events query
-    as_query = db.select(models.AlternativeSplicingEventTranscripts.alternative_splicing_event_transcripts_ID).where(
-        models.AlternativeSplicingEventTranscripts.transcript_ID.in_(transcript_query)
-    )
-    if alternative_splicing_event_transcripts_ID:
-        as_query = as_query.where(
-            models.AlternativeSplicingEventTranscripts.alternative_splicing_event_transcripts_ID == alternative_splicing_event_transcripts_ID
-        )
-
-    # Build the psi values query
-    psi_query = db.select(models.PsiVec).where(
-        models.PsiVec.alternative_splicing_event_transcripts_ID.in_(as_query)
-    )
-    if psivec_ID:
-        psi_query = psi_query.where(models.PsiVec.psivec_ID == psivec_ID)
-    if sample_ID:
-        psi_query = psi_query.where(models.PsiVec.sample_ID == sample_ID)
-
-    # Apply limit and sort results
-    psi_query = psi_query.order_by(models.PsiVec.psi_value.desc()).limit(limit)
-
-    psi_values = db.session.execute(psi_query).scalars().all()
-
-    if psi_values:
-        schema = models.PsiVecSchema(many=True)
-        return schema.dump(psi_values)
     else:
         abort(404, "No data found that satisfies the given filters")
 

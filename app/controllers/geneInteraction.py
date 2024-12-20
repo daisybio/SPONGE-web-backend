@@ -650,53 +650,88 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
     :param sponge_db_version: version of the sponge database
     :return: all miRNAs contributing to the interactions between genes of interest
     """
+    # test if any of the two identification possibilites is given
+    if ensg_number is None and gene_symbol is None:
+        abort(404, "One of the two possible identification numbers must be provided")
 
-    # get diseases 
-    disease_query = db.select(models.Dataset.dataset_ID).where(models.Dataset.sponge_db_version == sponge_db_version)
+    if ensg_number is not None and gene_symbol is not None:
+        abort(404,
+              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+
+    # get all sponge_runs for the given sponge_db_version
+    run = models.SpongeRun.query \
+        .filter(models.SpongeRun.sponge_db_version == sponge_db_version)
+
+    queries = []
+    run_IDs = []
+    # if specific disease_name is given:
     if disease_name is not None:
-        disease_query = disease_query.where(models.Dataset.disease_name.like("%" + disease_name + "%"))
+        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
+        
     if dataset_ID is not None:
-        disease_query = disease_query.where(models.Dataset.dataset_ID == dataset_ID)
+        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+    
+    run = run.all()
 
-    # filter runs for diseases
-    run_query = db.select(models.SpongeRun.sponge_run_ID).where(models.SpongeRun.dataset_ID.in_(disease_query))
-
-    # get gene IDs 
-    gene_query = db.select(models.Gene.gene_ID)
-    if ensg_number is not None:
-        gene_query = gene_query.where(models.Gene.ensg_number.in_(ensg_number))
-    if gene_symbol is not None:
-        gene_query = gene_query.where(models.Gene.gene_symbol.in_(gene_symbol))
-
-    # Get all interactions for the given genes and runs
-    base_interaction_query = db.select(models.miRNAInteraction).where(
-        models.miRNAInteraction.gene_ID.in_(gene_query),
-        models.miRNAInteraction.sponge_run_ID.in_(run_query),
-    )
-
-    if between:
-        # Subquery to count distinct genes
-        distinct_gene_count_subquery = (
-            db.select(db.func.count(db.func.distinct(gene_query.c.gene_ID))).scalar_subquery()
-        )
-        print(distinct_gene_count_subquery)
-
-        # Subquery to get miRNA IDs that meet the 'between' condition
-        mirna_query = db.select(models.miRNAInteraction.miRNA_ID) \
-            .where(models.miRNAInteraction.gene_ID.in_(gene_query)) \
-            .where(models.miRNAInteraction.sponge_run_ID.in_(run_query)) \
-            .group_by(models.miRNAInteraction.miRNA_ID) \
-            .having(db.func.count(models.miRNAInteraction.gene_ID) == distinct_gene_count_subquery)
-
-        # Filter interactions by the miRNA IDs from the previous subquery
-        interaction_query = base_interaction_query.where(
-            models.miRNAInteraction.miRNA_ID.in_(mirna_query)
-        )
+    if len(run) > 0:
+        run_IDs = [i.sponge_run_ID for i in run]
+        queries.append(models.miRNAInteraction.sponge_run_ID.in_(run_IDs))
     else:
-            interaction_query = base_interaction_query
+        abort(404, "No dataset with given disease_name found")
 
-    interaction_result = db.session.execute(interaction_query).scalars().all()
+    gene = []
+    # if ensg_numer is given to specify gene(s), get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
+    if ensg_number is not None:
+        gene = models.Gene.query \
+            .filter(models.Gene.ensg_number.in_(ensg_number)) \
+            .all()
+    # if gene_symbol is given to specify gene(s), get the intern gene_ID(primary_key) for requested gene_symbol(gene_ID)
+    elif gene_symbol is not None:
+        gene = models.Gene.query \
+            .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
+            .all()
 
+    gene_IDs = []
+    if len(gene) > 0:
+        gene_IDs = [i.gene_ID for i in gene]
+        queries.append(models.miRNAInteraction.gene_ID.in_(gene_IDs))
+    else:
+        abort(404, "No gene found for given identifiers.")
+
+    interaction_result = []
+    if between:
+        # an Engine, which the Session will use for connection resources
+        some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
+
+        # create a configured "Session" class
+        Session = sa.orm.sessionmaker(bind=some_engine)
+
+        # create a Session
+        session = Session()
+        # test for each dataset if the gene(s) of interest are included in the ceRNA network
+
+        mirna_filter = session.execute(text("select mirna_ID from interactions_genemirna where sponge_run_ID IN ( "
+                                       + ','.join(str(e) for e in run_IDs) + ") and gene_ID IN ( "
+                                       + ','.join(str(e) for e in gene_IDs)
+                                       + ") group by mirna_ID HAVING count(mirna_ID) >= 2;")).fetchall()
+
+        session.close()
+        some_engine.dispose()
+
+        if len(mirna_filter) == 0:
+            abort(404, "No shared miRNA between genes found.")
+
+        flat_mirna_filter = [item for sublist in mirna_filter for item in sublist]
+        queries.append(models.miRNAInteraction.miRNA_ID.in_(flat_mirna_filter))
+
+        interaction_result = models.miRNAInteraction.query \
+            .filter(*queries) \
+            .all()
+    else:
+        interaction_result = models.miRNAInteraction.query \
+            .filter(*queries) \
+            .all()
 
     if len(interaction_result) > 0:
         # Serialize the data for the response depending on parameter all

@@ -838,7 +838,7 @@ class SurvivalPValueSchema(ma.SQLAlchemyAutoSchema):
         sql_session = db.session
         fields = ["dataset", "gene", "pValue"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("dataet_ID", "disease_name")))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 class checkGeneInteractionProCancer(ma.SQLAlchemyAutoSchema):

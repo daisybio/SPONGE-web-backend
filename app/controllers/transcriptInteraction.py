@@ -285,21 +285,21 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
     # add all sorting if given:
     sort = [models.networkAnalysisTranscript.sponge_run_ID]
     if sorting is not None:
-        if sort == "betweenness":
+        if sorting == "betweenness":
             if descending:
                 sort.append(models.networkAnalysisTranscript.betweenness.desc())
             else:
                 sort.append(models.networkAnalysisTranscript.betweenness.asc())
-            if sort == "degree":
-                if descending:
-                    sort.append(models.networkAnalysisTranscript.node_degree.desc())
-                else:
-                    sort.append(models.networkAnalysisTranscript.node_degree.asc())
-            if sort == "eigenvector":
-                if descending:
-                    sort.append(models.networkAnalysisTranscript.eigenvector.desc())
-                else:
-                    sort.append(models.networkAnalysisTranscript.eigenvector.asc())
+        if sorting == "degree":
+            if descending:
+                sort.append(models.networkAnalysisTranscript.node_degree.desc())
+            else:
+                sort.append(models.networkAnalysisTranscript.node_degree.asc())
+        if sorting == "eigenvector":
+            if descending:
+                sort.append(models.networkAnalysisTranscript.eigenvector.desc())
+            else:
+                sort.append(models.networkAnalysisTranscript.eigenvector.asc())
 
     result = models.networkAnalysisTranscript.query \
         .join(models.Transcript, models.Transcript.transcript_ID == models.networkAnalysisTranscript.transcript_ID) \

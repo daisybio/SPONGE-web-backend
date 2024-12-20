@@ -81,7 +81,7 @@ typing_extensions==4.12.2
 tzdata==2024.2
 urllib3==2.2.3
 uvicorn==0.30.6
-Werkzeug==3.0.4
+Werkzeug==3.0.6
 wheel==0.44.0
 zipp==3.20.2
 zstandard==0.23.0

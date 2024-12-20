@@ -4367,13 +4367,13 @@ paths:
       - name: condition_1
         in: query
         description: Condition of the first part of the GSEA analysis (e.g. "disease" or "normal").
-        required: false
+        required: true
         schema:
           type: string
       - name: condition_2
         in: query
         description: Condition of the second dataset of the GSEA analysis (e.g. "disease" or "normal").
-        required: false
+        required: true
         schema:
           type: string
 

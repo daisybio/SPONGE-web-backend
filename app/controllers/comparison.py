@@ -60,6 +60,9 @@ def _comparison_query(dataset_1, dataset_2, condition_1=None, condition_2=None, 
     if len(comparisons) == 0:
         abort(404, "No comparison found for given inputs")
 
+    if len(comparisons) > 1:
+        abort(404, "Multiple comparisons found for given inputs")
+
     return comparisons, reverse
     
 

@@ -4474,16 +4474,28 @@ paths:
       description: Get GSEA results for the given gene set, type, subtype, and condition combination.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: dataset_ID_1
+        in: query
+        description: Internal database ID of the first cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: dataset_ID_2
+        in: query
+        description: Internal database ID of the second cancer type/dataset.
+        required: false
+        schema:
+          type: integer
       - name: disease_name_1
         in: query
         description: Name of the disease type for the first part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_name_2
         in: query
         description: Name of the disease type for the second part of the GSEA analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: true
+        required: false
         schema:
           type: string
       - name: disease_subtype_1
@@ -4554,15 +4566,35 @@ paths:
                       type: string
                       description: Name of the term.
                     lead_genes:
-                      type: array
-                      items:
-                        type: string
-                        description: Name of a gene in the leading edge.
+                      type: object
+                      properties:
+                        gsea_lead_genes_ID:
+                          type: integer
+                          description: Internal database ID of the leading edge gene.
+                        gene:
+                          type: object
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensembl gene ID of the leading edge gene.
+                            gene_symbol:
+                              type: string
+                              description: Gene symbol of the leading edge gene.
                     matched_genes:
                       type: object
-                      items:
-                        type: string
-                        description: Name of a matched gene.
+                      properties:
+                        gsea_matched_genes_ID:
+                          type: integer
+                          description: Internal database ID of the matched gene.
+                        gene:
+                          type: object
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensembl gene ID of the matched gene.
+                            gene_symbol:
+                              type: string
+                              description: Gene symbol of the matched gene.
                     res:
                       type: object
                       properties:

@@ -1,4 +1,4 @@
-from marshmallow import fields, Schema
+from marshmallow import fields, Schema, post_dump
 from sqlalchemy.orm import relationship
 
 from app.config import db, ma
@@ -567,6 +567,11 @@ class Gsea(db.Model):
     fwerp = db.Column(db.Float)
     gene_percent = db.Column(db.Float)
 
+    lead_genes = relationship("GseaLeadGenes", back_populates="gsea", lazy="select") 
+    matched_genes = relationship("GseaMatchedGenes")
+    ranking_genes = relationship("GseaRankingGenes")
+    
+
 class GseaLeadGenes(db.Model):
     __tablename__ = "gsea_lead_genes"
 
@@ -575,8 +580,8 @@ class GseaLeadGenes(db.Model):
     gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'))
     gsea = relationship("Gsea", foreign_keys=[gsea_ID])
 
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'))
-    gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gsea", back_populates="lead_genes")
 
 class GseaMatchedGenes(db.Model):
     __tablename__ = "gsea_matched_genes"
@@ -586,8 +591,8 @@ class GseaMatchedGenes(db.Model):
     gsea_ID = db.Column(db.Integer, db.ForeignKey('gsea.gsea_ID'))
     gsea = relationship("Gsea", foreign_keys=[gsea_ID])
 
-    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'))
-    gene_symbol = relationship("Gene", foreign_keys=[gene_ID])
+    gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
+    gene = relationship("Gene", foreign_keys=[gene_ID])
 
 class GseaRes(db.Model):
     __tablename__ = "gsea_res"
@@ -1126,26 +1131,29 @@ class GseaLeadGenesSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = GseaLeadGenes
         sqla_session = db.session
+        fields = ["gsea_lead_genes_ID", "gene"]
 
-    gene_symbol = ma.Nested(lambda: GeneSchemaShort(only=("gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 
 class GseaMatchedGenesSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        model = GseaLeadGenes
+        model = GseaMatchedGenes
         sqla_session = db.session
+        fields = ["gsea_matched_genes_ID", "gene"]
 
-    gene_symbol = ma.Nested(lambda: GeneSchemaShort(only=("gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 class GseaSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Gsea
         sqla_session = db.session
+        load_instance = True
         fields = ["term", "es", "nes", "pvalue", "fdr", "fwerp", "gene_percent", "lead_genes", "matched_genes", "res"]
 
-    lead_genes = ma.Nested(lambda: GseaLeadGenesSchema(only=("gene_symbol")), many=True)
-    matched_genes = ma.Nested(lambda: GseaMatchedGenesSchema(only=("gene_symbol")), many=True)
-    res = ma.Nested(lambda: GseaResSchema(only=("res_ID", "score")), many=True)
+    lead_genes = ma.Nested(GseaLeadGenesSchema, many=True)
+    matched_genes = ma.Nested(GseaMatchedGenesSchema, many=True)
+    res = ma.Nested(lambda: GseaResSchema(only=("res_ID", "score")))
 
 class GseaSchemaPlot(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -1153,7 +1161,7 @@ class GseaSchemaPlot(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["term", "nes", "pvalue", "fdr", "res", "matched_genes", "gsea_ranking_genes"]
 
-    res = ma.Nested(lambda: GseaResSchema(only=("res_ID", "score")), many=True)
+    res = ma.Nested(lambda: GseaResSchema(only=("res_ID", "score")))
 
 class GseaTermsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

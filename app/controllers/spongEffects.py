@@ -8,8 +8,7 @@ from flask import request, jsonify, abort
 import app.config as config
 from app.controllers.externalInformation import get_genes, get_transcripts
 import app.models as models
-from app.config import LATEST, db
-from server import logger
+from app.config import LATEST, db, logger
 
 
 def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", sponge_db_version: int = LATEST):

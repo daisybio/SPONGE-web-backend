@@ -2835,9 +2835,19 @@ paths:
                 type: array
                 items:
                   properties:
-                    ensg_number:
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                    enst_number:
                       type: string
-                      description: Ensg number of according gene.
+                      description: Ensembl transcript ID
                     transcript_type:
                       type: string
                       description: Type of transcript.
@@ -3067,18 +3077,20 @@ paths:
           minItems: 0
         explode: false
         style: form
-      responses:
-        "200":
-          description: Get all included transcripts of a gene of interest.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  properties:
-                    enst_number:
-                      type: string
-                      description: Enst number of the transcript of the gene of interest.
+        responses:
+          "200":
+            description: Successfully retrieved transcript IDs for the given gene IDs.
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: array
+                    items:
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Ensembl transcript ID
   /survivalAnalysis/sampleInformation:
     get:
       operationId: survivalAnalysis.get_patient_information

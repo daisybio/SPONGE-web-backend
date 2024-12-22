@@ -324,23 +324,33 @@ def getTranscriptGene(enst_number):
 
 def getGeneTranscripts(ensg_number):
     """
-    :param ensg_number:
-    :return: Returns all associated transcript id(s) for the gene(s) of interest.
+    This function handles the route /getGeneTranscripts and returns the transcript id(s) for the given gene id(s).
+    :param ensg_number: List of gene identification numbers
+    :return: Returns all associated transcript id(s) for the gene(s) of interest (list of lists).
     """
 
     # test if the identification is given
     if ensg_number is None:
         abort(404, "At least one gene identification number is needed!")
 
-    query = select(models.Transcript.enst_number).select_from(
+    case_statement = case(
+        *[(models.Gene.ensg_number == ensg, index) for index, ensg in enumerate(ensg_number)]
+    )
+
+    query = select(models.Gene.ensg_number, models.Transcript.enst_number).select_from(
         join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
-    ).where(models.Gene.ensg_number.in_(ensg_number))
+    ).where(models.Gene.ensg_number.in_(ensg_number)) \
+        .order_by(case_statement)
 
     result = db.session.execute(query).fetchall()
 
     if len(result) > 0:
         # return models.TranscriptSchemaShort(many=True).dump(result)
-        return [r[0] for r in result]
+        # return [r[0] for r in result]
+        gene_transcripts = {ensg: [] for ensg in ensg_number}
+        for gene_id, transcript_id in result:
+            gene_transcripts[gene_id].append(transcript_id)
+        return [gene_transcripts[ensg] for ensg in ensg_number]
     else:
         return Response("{"
                         "\"detail\": \"No transcript(s) associated for gene(s) of interest!\","

@@ -2,7 +2,7 @@ from flask import abort
 import app.models as models
 from flask import Response
 from sqlalchemy.sql import text
-from sqlalchemy import func, select, join
+from sqlalchemy import case, func, select, join
 from sqlalchemy.orm import aliased
 from app.config import LATEST, db 
 
@@ -288,7 +288,8 @@ def getWikipathway(gene_symbol):
 
 def getTranscriptGene(enst_number):
     """
-    :param enst_number:
+    This function handles the route /getTranscriptGene and returns the gene id(s) for the given transcript id(s).
+    :param enst_number: List of transcript identification numbers
     :return: Returns all associated gene id(s) for the transcript(s) of interest.
     """
 
@@ -296,9 +297,16 @@ def getTranscriptGene(enst_number):
     if enst_number is None:
         abort(404, "At least one transcript identification number is needed!")
 
+    # Create a CASE statement to preserve the order of enst_number
+    case_statement = case(
+        *[(models.Transcript.enst_number == enst, index) for index, enst in enumerate(enst_number)]
+    )
+
     query = select(models.Gene.ensg_number).select_from(
-        join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
-    ).where(models.Transcript.enst_number.in_(enst_number))
+            join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
+        ).where(models.Transcript.enst_number.in_(enst_number)) \
+        .order_by(case_statement)
+    
 
     result = db.session.execute(query).fetchall()
 

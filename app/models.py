@@ -1,4 +1,4 @@
-from marshmallow import fields, Schema, post_dump
+from marshmallow import fields
 from sqlalchemy.orm import relationship
 
 from app.config import db, ma

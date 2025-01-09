@@ -4817,7 +4817,6 @@ paths:
       operationId: gsea.gsea_sets
       tags:
       - GSEA
-      - GSEA Sets
       summary: Get gene sets.
       description: Get all gene sets for which GSEA results are available for the given type, subtype and condition combination.
       parameters:
@@ -4886,7 +4885,6 @@ paths:
       operationId: gsea.gsea_terms
       tags:
       - GSEA
-      - GSEA Terms
       summary: Get GSEA terms.
       description: Get all terms for which GSEA results are available for the given gene set, type/subtype, and condition combination.
       parameters:
@@ -4961,7 +4959,6 @@ paths:
       operationId: gsea.gsea_results
       tags:
       - GSEA
-      - GSEA Results
       summary: Get GSEA results.
       description: Get GSEA results for the given gene set, type, subtype, and condition combination.
       parameters:
@@ -5101,7 +5098,6 @@ paths:
       operationId: gsea.gsea_plot
       tags:
       - GSEA
-      - GSEA Plot
       summary: Get GSEA plot.
       description: Get GSEA plot for the given gene set, type/subtype, and condition combination.
       parameters:

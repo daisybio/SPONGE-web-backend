@@ -3953,6 +3953,24 @@ paths:
       summary: Retrieve all psi values for a specific event type of a transcript of interest.
       description: Retrieve all psi values for a specific event type of a transcript of interest.
       parameters:
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: false
+        schema:
+          type: string
+      - name: data_origin
+        in: query
+        description: Origin of the data (e.g. TCGA, GTEx, ...)
+        required: false
+        schema:
+          type: string
       - name: transcript_ID
         in: query
         description: Internal database ID of the transcript of interest.
@@ -3989,6 +4007,7 @@ paths:
         schema:
           type: integer
         required: false
+      - $ref: '#/components/parameters/VersionParam'
       responses:
         "200":
           description: Retrieve all psi values for a specific event type of a transcript of interest.

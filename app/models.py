@@ -582,8 +582,8 @@ class GseaLeadGenes(db.Model):
     gsea = relationship("Gsea", foreign_keys=[gsea_ID])
 
     gene_ID = db.Column(db.Integer, db.ForeignKey('gene.gene_ID'), nullable=False)
-    gene = relationship("Gsea", back_populates="lead_genes")
-
+    gene = relationship("Gene", foreign_keys=[gene_ID])
+    
 class GseaMatchedGenes(db.Model):
     __tablename__ = "gsea_matched_genes"
 

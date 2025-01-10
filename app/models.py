@@ -568,8 +568,9 @@ class Gsea(db.Model):
     gene_percent = db.Column(db.Float)
 
     lead_genes = relationship("GseaLeadGenes", back_populates="gsea", lazy="select") 
-    matched_genes = relationship("GseaMatchedGenes")
-    ranking_genes = relationship("GseaRankingGenes")
+    matched_genes = relationship("GseaMatchedGenes", back_populates="gsea")
+    gsea_ranking_genes = relationship("GseaRankingGenes", back_populates="gsea")
+    res = relationship("GseaRes", back_populates="gsea")
     
 
 class GseaLeadGenes(db.Model):
@@ -1126,6 +1127,7 @@ class GseaResSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = GseaRes
         sqla_session = db.session
+        fields = ["res_ID", "score"]
 
 class GseaLeadGenesSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -1155,13 +1157,25 @@ class GseaSchema(ma.SQLAlchemyAutoSchema):
     matched_genes = ma.Nested(GseaMatchedGenesSchema, many=True)
     res = ma.Nested(lambda: GseaResSchema(only=("res_ID", "score")))
 
+class GseaRankingGenesSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = GseaRankingGenes
+        sqla_session = db.session
+        fields = ["gsea_ranking_genes_ID", "gene", "gsea"]
+
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gsea = ma.Nested(lambda: GseaSchema(only=("term", )))
+
 class GseaSchemaPlot(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Gsea
         sqla_session = db.session
         fields = ["term", "nes", "pvalue", "fdr", "res", "matched_genes", "gsea_ranking_genes"]
 
-    res = ma.Nested(lambda: GseaResSchema(only=("res_ID", "score")))
+    # res = ma.Nested(lambda: GseaResSchema(only=("res_ID", "score")))
+    # matched_genes = ma.Nested(lambda: GseaMatchedGenesSchema())
+    # gsea_ranking_genes = ma.Nested(lambda: GseaRankingGenesSchema())
+
 
 class GseaTermsSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

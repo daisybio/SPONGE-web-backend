@@ -1,4 +1,4 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from flask import Response
 from app.config import db
@@ -11,7 +11,12 @@ def get_transcript_events(enst_number):
 
     # test if the identification is given
     if enst_number is None:
-        abort(404, "At least one transcript identification number is needed!")
+        return jsonify({
+            "detail": "At least one transcript identification number is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     transcript = models.Transcript.query \
         .filter(models.Transcript.enst_number.in_(enst_number)) \
@@ -20,7 +25,13 @@ def get_transcript_events(enst_number):
     if len(transcript) > 0:
         transcript_IDs = [i.transcript_ID for i in transcript]
     else:
-        abort(404, "No transcript(s) found for given enst_number(s)!")
+        return jsonify({
+            "detail": "No transcript(s) found for the given enst_number(s)!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
     interaction_result = models.AlternativeSplicingEventTranscripts.query \
         .filter(models.AlternativeSplicingEventTranscripts.transcript_ID.in_(transcript_IDs)) \
@@ -30,12 +41,13 @@ def get_transcript_events(enst_number):
         # Serialize the data for the response depending on parameter all
         return models.AlternativeSplicingEventsTranscriptsSchema(many=True).dump(interaction_result)
     else:
-        return Response("{"
-                        "\"detail\": \"No event types with given parameters found!\","
-                        "\"status\": 202,"
-                        "\"title\": \"Accepted\","
-                        "\"type\": \"about:blank\"}",
-                        status=202)
+        return jsonify({
+            "detail": "No event types with given parameters found!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 def get_event_positions(enst_number, event_type):
     """
@@ -46,10 +58,20 @@ def get_event_positions(enst_number, event_type):
 
     # test if any of the two identification possibilities is given
     if enst_number is None:
-        abort(404, "At least one transcript identification number is needed!")
+        return jsonify({
+            "detail": "At least one transcript identification number is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if event_type is None:
-        abort(404, "At least one event type is needed!")
+        return jsonify({
+            "detail": "At least one event type is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     transcript = models.Transcript.query \
         .filter(models.Transcript.enst_number.in_(enst_number)) \
@@ -58,7 +80,12 @@ def get_event_positions(enst_number, event_type):
     if len(transcript) > 0:
         transcript_IDs = [i.transcript_ID for i in transcript]
     else:
-        abort(404, "No transcript found for given enst_number(s)!")
+        return jsonify({
+            "detail": "No transcript found for given enst_number(s)!",
+            "status": 200,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 200
 
     event = models.AlternativeSplicingEventTranscripts.query \
         .filter(models.AlternativeSplicingEventTranscripts.event_type.in_(event_type)) \
@@ -67,7 +94,12 @@ def get_event_positions(enst_number, event_type):
     if len(event) > 0:
         event_types = [e.event_type for e in event]
     else:
-        abort(404, "No possible event type name")
+        return jsonify({
+            "detail": "No possible event type name",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
 
 def get_exons_for_position(start_pos: int, end_pos: int):
@@ -90,7 +122,12 @@ def get_exons_for_position(start_pos: int, end_pos: int):
         schema = models.TranscriptElementSchema(many=True)
         return schema.dump(result)
     else:
-        abort(404, "No data found that satisfies the given filters")
+        return jsonify({
+            "detail": "No data found that satisfies the given filters",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank"
+        }), 400
 
 
 def get_psi_values(transcript_ID: str = None, enst_number: str =None, psivec_ID: int = None, alternative_splicing_event_transcripts_ID: str = None, sample_ID: str = None, limit=100):
@@ -137,5 +174,11 @@ def get_psi_values(transcript_ID: str = None, enst_number: str =None, psivec_ID:
         schema = models.PsiVecSchema(many=True)
         return schema.dump(psi_values)
     else:
-        abort(404, "No data found that satisfies the given filters")
+        return jsonify({
+            "detail": "No data found that satisfies the given filters",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 

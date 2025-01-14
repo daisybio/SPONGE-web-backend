@@ -1,5 +1,5 @@
 import app.models as models
-from flask import abort
+from flask import jsonify
 import numpy as np
 from sklearn import manifold
 import pandas as pd
@@ -20,16 +20,30 @@ def get_network_results(dataset_ID: int = None, disease_name="Breast invasive ca
     """
 
     if disease_name is None:
-        abort(404, "A cancer type must be provided")
+        return jsonify({
+            "detail": "A cancer type must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if level is None:
-        abort(404, "A level must be provided")
+        return jsonify({
+            "detail": "A level must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     dataset = _dataset_query(disease_name=disease_name, sponge_db_version=sponge_db_version, dataset_ID=dataset_ID)
 
     if len(dataset) == 0:
-        abort(404, f"No Dataset entries found for given cancer type: {disease_name}")
-        return
+        return jsonify({
+            "detail": f"No Dataset entries found for given cancer type: {disease_name}",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     type_datasets = pd.DataFrame({'dataset_ID': [entry.dataset_ID for entry in dataset],
                                   'subtype': [entry.disease_subtype for entry in dataset]})
@@ -44,8 +58,12 @@ def get_network_results(dataset_ID: int = None, disease_name="Breast invasive ca
     type_merge = type_datasets.merge(all_run_ids, how='inner')
 
     if type_merge.shape[0] == 0:
-        abort(404, f"No Dataset entries found for given cancer type: {disease_name}")
-        return
+        return jsonify({
+            "detail": f"No Dataset entries found for given cancer type: {disease_name}",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     elif type_merge.shape[0] == 1:
         subtypes_result = {}
@@ -58,8 +76,12 @@ def get_network_results(dataset_ID: int = None, disease_name="Breast invasive ca
             .all()
 
         if len(results) == 0:
-            abort(404, f"No network results runs found for given SPONGE run IDs: {type_merge['sponge_run_ID']}")
-            return
+            return jsonify({
+                "detail": f"No network results runs found for given SPONGE run IDs: {type_merge['sponge_run_ID']}",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
         scores = [entry.score for entry in results]
         euclidean_distances = [entry.euclidean_distance for entry in results]
@@ -90,22 +112,39 @@ def get_network_results(dataset_ID: int = None, disease_name="Breast invasive ca
         .all()
 
     if len(dataset) == 0:
-        abort(404, f"No Cancer Type entries found")
-        return
+        return jsonify({
+            "detail": f"No Cancer Type entries found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     elif len(dataset) == 1:
-        abort(404, f"Found only 1 Cancer Type entry")
-        return
+        return jsonify({
+            "detail": f"Found only 1 Cancer Type entry",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     all_datasets = pd.DataFrame({'dataset_ID': [entry.dataset_ID for entry in dataset],
                                  'disease_name': [entry.disease_name for entry in dataset]})
 
     if len(all_datasets['dataset_ID']) == 0:
-        abort(404, f"No Dataset entries found for given cancer type: {disease_name}")
-        return
+        return jsonify({
+            "detail": f"No Dataset entries found for given cancer type: {disease_name}",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     elif len(all_datasets['dataset_ID']) == 1:
-        abort(404, f"Found only 1 Cancer Type entry")
-        return
+        return jsonify({
+            "detail": f"No Dataset entries found for given cancer type: {disease_name}",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     all_merge = all_datasets.merge(all_run_ids, how='inner')
 
@@ -116,8 +155,12 @@ def get_network_results(dataset_ID: int = None, disease_name="Breast invasive ca
         .all()
 
     if len(results) == 0:
-        abort(404, f"No network results runs found for given SPONGE run IDs: {all_merge['sponge_run_ID']}")
-        return
+        return jsonify({
+            "detail": f"No network results runs found for given SPONGE run IDs: {type_merge['sponge_run_ID']}",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     scores = [entry.score for entry in results]
     euclidean_distances = [entry.euclidean_distance for entry in results]

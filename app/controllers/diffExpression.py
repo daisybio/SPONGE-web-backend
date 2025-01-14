@@ -1,4 +1,4 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from app.config import LATEST
 from app.controllers.dataset import _dataset_query
@@ -24,8 +24,12 @@ def get_diff_expr(dataset_ID_1: str = None, dataset_ID_2: int = None, disease_na
     """
 
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identification parameter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identification parameter is given. Please choose one out of (ensg number, gene symbol)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = []
     # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -68,7 +72,13 @@ def get_diff_expr(dataset_ID_1: str = None, dataset_ID_2: int = None, disease_na
 
         return out
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No data found.",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_diff_expr_transcript(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, 
@@ -125,6 +135,12 @@ def get_diff_expr_transcript(dataset_ID_1: int = None, dataset_ID_2: int = None,
 
         return out
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No data found",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 

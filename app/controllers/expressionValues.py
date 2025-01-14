@@ -1,4 +1,4 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from app.config import LATEST, db
 
@@ -15,11 +15,20 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
 
     # test if any of the two identification possibilities is given
     if ensg_number is None and gene_symbol is None:
-        abort(404, "One of the two possible identification numbers must be provided")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identification parameter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identification parameter is given. Please choose one out of (ensg number, gene symbol)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = []
     # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -35,7 +44,12 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
     else:
-        abort(404, "No gene(s) found for given ensg_number(s) or gene_symbol(s)")
+        return jsonify({
+            "detail": "No gene(s) found for given ensg_number(s) or gene_symbol(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # save all needed queries to get correct results
     queries = [models.GeneExpressionValues.gene_ID.in_(gene_IDs)]
@@ -58,7 +72,12 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
         dataset_IDs = [i.dataset_ID for i in dataset]
         queries.append(models.GeneExpressionValues.dataset_ID.in_(dataset_IDs))
     else:
-        abort(404, f"No dataset with given disease_name for the database version {sponge_db_version} found")
+        return jsonify({
+            "detail": f"No dataset with given disease_name for the database version {sponge_db_version} found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     result = models.GeneExpressionValues.query \
         .filter(*queries) \
@@ -67,7 +86,13 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
     if len(result) > 0:
         return models.geneExpressionSchema(many=True).dump(result)
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results.",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
@@ -82,7 +107,13 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
     :return: expression values for given search parameters
     """
     if ensg_number is None and gene_symbol is None and enst_number is None:
-        abort(500, "Bad request, please supply one of 'enst_number' ensg_number', or 'gene_symbol'")
+        return jsonify({
+            "detail": "Please supply one of 'enst_number' ensg_number', or 'gene_symbol",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     elif enst_number is not None:
         # query by enst_numbers only
         transcript = models.Transcript.query \
@@ -102,13 +133,25 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
         if len(gene) > 0:
             gene_IDs = [i.gene_ID for i in gene]
         else:
-            abort(404, "No gene(s) found for given ensg_number(s) or gene_symbol(s)")
+            return jsonify({
+                "detail": "No gene(s) found for given ensg_number(s) or gene_symbol(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
+
         # get associated transcripts
         transcript = models.Transcript.query \
             .filter(models.Transcript.gene_ID.in_(gene_IDs)) \
             .all()
     else:
-        abort(500, "Bad request, multiple filters supplied, please give one of 'enst_number' ensg_number', or 'gene_symbol'")
+        return jsonify({
+            "detail": "Multiple filters supplied, please give one of 'enst_number' ensg_number', or 'gene_symbol",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     # collect transcript IDs
     transcript_IDs = [i.transcript_ID for i in transcript]
     # build filters
@@ -132,7 +175,12 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
         dataset_IDs = [i.dataset_ID for i in dataset]
         filters.append(models.ExpressionDataTranscript.dataset_ID.in_(dataset_IDs))
     else:
-        abort(404, f"No dataset with given disease_name for the database version {sponge_db_version} found")
+        return jsonify({
+            "detail": f"No dataset with given disease_name for the database version {sponge_db_version} found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     
     # apply all filters
     query = db.select(models.ExpressionDataTranscript).filter(*filters)
@@ -141,7 +189,13 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
     if len(result) > 0:
         return models.ExpressionDataTranscriptSchema(many=True).dump(result)
     else:
-        abort(404, "No transcript expression data found for the given filters.")
+        return jsonify({
+            "detail": "No transcript expression data found for the given filters.",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_mirna_expr(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, sponge_db_version: int = LATEST):
@@ -157,11 +211,20 @@ def get_mirna_expr(dataset_ID: int = None, disease_name=None, mimat_number=None,
 
     # test if any of the two identification possibilites is given
     if mimat_number is None and hs_number is None:
-        abort(404, "One of the two possible identification numbers must be provided")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if mimat_number is not None and hs_number is not None:
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     mirna = []
     # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -177,7 +240,12 @@ def get_mirna_expr(dataset_ID: int = None, disease_name=None, mimat_number=None,
     if len(mirna) > 0:
         mirna_IDs = [i.miRNA_ID for i in mirna]
     else:
-        abort(404, "No miRNA(s) found for given mimat_number(s) or hs_number(s)")
+        return jsonify({
+            "detail": "No miRNA(s) found for given mimat_number(s) or hs_number(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # save all needed queries to get correct results
     queries = [models.MiRNAExpressionValues.miRNA_ID.in_(mirna_IDs)]
@@ -200,7 +268,12 @@ def get_mirna_expr(dataset_ID: int = None, disease_name=None, mimat_number=None,
         dataset_IDs = [i.dataset_ID for i in dataset]
         queries.append(models.MiRNAExpressionValues.dataset_ID.in_(dataset_IDs))
     else:
-        abort(404, f"No dataset with given disease_name for the database version {sponge_db_version} found")
+        return jsonify({
+            "detail": f"No dataset with given disease_name for the database version {sponge_db_version} found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     result = models.MiRNAExpressionValues.query \
         .filter(*queries) \
@@ -209,4 +282,10 @@ def get_mirna_expr(dataset_ID: int = None, disease_name=None, mimat_number=None,
     if len(result) > 0:
         return models.miRNAExpressionSchema(many=True).dump(result)
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results.",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200

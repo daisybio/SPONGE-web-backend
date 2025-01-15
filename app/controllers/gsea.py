@@ -262,13 +262,18 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
         .filter(models.Gsea.comparison_ID == comparison_ID) \
         .filter(models.Gsea.term.like("%" + term + "%")) \
         .filter(models.Gsea.gene_set == gene_set) \
+    
+    # get res and ranging genes 
+    gsea = gsea.join(models.GseaRes, models.Gsea.gsea_ID == models.GseaRes.gsea_ID) \
+        .join(models.GseaRankingGenes, models.Gsea.gsea_ID == models.GseaRankingGenes.gsea_ID) \
         .all()
+
 
     if len(gsea) > 0:
         gsea = models.GseaSchemaPlot(many=True).dump(gsea)
 
         gene_map = models.Gene.query \
-            .filter(models.Gene.gene_ID.in_([x["gene_ID"] for x in gsea[0]["gsea_ranking_genes"]])) \
+            .filter(models.Gene.gene_ID.in_([x.gene_ID for x in gsea[0]["gsea_ranking_genes"]])) \
             .all()                                                               # There are some gene symbols with multiple entries in the gene table
         ranking_gene_ids = {x.gene_symbol: x.gene_ID for x in gene_map}.values() # both ids are present with identical values in the diff expr. table, but only one is needed
 
@@ -285,9 +290,9 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
         if reverse:
             g = GSEAPlot(
                 term=term,
-                tag=[ranking_ids.index(x["gene_ID"]) for x in gsea[0]["matched_genes"]],
+                tag=[ranking_ids.index(x.gene_ID) for x in gsea[0]["matched_genes"]],
                 rank_metric=[-x["log2FoldChange"] for x in ranking],
-                runes=[-y["score"] for y in sorted(gsea[0]["res"], key= lambda x: -x["res_ID"])],
+                runes=[-y.score for y in sorted(gsea[0]["res"], key= lambda x: -x.res_ID)],
                 nes=-gsea[0]["nes"],
                 pval=gsea[0]["pvalue"],
                 fdr=gsea[0]["fdr"],
@@ -300,9 +305,9 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
         else:
             g = GSEAPlot(
                 term=term,
-                tag=[ranking_ids.index(x["gene_ID"]) for x in gsea[0]["matched_genes"]],
+                tag=[ranking_ids.index(x.gene_ID) for x in gsea[0]["matched_genes"]],
                 rank_metric=[x["log2FoldChange"] for x in ranking],
-                runes=[y["score"] for y in sorted(gsea[0]["res"], key= lambda x: x["res_ID"])],
+                runes=[y["score"] for y in sorted(gsea[0]["res"], key= lambda x: x.res_ID)],
                 nes=gsea[0]["nes"],
                 pval=gsea[0]["pvalue"],
                 fdr=gsea[0]["fdr"],

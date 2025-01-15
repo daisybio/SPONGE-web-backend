@@ -2,7 +2,7 @@ from flask import jsonify
 import app.models as models
 from flask import Response
 from sqlalchemy.sql import text
-from sqlalchemy import func, select, join
+from sqlalchemy import case, func, select, join
 from sqlalchemy.orm import aliased
 from app.config import LATEST, db 
 
@@ -379,7 +379,8 @@ def getWikipathway(gene_symbol):
 
 def getTranscriptGene(enst_number):
     """
-    :param enst_number:
+    This function handles the route /getTranscriptGene and returns the gene id(s) for the given transcript id(s).
+    :param enst_number: List of transcript identification numbers
     :return: Returns all associated gene id(s) for the transcript(s) of interest.
     """
 
@@ -392,9 +393,16 @@ def getTranscriptGene(enst_number):
             "type": "about:blank"
         }), 400
 
+    # Create a CASE statement to preserve the order of enst_number
+    case_statement = case(
+        *[(models.Transcript.enst_number == enst, index) for index, enst in enumerate(enst_number)]
+    )
+
     query = select(models.Gene.ensg_number).select_from(
-        join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
-    ).where(models.Transcript.enst_number.in_(enst_number))
+            join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
+        ).where(models.Transcript.enst_number.in_(enst_number)) \
+        .order_by(case_statement)
+    
 
     result = db.session.execute(query).fetchall()
 
@@ -413,8 +421,9 @@ def getTranscriptGene(enst_number):
 
 def getGeneTranscripts(ensg_number):
     """
-    :param ensg_number:
-    :return: Returns all associated transcript id(s) for the gene(s) of interest.
+    This function handles the route /getGeneTranscripts and returns the transcript id(s) for the given gene id(s).
+    :param ensg_number: List of gene identification numbers
+    :return: Returns all associated transcript id(s) for the gene(s) of interest (list of lists).
     """
 
     # test if the identification is given
@@ -426,15 +435,24 @@ def getGeneTranscripts(ensg_number):
             "type": "about:blank"
         }), 400
 
-    query = select(models.Transcript.enst_number).select_from(
+    case_statement = case(
+        *[(models.Gene.ensg_number == ensg, index) for index, ensg in enumerate(ensg_number)]
+    )
+
+    query = select(models.Gene.ensg_number, models.Transcript.enst_number).select_from(
         join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
-    ).where(models.Gene.ensg_number.in_(ensg_number))
+    ).where(models.Gene.ensg_number.in_(ensg_number)) \
+        .order_by(case_statement)
 
     result = db.session.execute(query).fetchall()
 
     if len(result) > 0:
         # return models.TranscriptSchemaShort(many=True).dump(result)
-        return [r[0] for r in result]
+        # return [r[0] for r in result]
+        gene_transcripts = {ensg: [] for ensg in ensg_number}
+        for gene_id, transcript_id in result:
+            gene_transcripts[gene_id].append(transcript_id)
+        return [gene_transcripts[ensg] for ensg in ensg_number]
     else:
         return jsonify({
             "detail": "No transcript(s) associated for gene(s) of interest!",

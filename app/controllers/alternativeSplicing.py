@@ -1,7 +1,9 @@
 from flask import jsonify
+from sqlalchemy import or_
+from app.controllers.dataset import _dataset_query
 import app.models as models
 from flask import Response
-from app.config import db
+from app.config import db, LATEST
 
 def get_transcript_events(enst_number):
     """
@@ -130,16 +132,26 @@ def get_exons_for_position(start_pos: int, end_pos: int):
         }), 400
 
 
-def get_psi_values(transcript_ID: str = None, enst_number: str =None, psivec_ID: int = None, alternative_splicing_event_transcripts_ID: str = None, sample_ID: str = None, limit=100):
+def get_psi_values(dataset_ID: str = None, disease_name: str = None, data_origin: str = None, transcript_ID: str = None, enst_number: str =None, psivec_ID: int = None, alternative_splicing_event_transcripts_ID: str = None, sample_ID: str = None, limit=100, sponge_db_version: int = LATEST):
     """
     This function response for the request: /alternativeSplicing/getPsiValue/
     with the possibility to filter by psivec_ID, alternative
     splicing event transcripts ID and sample ID
+    :param disease_name: name of the disease
+    :param dataset_ID: ID of the dataset
     :param psivec_ID: ID of the psivec
     :param alternative_splicing_event_transcripts_ID: ID of the alternative splicing event transcripts
     :param sample_ID: ID of the sample
     :return: psi value for the given parameters, ordered by psi value
     """
+
+    # Get the dataset
+    if dataset_ID or disease_name or data_origin:
+        data = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID, disease_name=disease_name, data_origin=data_origin)
+        data = [d.disease_name for d in data]
+    else: 
+        data = None
+
     # Build the transcript query
     transcript_query = db.select(models.Transcript.transcript_ID)
     if transcript_ID:
@@ -164,6 +176,8 @@ def get_psi_values(transcript_ID: str = None, enst_number: str =None, psivec_ID:
         psi_query = psi_query.where(models.PsiVec.psivec_ID == psivec_ID)
     if sample_ID:
         psi_query = psi_query.where(models.PsiVec.sample_ID == sample_ID)
+    if data:
+        psi_query = psi_query.where(or_(*[models.PsiVec.sample_ID.like(d.replace(" ", "_") + "%") for d in data]))
 
     # Apply limit and sort results
     psi_query = psi_query.order_by(models.PsiVec.psi_value.desc()).limit(limit)

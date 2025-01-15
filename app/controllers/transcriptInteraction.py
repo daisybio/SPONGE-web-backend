@@ -880,45 +880,118 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
             "data": []
         }), 200
 
-# def get_distinc_ceRNA_sets(dataset_ID: int = None, disease_name: int = None):
-#     # scheint nichts zu machen und nicht fertig implementiert zu sein?
-#     """
-#     Function returns list of distinct transcript_IDs (enst_nr) contributing to a significant interaction (adjusted pVal <= 0.05) in one specific cancer
-#     :param dataset_ID: dataset_ID of the dataset of interest
-#     :param disease_name: cancer type of interest
-#     :return: List of distinct transcript_IDs (enst_nr)
-#     """
 
-#     # if specific disease_name is given:
-#     run_IDs = []
+def get_transcript_network(dataset_ID: int = None, disease_name=None,
+                            minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
+                            pValue=0.05, pValueDirection="<",
+                            mscor=None, mscorDirection="<", 
+                            correlation=None, correlationDirection="<",
+                            sorting=None, descending=True, limit=100, offset=0, sponge_db_version: int = LATEST):
+    """
+    Optimized function for fetching ceRNA network nodes and edges with applied filters and sorting. Handles route /ceRNAInteraction/getTranscriptNetwork
+    :param dataset_ID: dataset_ID of interest
+    :param disease_name: disease_name of interest
+    :param minBetweenness: betweenness cutoff (>)
+    :param minNodeDegree: degree cutoff (>)
+    :param minEigenvector: eigenvector cutoff (>)
+    :param pValue: pValue cutoff
+    :param pValueDirection: < or >
+    :param mscor:  multiple miRNA sensitivity correlation
+    :param mscorDirection: < or >
+    :param correlation: correlation cutoff
+    :param correlationDirection: < or >
+    :param sorting: how the results of the db query should be sorted, one of 'pValue', 'mscor', 'correlation', 'betweenness', 'degree', 'eigenvector'
+    :param descending: should the results be sorted in descending or ascending order
+    :param limit: number of results that should be shown
+    :param offset: startpoint from where results should be shown
+    :param sponge_db_version: version of the sponge database
+    :return: all ceRNAInteractions in the dataset of interest that satisfy the given filters
+    
+    """
 
-#     run = db.select(models.SpongeRun)
+    # Step 1: Filter for SpongeRun IDs
+    run_query = db.select(models.SpongeRun.sponge_run_ID).filter(
+        models.SpongeRun.sponge_db_version == sponge_db_version
+    )
+    if disease_name:
+        run_query = run_query.join(models.Dataset).filter(
+            models.Dataset.disease_name.like(f"%{disease_name}%")
+        )
+    if dataset_ID:
+        run_query = run_query.filter(
+            models.SpongeRun.dataset_ID == dataset_ID
+        )
 
-#     # if specific disease_name is given
-#     if disease_name is not None:
-#         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-#             .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
+    # Step 2: Prefilter edges by SpongeRun ID and p-value
+    edge_query = db.select(models.TranscriptInteraction).filter(
+        models.TranscriptInteraction.sponge_run_ID.in_(run_query),
+    )
+    if pValue: 
+        edge_query = edge_query.filter(
+            models.TranscriptInteraction.p_value < pValue if pValueDirection == "<" else models.TranscriptInteraction.p_value > pValue
+        )
+    
+    # Get prefiltered edges 
+    edges = db.session.execute(edge_query).scalars().all()
+    tr_ids_in_edges = set([edge.transcript_ID_1 for edge in edges] + [edge.transcript_ID_2 for edge in edges])
 
-#     if dataset_ID is not None:
-#         run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
+    # Step 3: Filter nodes by edges that pass the p-value filter
+    node_query = db.select(models.networkAnalysisTranscript).filter(
+        models.networkAnalysisTranscript.sponge_run_ID.in_(run_query),
+        models.networkAnalysisTranscript.transcript_ID.in_(tr_ids_in_edges)
+    )
 
-#     run = db.session.execute(run).scalars().all()
+    # Apply node-specific filters
+    if minBetweenness:
+        node_query = node_query.filter(models.networkAnalysisTranscript.betweenness >= minBetweenness)
+    if minNodeDegree:
+        node_query = node_query.filter(models.networkAnalysisTranscript.node_degree >= minNodeDegree)
+    if minEigenvector:
+        node_query = node_query.filter(models.networkAnalysisTranscript.eigenvector >= minEigenvector)
 
-#     if len(run) > 0:
-#         run_IDs = [i.sponge_run_ID for i in run]
-#     else:
-#         abort(404, "No dataset with given disease_name found")
+    # Step 4: Finalize edges by filtering based on filtered nodes
+    nodes = db.session.execute(node_query).scalars().all()
+    node_tr_ids = set([node.transcript_ID for node in nodes])
+    edge_query = db.select(models.TranscriptInteraction).filter(
+        or_(
+            models.TranscriptInteraction.transcript_ID_1.in_(node_tr_ids),
+            models.TranscriptInteraction.transcript_ID_2.in_(node_tr_ids)
+        )
+    )
 
-#     if len(run_IDs) > 0:
-#         some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
+    # Apply edge-specific filters
+    if mscor:
+        edge_query = edge_query.filter(models.TranscriptInteraction.mscor <= mscor if mscorDirection == "<" else models.TranscriptInteraction.mscor >= mscor)
+    if correlation:
+        edge_query = edge_query.filter(models.TranscriptInteraction.correlation <= correlation if correlationDirection == "<" else models.TranscriptInteraction.correlation >= correlation)
 
-#         # create a configured "Session" class
-#         Session = sa.orm.sessionmaker(bind=some_engine)
+    # Apply sorting
+    # Sorting
+    if sorting:
+        sort_column = {
+            "pValue": models.GeneInteraction.p_value,
+            "mscor": models.GeneInteraction.mscor,
+            "correlation": models.GeneInteraction.correlation,
+            "betweenness": models.networkAnalysisTranscript.betweenness, 
+            "degree": models.networkAnalysisTranscript.node_degree,      
+            "eigenvector": models.networkAnalysisTranscript.eigenvector  
+        }.get(sorting)
+        if sorting in ["pValue", "mscor", "correlation"]:
+            edge_query = edge_query.order_by(sort_column.desc() if descending else sort_column.asc())
+        elif sorting in ['betweenness', 'degree', 'eigenvector']:
+            node_query = node_query.order_by(sort_column.desc() if descending else sort_column.asc())
 
-#         # create a Session
-#         session = Session()
-#         # test for each dataset if the gene(s) of interest are included in the ceRNA network
+    # Pagination
+    edge_query = edge_query.offset(offset).limit(limit)
+    node_query = node_query.offset(offset).limit(limit)
 
-#         id1 = session.execute(
-#             text("SELECT DISTINCT transcript_ID_1 FROM interactions_transcripttranscipt where sponge_run_ID IN (" +
-#                  ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05"))
+    # Execute queries
+    node_results = db.session.execute(node_query).scalars().all()
+    edge_results = db.session.execute(edge_query).scalars().all()
+
+    # Return results 
+    return jsonify({
+        "edges": models.TranscriptInteractionDatasetLongSchema(many=True).dump(edge_results),
+        "nodes": models.networkAnalysisSchemaTranscript(many=True).dump(node_results)
+    })
+

@@ -1,4 +1,4 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from app.config import LATEST, db
 
@@ -20,13 +20,24 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
             else: 
                 continue
         else:
-            abort(404, "Unknown input type")
+            return jsonify({
+                "detail": "Unknown input type",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
     data = db.session.execute(query).scalars().all()
 
     if len(data) == 0:
-        abort(404, "No dataset found for given inputs")
+        return jsonify({
+            "detail": "No transcript(s) found for the given enst_number(s)!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
         
     return data
 
@@ -52,8 +63,13 @@ def get_datasets(dataset_ID: int = None, disease_name: str = None, data_origin=N
         # Serialize the data for the response
         return models.DatasetSchema(many=True).dump(data)
     else:
-        abort(404, 'No data found for \
-              name: {data_origin}'.format(data_origin=data_origin))
+        return jsonify({
+            "detail": 'No data found for name: {data_origin}'.format(data_origin=data_origin),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 # def read(disease_name=None, sponge_db_version: int = LATEST):
 #     """
@@ -103,4 +119,10 @@ def read_spongeRunInformation(dataset_ID: int = None, disease_name: str = None, 
         # Serialize the data for the response
         return models.SpongeRunSchema(many=True).dump(data)
     else:
-        abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
+        return jsonify({
+            "detail": 'No data found for name: {disease_name}'.format(disease_name=disease_name),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200

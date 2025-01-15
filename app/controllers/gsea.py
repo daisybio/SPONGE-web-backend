@@ -1,4 +1,4 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from gseapy.plot import GSEAPlot
 import base64
@@ -28,9 +28,20 @@ def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int =
 
     # check inputs
     if dataset_ID_1 is None and disease_name_1 is None:
-        abort(404, "No dataset_ID_1 or disease_name_1 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     if dataset_ID_2 is None and disease_name_2 is None:
-        abort(404, "No dataset_ID_2 or disease_name_2 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter datasets
     dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
@@ -51,7 +62,14 @@ def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int =
     if len(result) > 0:
         return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaSetSchema(many=True).dump(result))] 
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results for given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
 
 
 
@@ -74,9 +92,19 @@ def gsea_terms(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_
 
     # check inputs
     if dataset_ID_1 is None and disease_name_1 is None:
-        abort(404, "No dataset_ID_1 or disease_name_1 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     if dataset_ID_2 is None and disease_name_2 is None:
-        abort(404, "No dataset_ID_2 or disease_name_2 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter datasets
     dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
@@ -98,7 +126,13 @@ def gsea_terms(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_
     if len(result) > 0:
         return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaTermsSchema(many=True).dump(result))] 
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results for given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, term=None, sponge_db_version: int = LATEST):
@@ -121,9 +155,19 @@ def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_nam
 
     # check inputs
     if dataset_ID_1 is None and disease_name_1 is None:
-        abort(404, "No dataset_ID_1 or disease_name_1 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     if dataset_ID_2 is None and disease_name_2 is None:
-        abort(404, "No dataset_ID_2 or disease_name_2 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter datasets
     dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
@@ -159,7 +203,13 @@ def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_nam
 
         return result
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results for given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, term=None, gene_set=None, sponge_db_version: int = LATEST):
@@ -182,9 +232,19 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
 
     # check inputs
     if dataset_ID_1 is None and disease_name_1 is None:
-        abort(404, "No dataset_ID_1 or disease_name_1 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     if dataset_ID_2 is None and disease_name_2 is None:
-        abort(404, "No dataset_ID_2 or disease_name_2 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter datasets
     dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
@@ -267,5 +327,11 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
         
         return pic_hash.decode()
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results for given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 

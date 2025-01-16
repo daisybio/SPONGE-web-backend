@@ -4654,8 +4654,6 @@ paths:
     post:
       operationId: spongEffects.upload_file
       summary: Upload a gene/transcript expression file to predict which cancer type it originated from
-      parameters: 
-      - $ref: '#/components/parameters/VersionParam'
       requestBody:
         content:
           multipart/form-data:

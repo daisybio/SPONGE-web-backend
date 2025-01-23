@@ -1,4 +1,4 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from app.config import LATEST
 from app.controllers.dataset import _dataset_query
@@ -35,7 +35,13 @@ def get_patient_information(dataset_ID: int = None, disease_name=None, sample_ID
         dataset_IDs = [i.dataset_ID for i in dataset]
         queries = [models.PatientInformation.dataset_ID.in_(dataset_IDs)]
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     if (sample_ID is not None):
         queries.append(models.PatientInformation.sample_ID.in_([sample_ID]))
@@ -47,7 +53,13 @@ def get_patient_information(dataset_ID: int = None, disease_name=None, sample_ID
     if len(result) > 0:
         return models.PatientInformationSchema(many=True).dump(result)
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_number = None, gene_symbol = None, sample_ID = None, sponge_db_version: int = LATEST):
@@ -64,11 +76,20 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_num
        """
     # test if any of the two identification possibilites is given
     if ensg_number is None and gene_symbol is None:
-        abort(404, "One of the two possible identification numbers must be provided")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = []
     queries = []
@@ -87,7 +108,13 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_num
         # save all needed queries to get correct results
         queries.append(models.SurvivalRate.gene_ID.in_(gene_IDs))
     else:
-        abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+        return jsonify({
+            "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     patient = []
     # if sample_ID is given for specify patient, get the intern patient_ID(primary_key)
@@ -101,7 +128,12 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_num
             # save all needed queries to get correct results
             queries.append(models.SurvivalRate.patient_information_ID.in_(sample_IDs))
         else:
-            abort(404, "No samples found for given IDs)")
+            return jsonify({
+                "detail": "No samples found for given IDs",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     # filter for database version
     dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, dataset_ID=dataset_ID)
@@ -110,7 +142,12 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_num
         dataset_IDs = [i.dataset_ID for i in dataset]
         queries.append(models.SurvivalRate.dataset_ID.in_(dataset_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     result = models.SurvivalRate.query \
         .filter(*queries) \
@@ -119,7 +156,13 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_num
     if len(result) > 0:
         return models.SurvivalRateSchema(many=True).dump(result)
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, ensg_number = None, gene_symbol = None, sponge_db_version: int = LATEST):
     """
@@ -133,11 +176,20 @@ def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, ensg_n
     """
     # test if any of the two identification possibilites is given
     if ensg_number is None and gene_symbol is None:
-        abort(404, "One of the two possible identification numbers must be provided")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = []
     queries = []
@@ -156,7 +208,12 @@ def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, ensg_n
         # save all needed queries to get correct results
         queries.append(models.SurvivalPValue.gene_ID.in_(gene_IDs))
     else:
-        abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+        return jsonify({
+            "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter for database version
     dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, dataset_ID=dataset_ID)
@@ -165,7 +222,12 @@ def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, ensg_n
         dataset_IDs = [i.dataset_ID for i in dataset]
         queries.append(models.SurvivalPValue.dataset_ID.in_(dataset_IDs))
     else:
-            abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     result = models.SurvivalPValue.query \
         .filter(*queries) \
@@ -174,6 +236,12 @@ def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, ensg_n
     if len(result) > 0:
         return models.SurvivalPValueSchema(many=True).dump(result)
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 

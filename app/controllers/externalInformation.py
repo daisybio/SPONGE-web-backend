@@ -1,8 +1,8 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from flask import Response
 from sqlalchemy.sql import text
-from sqlalchemy import func, select, join
+from sqlalchemy import case, func, select, join
 from sqlalchemy.orm import aliased
 from app.config import LATEST, db 
 
@@ -22,7 +22,14 @@ def getAutocomplete(searchString):
         if len(data) > 0:
             return models.GeneSchemaShort(many=True).dump(data)
         else:
-            abort(404, "No ensg number found for the given String")
+            return jsonify({
+                "detail": "No ensg number found for the given input",
+                "status": 200,
+                "title": "No Content",
+                "type": "about:blank",
+                "data": []
+            }), 200
+
     elif searchString.startswith("HSA") or searchString.startswith("hsa"):
         data = models.miRNA.query.with_entities(models.miRNA.mir_ID, models.miRNA.hs_nr) \
             .filter(models.miRNA.hs_nr.ilike(searchString + "%")) \
@@ -30,7 +37,14 @@ def getAutocomplete(searchString):
         if len(data) > 0:
             return models.miRNASchemaShort(many=True).dump(data)
         else:
-            abort(404, "No hsa number found for the given String")
+            return jsonify({
+                "detail": "No hsa number found for the given input",
+                "status": 200,
+                "title": "No Content",
+                "type": "about:blank",
+                "data": []
+            }), 200
+
     elif searchString.startswith("MIMAT") or searchString.startswith("mimat"):
         data = models.miRNA.query.with_entities(models.miRNA.mir_ID, models.miRNA.hs_nr) \
             .filter(models.miRNA.mir_ID.ilike(searchString + "%")) \
@@ -38,7 +52,14 @@ def getAutocomplete(searchString):
         if len(data) > 0:
             return models.miRNASchemaShort(many=True).dump(data)
         else:
-            abort(404, "No mimat number found for the given String")
+            return jsonify({
+                "detail": "No mimat number found for the given input",
+                "status": 200,
+                "title": "No Content",
+                "type": "about:blank",
+                "data": []
+            }), 200
+
     else:
         data = models.Gene.query.with_entities(models.Gene.ensg_number, models.Gene.gene_symbol) \
             .filter(models.Gene.gene_symbol.ilike(searchString + "%")) \
@@ -46,7 +67,13 @@ def getAutocomplete(searchString):
         if len(data) > 0:
             return models.GeneSchemaShort(many=True).dump(data)
         else:
-            abort(404, "No gene symbol found for the given String")
+            return jsonify({
+                "detail": "No gene symbol found for the given input",
+                "status": 200,
+                "title": "No Content",
+                "type": "about:blank",
+                "data": []
+            }), 200
 
 
 def getGeneInformation(ensg_number=None, gene_symbol=None):
@@ -58,12 +85,21 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
 
     # test if any of the two identification possibilites is given
     if ensg_number is None and gene_symbol is None:
-        abort(404, "One of the two possible identification numbers must be provided")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # test if not both identification possibilites are given
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if ensg_number is not None:
         data = models.Gene.query \
@@ -73,7 +109,13 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
         if len(data) > 0:
             return models.GeneSchema(many=True).dump(data)
         else:
-            abort(404, "No gene(s) found with: " + ''.join(ensg_number))
+            return jsonify({
+                "detail": "No gene(s) found with: " + ''.join(ensg_number),
+                "status": 200,
+                "title": "No Content",
+                "type": "about:blank",
+                "data": []
+            }), 200
 
     elif gene_symbol is not None:
         data = models.Gene.query \
@@ -83,7 +125,13 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
         if len(data) > 0:
             return models.GeneSchema(many=True).dump(data)
         else:
-            abort(404, "No gene found with: " + ''.join(gene_symbol))
+            return jsonify({
+                "detail": "No gene(s) found with: " + ''.join(gene_symbol),
+                "status": 200,
+                "title": "No Content",
+                "type": "about:blank",
+                "data": []
+            }), 200
 
 
 def getTranscriptInformation(enst_number):
@@ -94,7 +142,12 @@ def getTranscriptInformation(enst_number):
 
     # test if the identification is given
     if enst_number is None:
-        abort(404, "At least one transcript identification number is needed!")
+        return jsonify({
+            "detail": "At least one transcript identification number is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     data = models.Transcript.query \
         .filter(models.Transcript.enst_number.in_(enst_number)) \
@@ -103,7 +156,13 @@ def getTranscriptInformation(enst_number):
     if len(data) > 0:
         return models.TranscriptSchema(many=True).dump(data)
     else:
-        abort(404, "No transcript found with: " + enst_number)
+        return jsonify({
+            "detail": "No transcript found for given enst: " + enst_number,
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def getOverallCount(sponge_db_version: int = LATEST):
@@ -190,7 +249,12 @@ def getGeneOntology(gene_symbol):
 
     # test if any of the two identification possibilites is given
     if gene_symbol is None:
-        abort(404, "At least one gene symbol is needed!")
+        return jsonify({
+            "detail": "At least one gene symbol is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = models.Gene.query \
         .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
@@ -199,7 +263,12 @@ def getGeneOntology(gene_symbol):
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
     else:
-        abort(404, "Not gene(s) found for given gene_symbol(s)!")
+        return jsonify({
+            "detail": "No gene(s) found for given gene_symbol(s)!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     interaction_result = models.GeneOntology.query \
         .filter(models.GeneOntology.gene_ID.in_(gene_IDs)) \
@@ -209,12 +278,13 @@ def getGeneOntology(gene_symbol):
         # Serialize the data for the response depending on parameter all
         return models.GeneOntologySchema(many=True).dump(interaction_result)
     else:
-        return Response("{"
-                        "\"detail\": \"No GO terms with given parameters found!\","
-                        "\"status\": 202,"
-                        "\"title\": \"Accepted\","
-                        "\"type\": \"about:blank\"}",
-                        status=202)
+        return jsonify({
+            "detail": "No GO terms with given parameters found!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def getHallmark(gene_symbol):
@@ -225,8 +295,12 @@ def getHallmark(gene_symbol):
 
     # test if any of the two identification possibilites is given
     if gene_symbol is None:
-        abort(404, "At least one gene symbol is needed!")
-
+        return jsonify({
+            "detail": "At least one gene symbol is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     gene = models.Gene.query \
         .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
         .all()
@@ -234,7 +308,12 @@ def getHallmark(gene_symbol):
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
     else:
-        abort(404, "No gene(s) found for given gene_symbol(s)!")
+        return jsonify({
+            "detail": "No gene(s) found for given gene_symbol(s)!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     interaction_result = models.hallmarks.query \
         .filter(models.hallmarks.gene_ID.in_(gene_IDs)) \
@@ -244,12 +323,13 @@ def getHallmark(gene_symbol):
         # Serialize the data for the response depending on parameter all
         return models.HallmarksSchema(many=True).dump(interaction_result)   
     else:
-        return Response("{"
-                        "\"detail\": \"No hallmark associated for gene(s) of interest!\","
-                        "\"status\": 202,"
-                        "\"title\": \"Accepted\","
-                        "\"type\": \"about:blank\"}",
-                        status=202)
+        return jsonify({
+            "detail": "No hallmark associated for gene(s) of interest!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 def getWikipathway(gene_symbol):
     """
@@ -259,7 +339,12 @@ def getWikipathway(gene_symbol):
 
     # test if any of the two identification possibilites is given
     if gene_symbol is None:
-        abort(404, "At least one gene symbol is needed!")
+        return jsonify({
+            "detail": "At least one gene symbol is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = models.Gene.query \
         .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
@@ -268,7 +353,12 @@ def getWikipathway(gene_symbol):
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
     else:
-        abort(404, "No gene(s) found for given gene_symbol(s)!")
+        return jsonify({
+            "detail": "No gene(s) found for given gene_symbol(s)!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     interaction_result = models.wikipathways.query \
         .filter(models.wikipathways.gene_ID.in_(gene_IDs)) \
@@ -278,27 +368,41 @@ def getWikipathway(gene_symbol):
         # Serialize the data for the response depending on parameter all
         return models.WikipathwaySchema(many=True).dump(interaction_result)
     else:
-        return Response("{"
-                        "\"detail\": \"No wikipathway key associated for gene(s) of interest!\","
-                        "\"status\": 202,"
-                        "\"title\": \"Accepted\","
-                        "\"type\": \"about:blank\"}",
-                        status=202)
+        return jsonify({
+            "detail": "No wikipathway key associated for gene(s) of interest!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def getTranscriptGene(enst_number):
     """
-    :param enst_number:
+    This function handles the route /getTranscriptGene and returns the gene id(s) for the given transcript id(s).
+    :param enst_number: List of transcript identification numbers
     :return: Returns all associated gene id(s) for the transcript(s) of interest.
     """
 
     # test if the identification is given
     if enst_number is None:
-        abort(404, "At least one transcript identification number is needed!")
+        return jsonify({
+            "detail": "At least one transcript identification number is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
+    # Create a CASE statement to preserve the order of enst_number
+    case_statement = case(
+        *[(models.Transcript.enst_number == enst, index) for index, enst in enumerate(enst_number)]
+    )
 
     query = select(models.Gene.ensg_number).select_from(
-        join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
-    ).where(models.Transcript.enst_number.in_(enst_number))
+            join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
+        ).where(models.Transcript.enst_number.in_(enst_number)) \
+        .order_by(case_statement)
+    
 
     result = db.session.execute(query).fetchall()
 
@@ -306,40 +410,57 @@ def getTranscriptGene(enst_number):
         # return models.GeneSchemaShort(many=True).dump(result)
         return [r[0] for r in result]
     else:
-        return Response("{"
-                        "\"detail\": \"No gene(s) associated for transcript(s) of interest!\","
-                        "\"status\": 202,"
-                        "\"title\": \"Accepted\","
-                        "\"type\": \"about:blank\"}",
-                        status=202)
+        return jsonify({
+            "detail": "No gene(s) associated for transcript(s) of interest!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def getGeneTranscripts(ensg_number):
     """
-    :param ensg_number:
-    :return: Returns all associated transcript id(s) for the gene(s) of interest.
+    This function handles the route /getGeneTranscripts and returns the transcript id(s) for the given gene id(s).
+    :param ensg_number: List of gene identification numbers
+    :return: Returns all associated transcript id(s) for the gene(s) of interest (list of lists).
     """
 
     # test if the identification is given
     if ensg_number is None:
-        abort(404, "At least one gene identification number is needed!")
+        return jsonify({
+            "detail": "At least one gene identification number is needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
-    query = select(models.Transcript.enst_number).select_from(
+    case_statement = case(
+        *[(models.Gene.ensg_number == ensg, index) for index, ensg in enumerate(ensg_number)]
+    )
+
+    query = select(models.Gene.ensg_number, models.Transcript.enst_number).select_from(
         join(models.Gene, models.Transcript, models.Gene.gene_ID == models.Transcript.gene_ID)
-    ).where(models.Gene.ensg_number.in_(ensg_number))
+    ).where(models.Gene.ensg_number.in_(ensg_number)) \
+        .order_by(case_statement)
 
     result = db.session.execute(query).fetchall()
 
     if len(result) > 0:
         # return models.TranscriptSchemaShort(many=True).dump(result)
-        return [r[0] for r in result]
+        # return [r[0] for r in result]
+        gene_transcripts = {ensg: [] for ensg in ensg_number}
+        for gene_id, transcript_id in result:
+            gene_transcripts[gene_id].append(transcript_id)
+        return [gene_transcripts[ensg] for ensg in ensg_number]
     else:
-        return Response("{"
-                        "\"detail\": \"No transcript(s) associated for gene(s) of interest!\","
-                        "\"status\": 202,"
-                        "\"title\": \"Accepted\","
-                        "\"type\": \"about:blank\"}",
-                        status=202)
+        return jsonify({
+            "detail": "No transcript(s) associated for gene(s) of interest!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
     
 
 def get_genes(gene_ID: int = None, ensg_number: str = None, gene_symbol: str = None, execute=True):

@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 import os
-from flask import abort
+from flask import jsonify
 from sqlalchemy import desc, or_, and_
 from sqlalchemy.sql import text
 import app.models as models
@@ -34,13 +34,23 @@ def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, 
     """
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # test if just one of the possible identifiers is given
     if ensg_number is not None and (gene_symbol is not None or gene_type is not None) or (
             gene_symbol is not None and gene_type is not None):
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol or gene type)")
+        return jsonify({
+            "detail": "More than one identification paramter is given. Please choose one out of (ensg number, gene symbol or gene type)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     queries_1 = []
     queries_2 = []
@@ -64,7 +74,13 @@ def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, 
         queries_1.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
         queries_2.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name / dataset_ID found")
+        return jsonify({
+            "detail": "No dataset with given disease_name / dataset_ID found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     gene = []
     # if ensg_numer is given to specify gene(s), get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -89,7 +105,12 @@ def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, 
             queries_1.append(models.GeneInteraction.gene_ID1.in_(gene_IDs))
             queries_2.append(models.GeneInteraction.gene_ID2.in_(gene_IDs))
         else:
-            abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+            return jsonify({
+                "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     # filter further depending on given statistics cutoffs
     if pValue is not None:
@@ -160,35 +181,71 @@ def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, 
             schema = models.GeneInteractionDatasetShortSchema(many=True)
         return schema.dump(interaction_result)
     else:
-        abort(404, "No information with given parameters found")
+        return jsonify({
+            "detail": "No information with given parameters found",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
-def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, pValue=0.05,
-                              pValueDirection="<", limit=100, offset=0, sponge_db_version: int = LATEST):
+def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, 
+                              pValue=0.05, pValueDirection="<", 
+                              minBetweenness: float = 0, minNodeDegree: int = 0, minEigenvector: float = 0,
+                              sorting: str = "betweenness", descending: bool = True,
+                              limit: int=100, offset=0, sponge_db_version: int = LATEST):
     """
-      This function responds to a request for /ceRNAInteraction/findSpecific
-      and returns all interactions between the given identifications (ensg_number or gene_symbol)
-      :param dataset_ID: dataset_ID of interest
-      :param disease_name: disease_name of interest
-      :param ensg_number: esng number of the genes of interest
-      :param gene_symbol: gene symbol of the genes of interest
-      :param limit: number of results that shouls be shown
-      :param offset: startpoint from where results should be shown
-      :param sponge_db_version: version of the sponge database    
-      :return: all interactions between given genes
+        This function responds to a request for /ceRNAInteraction/findSpecific
+        and returns all interactions between the given identifications (ensg_number or gene_symbol)
+        :param dataset_ID: dataset_ID of interest
+        :param disease_name: disease_name of interest
+        :param ensg_number: esng number of the genes of interest
+        :param gene_symbol: gene symbol of the genes of interest
+        :param minBetweenness: betweenness cutoff (>)
+        :param minNodeDegree: degree cutoff (>)
+        :param minEigenvector: eigenvector cutoff (>)
+        :param sorting: how the results of the db query should be sorted
+        :param descending: should the results be sorted in descending or ascending order
+        :param limit: number of results that shouls be shown
+        :param offset: startpoint from where results should be shown
+        :param sponge_db_version: version of the sponge database    
+        :return: all interactions between given genes
       """
+    
+    SORT_KEYS = {
+        "betweenness": models.networkAnalysis.betweenness,
+        "degree": models.networkAnalysis.node_degree,
+        "eigenvector": models.networkAnalysis.eigenvector
+    }
+    if not sorting in SORT_KEYS:
+        abort(404, "Invalid sorting key. Choose one of 'betweenness', 'degree', 'eigenvector'")
 
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # test if any of the two identification possibilites is given
     if ensg_number is None and gene_symbol is None:
-        abort(404, "One of the two possible identification numbers must be provided")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identification parameter is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = []
     # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -204,7 +261,13 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_nu
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
     else:
-        abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+        return jsonify({
+            "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     # save all needed queries to get correct results
     queries = [sa.and_(models.GeneInteraction.gene_ID1.in_(gene_IDs), models.GeneInteraction.gene_ID2.in_(gene_IDs))]
@@ -227,7 +290,12 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_nu
         run_IDs = [i.sponge_run_ID for i in run]
         queries.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter further depending on given statistics cutoffs
     if pValue is not None:
@@ -245,7 +313,13 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_nu
         # Serialize the data for the response depending on parameter all
         return models.GeneInteractionDatasetShortSchema(many=True).dump(interaction_result)
     else:
-        abort(404, "No information with given parameters found")
+        return jsonify({
+            "detail": "No information with given parameters found",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None,
@@ -272,7 +346,12 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
 
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # save all needed queries to get correct results
     queries = []
@@ -295,11 +374,21 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
         run_IDs = [i.sponge_run_ID for i in run]
         queries.append(models.networkAnalysis.sponge_run_ID.in_(run_IDs))
     else:
-            abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identification paramter is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     gene = []
     # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -311,7 +400,13 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
             gene_IDs = [i.gene_ID for i in gene]
             queries.append(models.networkAnalysis.gene_ID.in_(gene_IDs))
         else:
-            abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+            return jsonify({
+                "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
+
     elif gene_symbol is not None:
         gene = models.Gene.query \
             .filter(models.Gene.gene_symbol.in_(gene_symbol)) \
@@ -320,7 +415,12 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
             gene_IDs = [i.gene_ID for i in gene]
             queries.append(models.networkAnalysis.gene_ID.in_(gene_IDs))
         else:
-            abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+            return jsonify({
+                "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     # filter further depending on given statistics cutoffs
     if minBetweenness is not None:
@@ -362,7 +462,14 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
         schema = models.networkAnalysisSchema(many=True)
         return schema.dump(result)
     else:
-        abort(404, "Not data found that satisfies the given filters")
+        return jsonify({
+            "detail": "No data found that satisfies the given filters",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
 
 
 def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
@@ -376,12 +483,21 @@ def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=No
 
     # test if any of the two identification possibilites is given
     if ensg_number is None and gene_symbol is None:
-        abort(404, "One of the two possible identification numbers must be provided")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # test if not both identification possibilites are given
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identification paramter is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = []
     # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -397,7 +513,12 @@ def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=No
     if len(gene) > 0:
         gene_ID = [i.gene_ID for i in gene]
     else:
-        abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
+        return jsonify({
+            "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
     run = db.session.execute(text(f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"))
@@ -453,12 +574,28 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
 
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if mimat_number is None and hs_number is None:
-        abort(404, "Mimat_ID or hs_number of mirna of interest are needed!")
+        return jsonify({
+            "detail": "Mimat_ID or hs_number of mirna of interest are needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     if mimat_number is not None and hs_number is not None:
-        abort(404, "More than one miRNA identifier is given. Please choose one.")
+        return jsonify({
+            "detail": "More than one miRNA identifier is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # get mir_ID from given mimat_number or hs number
     mirna = []
@@ -478,7 +615,12 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
         mirna_IDs = [i.miRNA_ID for i in mirna]
         queriesmirnaInteraction.append(models.miRNAInteraction.miRNA_ID.in_(mirna_IDs))
     else:
-        abort(404, "With given mimat_ID or hs_number no miRNA could be found")
+        return jsonify({
+            "detail": "No miRNA was found using given identifier",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter for database version 
     run = models.SpongeRun.query \
@@ -499,7 +641,12 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
         queriesmirnaInteraction.append(models.miRNAInteraction.sponge_run_ID.in_(run_IDs))
         queriesGeneInteraction.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
     else:
-            abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # get all possible gene interaction partner for specific miRNA
     gene_interaction = models.miRNAInteraction.query \
@@ -510,7 +657,12 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
     if len(gene_interaction) > 0:
         geneInteractionIDs = [i.gene_ID for i in gene_interaction]
     else:
-        abort(404, "No gene is associated with the given miRNA.")
+        return jsonify({
+            "detail": "No gene is associated with the given miRNA.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # save all needed queries to get correct results
     queriesGeneInteraction.append(sa.and_(models.GeneInteraction.gene_ID1.in_(geneInteractionIDs),
@@ -543,8 +695,13 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
         schema = models.GeneInteractionDatasetLongSchema(many=True)
         return schema.dump(interaction_result)
     else:
-        abort(404, "No data found with input parameter")
-
+        return jsonify({
+            "detail": "No data found using the given input parameters",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, occurences=None, sorting=None, descending=None,
                    limit=100, offset=0, sponge_db_version: int = LATEST):
@@ -566,10 +723,21 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
 
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if mimat_number is not None and hs_number is not None:
-        abort(404, "More than one miRNA identifier is given. Please choose one.")
+        return jsonify({
+            "detail": "More than one miRNA identifier is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     # get mir_ID from given mimat_number
     mirna = []
@@ -589,7 +757,12 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
             mirna_IDs = [i.miRNA_ID for i in mirna]
             queries.append(models.OccurencesMiRNA.miRNA_ID.in_(mirna_IDs))
         else:
-            abort(404, "With given mimat_ID or hs_number no mirna could be found")
+            return jsonify({
+                "detail": "No miRNA was found using given identifier",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     # filter for database version
     run = models.SpongeRun.query \
@@ -609,7 +782,12 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
         run_IDs = [i.sponge_run_ID for i in run]
         queries.append(models.OccurencesMiRNA.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if occurences is not None:
         queries.append(models.OccurencesMiRNA.occurences > occurences)
@@ -632,7 +810,13 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
         # Serialize the data for the response depending on parameter all
         return models.occurencesMiRNASchema(many=True).dump(interaction_result)
     else:
-        abort(404, "No information with given parameters found")
+        return jsonify({
+            "detail": "No information with given parameters found",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, between=False, sponge_db_version: int = LATEST):
@@ -702,7 +886,13 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
         # Serialize the data for the response depending on parameter all
         return models.miRNAInteractionSchema(many=True).dump(interaction_result)
     else:
-        abort(404, "No data found with input parameter")
+        return jsonify({
+            "detail": "No data found using the given input parameters",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, minCountAll=None, minCountSign=None, sponge_db_version: int = LATEST):
@@ -721,13 +911,21 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
 
     # test if any of the two identification possibilities is given or disease_name is specified
     if ensg_number is None and gene_symbol is None and disease_name is None:
-        abort(404,
-              "One of the two possible identification numbers must be provided or the disease_name must be specified.")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided or the disease_name must be specified.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # test if not both identification possibilites are given
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one gene identifier is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one gene identifier is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     queries = []
 
@@ -749,7 +947,12 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
         run_IDs = [i.sponge_run_ID for i in run]
         queries.append(models.GeneCount.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = []
     # if ensg_numer is given to specify gene(s), get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
@@ -762,7 +965,13 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
             gene_ID = [i.gene_ID for i in gene]
             queries.append(models.GeneCount.gene_ID.in_(gene_ID))
         else:
-            abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
+            return jsonify({
+                "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
+
     # if gene_symbol is given to specify gene(s), get the intern gene_ID(primary_key) for requested gene_symbol(gene_ID)
     elif gene_symbol is not None:
         gene = models.Gene.query \
@@ -773,7 +982,12 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
             gene_ID = [i.gene_ID for i in gene]
             queries.append(models.GeneCount.gene_ID.in_(gene_ID))
         else:
-            abort(404, "No gene found for given ensg_number(s) or gene_symbol(s)")
+            return jsonify({
+                "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     # add count filter if provided
     if minCountAll is not None:
@@ -790,5 +1004,122 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
         # Serialize the data for the response depending on parameter all
         return models.GeneCountSchema(many=True).dump(result)
     else:
-        abort(404, "No data found with input parameter")
+        return jsonify({
+            "detail": "No data found using the given input parameters",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
+
+def get_gene_network(dataset_ID: int = None, disease_name=None,
+                      minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
+                      pValue=0.05, pValueDirection="<",
+                      mscor=None, mscorDirection="<", 
+                      correlation=None, correlationDirection="<",
+                      sorting=None, descending=True, limit=100, offset=0, sponge_db_version: int = LATEST):
+    """
+    Optimized function for fetching ceRNA network nodes and edges with applied filters and sorting. Handles route /ceRNAInteraction/getGeneNetwork
+    :param dataset_ID: dataset_ID of interest
+    :param disease_name: disease_name of interest
+    :param minBetweenness: betweenness cutoff (>)
+    :param minNodeDegree: degree cutoff (>)
+    :param minEigenvector: eigenvector cutoff (>)
+    :param pValue: pValue cutoff
+    :param pValueDirection: < or >
+    :param mscor:  multiple miRNA sensitivity correlation
+    :param mscorDirection: < or >
+    :param correlation: correlation cutoff
+    :param correlationDirection: < or >
+    :param sorting: how the results of the db query should be sorted, one of 'pValue', 'mscor', 'correlation', 'betweenness', 'degree', 'eigenvector'
+    :param descending: should the results be sorted in descending or ascending order
+    :param limit: number of results that should be shown
+    :param offset: startpoint from where results should be shown
+    :param sponge_db_version: version of the sponge database
+    :return: all ceRNAInteractions in the dataset of interest that satisfy the given filters
+    
+    """
+    # Step 1: Filter for SpongeRun IDs
+    run_query = db.select(models.SpongeRun.sponge_run_ID).filter(
+        models.SpongeRun.sponge_db_version == sponge_db_version
+    )
+    if disease_name:
+        run_query = run_query.join(models.Dataset).filter(
+            models.Dataset.disease_name.like(f"%{disease_name}%")
+        )
+    if dataset_ID:
+        run_query = run_query.filter(
+            models.SpongeRun.dataset_ID == dataset_ID
+        )
+
+    # Step 2: Prefilter edges by SpongeRun ID and p-value
+    edge_query = db.select(models.GeneInteraction).filter(
+        models.GeneInteraction.sponge_run_ID.in_(run_query)
+    )
+    if pValue:
+        edge_query = edge_query.filter(
+            models.GeneInteraction.p_value <= pValue if pValueDirection == "<" else models.GeneInteraction.p_value >= pValue
+        )
+
+    # Get prefiltered edges
+    edges = db.session.execute(edge_query).scalars().all()
+    gene_ids_in_edges = set([edge.gene_ID1 for edge in edges] + [edge.gene_ID2 for edge in edges])
+
+    # Step 3: Filter nodes by edges that pass the p-value filter
+    node_query = db.select(models.networkAnalysis).filter(
+        models.networkAnalysis.sponge_run_ID.in_(run_query),
+        models.networkAnalysis.gene_ID.in_(gene_ids_in_edges)    )
+
+    # Apply node-specific filters
+    if minBetweenness:
+        node_query = node_query.filter(models.networkAnalysis.betweenness >= minBetweenness)
+    if minNodeDegree:
+        node_query = node_query.filter(models.networkAnalysis.node_degree >= minNodeDegree)
+    if minEigenvector:
+        node_query = node_query.filter(models.networkAnalysis.eigenvector >= minEigenvector)
+
+    # Step 4: Finalize edges by filtering based on filtered nodes
+    nodes = db.session.execute(node_query).scalars().all()
+    node_gene_ids = set([node.gene_ID for node in nodes])
+    edge_query = edge_query.filter(
+        or_(
+            models.GeneInteraction.gene_ID1.in_(node_gene_ids),
+            models.GeneInteraction.gene_ID2.in_(node_gene_ids)
+        )
+    )
+
+    # Apply edge-specific filters
+    if mscor:
+        edge_query = edge_query.filter(models.GeneInteraction.mscor <= mscor if mscorDirection == "<" else models.GeneInteraction.mscor >= mscor)
+    if correlation:
+        edge_query = edge_query.filter(models.GeneInteraction.correlation <= correlation if correlationDirection == "<" else models.GeneInteraction.correlation >= correlation)
+
+    # Sorting
+    if sorting:
+        sort_column = {
+            "pValue": models.GeneInteraction.p_value,
+            "mscor": models.GeneInteraction.mscor,
+            "correlation": models.GeneInteraction.correlation,
+            "betweenness": models.networkAnalysis.betweenness, 
+            "degree": models.networkAnalysis.node_degree,      
+            "eigenvector": models.networkAnalysis.eigenvector  
+        }.get(sorting)
+        if sorting in ["pValue", "mscor", "correlation"]:
+            edge_query = edge_query.order_by(sort_column.desc() if descending else sort_column.asc())
+        elif sorting in ['betweenness', 'degree', 'eigenvector']:
+            node_query = node_query.order_by(sort_column.desc() if descending else sort_column.asc())
+
+    # Pagination
+    edge_query = edge_query.offset(offset).limit(limit)
+    node_query = node_query.offset(offset).limit(limit)
+
+    # Execute queries
+    node_results = db.session.execute(node_query).scalars().all()
+    edge_results = db.session.execute(edge_query).scalars().all()
+
+    # Return results
+    return jsonify({
+        "edges": models.GeneInteractionDatasetLongSchema(many=True).dump(edge_results),
+        "nodes": models.networkAnalysisSchema(many=True).dump(node_results),
+    })

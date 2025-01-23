@@ -1,4 +1,4 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from app.config import LATEST, db
 from app.controllers.dataset import _dataset_query
@@ -58,10 +58,22 @@ def _comparison_query(dataset_1, dataset_2, condition_1=None, condition_2=None, 
     
     # error if no comparison found
     if len(comparisons) == 0:
-        abort(404, "No comparison found for given inputs")
+        return jsonify({
+            "detail": "No comparison found for given inputs",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
     if len(comparisons) > 1:
-        abort(404, "Multiple comparisons found for given inputs")
+        return jsonify({
+            "detail": "Multiple comparisons found for given inputs",
+            "status": 200,
+            "title": "Wrong Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
     return comparisons, reverse
     
@@ -86,4 +98,10 @@ def get_comparison(dataset_ID: str = None, disease_name: str = None, disease_sub
     if len(result) > 0:
         return models.ComparisonSchema(many=True).dump(result)
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No transcript(s) found for the given enst_number(s)!",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200

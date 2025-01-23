@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 import os
-from flask import abort
+from flask import jsonify
 from sqlalchemy import desc, or_, and_
 from sqlalchemy.sql import text
 import app.models as models
@@ -36,7 +36,12 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
 
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     queries_1 = []
     queries_2 = []
@@ -60,7 +65,12 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
         queries_1.append(models.TranscriptInteraction.sponge_run_ID.in_(run_IDs))
         queries_2.append(models.TranscriptInteraction.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     transcript = []
     if enst_number is not None:
@@ -79,7 +89,12 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
             queries_2.append(models.TranscriptInteraction.transcript_ID_2.in_(transcript_IDs))
 
         else:
-            abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+            return jsonify({
+                "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     # filter depending on given statistics cutoffs
     if pValue is not None:
@@ -143,7 +158,14 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
         return schema.dump(interaction_results)
 
     else:
-        abort(404, "No information with given parameters found")
+        return jsonify({
+            "detail": "No results",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
 
 
 def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_number=None, pValue=0.05,
@@ -161,7 +183,12 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
     """
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     transcript_query = db.select(models.Transcript)
 
@@ -173,7 +200,12 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
     if len(transcript) > 0:
         transcript_IDs = [t.transcript_ID for t in transcript]
     else:
-        abort(404, "No transcript found for given enst_number(s)")
+        return jsonify({
+            "detail": "No transcript found for given enst_number(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # save all needed queries to get correct results
     queries = [sa.and_(models.TranscriptInteraction.transcript_ID_1.in_(transcript_IDs),
@@ -195,7 +227,12 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
         run_Ids = [i.sponge_run_ID for i in run]
         queries.append(models.TranscriptInteraction.sponge_run_ID.in_(run_Ids))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter further depending on given statistics cutoffs
     if pValue is not None:
@@ -212,7 +249,13 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
     if len(interaction_result) > 0:
         return models.TranscriptInteractionDatasetLongSchema(many=True).dump(interaction_result)
     else:
-        abort(404, "No information with given parameters found")
+        return jsonify({
+            "detail": "No results",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=None, enst_number=None,
@@ -240,7 +283,12 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
 
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     queries = []
 
@@ -259,7 +307,12 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
         run_IDs = [i.sponge_run_ID for i in run]
         queries.append(models.networkAnalysisTranscript.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if enst_number is not None:
         transcript = models.Transcript.query \
@@ -270,7 +323,13 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
             transcript_IDs = [t.transcript_ID for t in transcript]
             queries.append(models.networkAnalysisTranscript.transcript_ID.in_(transcript_IDs))
         else:
-            abort(404, "No transcripts found for given enst_number(s)")
+            return jsonify({
+                "detail": "No transcript found for given enst_number(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
+
 
     # filter further depending on given statistics cutoffs
     if minBetweenness is not None:
@@ -312,7 +371,13 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
         schema = models.networkAnalysisSchemaTranscript(many=True)
         return schema.dump(result)
     else:
-        abort(404, "Not data found that satisfies the given filters")
+        return jsonify({
+            "detail": "No data found that satisfies the given filters",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, pValue=0.05,
@@ -336,12 +401,29 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
     """
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if mimat_number is None and hs_number is None:
-        abort(404, "Mimat_ID or hs_number of mirna of interest are needed!")
+        return jsonify({
+            "detail": "Mimat_ID or hs_number of mirna of interest are needed!",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     if mimat_number is not None and hs_number is not None:
-        abort(404, "More than one miRNA identifier is given. Please choose one.")
+        return jsonify({
+            "detail": "More than one miRNA identifier is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     # get mir_ID from given mimat_number or hs number
     mirna = []
@@ -362,7 +444,12 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
         mirna_IDs = [i.miRNA_ID for i in mirna]
         queriesmirnaInteraction.append(models.miRNAInteractionTranscript.miRNA_ID.in_(mirna_IDs))
     else:
-        abort(404, "With given mimat_ID or hs_number no miRNA could be found")
+        return jsonify({
+            "detail": "With given mimat_ID or hs_number no miRNA could be found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     run = db.select(models.SpongeRun)
 
@@ -381,7 +468,12 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
         queriesmirnaInteraction.append(models.miRNAInteractionTranscript.sponge_run_ID.in_(run_IDs))
         queriesTranscriptInteraction.append(models.TranscriptInteraction.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # get all possible transcript interaction partners for specific miRNA
     transcript_interaction = models.miRNAInteractionTranscript.query \
@@ -392,7 +484,12 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
     if len(transcript_interaction) > 0:
         transcriptInteractionIDs = [t.transcript_ID for t in transcript_interaction]
     else:
-        abort(404, "No transcript is associated with the given miRNA.")
+        return jsonify({
+            "detail": "No transcript is associated with the given miRNA.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # save all needed queries to get correct results
     queriesTranscriptInteraction.append(
@@ -425,7 +522,13 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
         schema = models.TranscriptInteractionLongSchema(many=True)
         return schema.dump(interaction_result)
     else:
-        abort(404, "No data found with input parameter")
+        return jsonify({
+            "detail": "No data found that satisfies the given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, occurences=None,
@@ -445,10 +548,20 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
     """
     # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if mimat_number is not None and hs_number is not None:
-        abort(404, "More than one miRNA identifier is given. Please choose one.")
+        return jsonify({
+            "detail": "More than one miRNA identifier is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # get mir_ID from given mimat_number
     mirna = []
@@ -468,7 +581,12 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
             mirna_IDs = [i.miRNA_ID for i in mirna]
             queries.append(models.OccurencesMiRNATranscript.miRNA_ID.in_(mirna_IDs))
         else:
-            abort(404, "With given mimat_ID or hs_number no mirna could be found")
+            return jsonify({
+                "detail": "With given mimat_ID or hs_number no mirna could be found",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     run = db.select(models.SpongeRun)
 
@@ -486,7 +604,12 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
         run_IDs = [i.sponge_run_ID for i in run]
         queries.append(models.OccurencesMiRNATranscript.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if occurences is not None:
         queries.append(models.OccurencesMiRNATranscript.occurences > occurences)
@@ -509,7 +632,13 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
         # Serialize the data for the response depending on parameter all
         return models.occurencesMiRNASchemaTranscript(many=True).dump(interaction_result)
     else:
-        abort(404, "No information with given parameters found")
+        return jsonify({
+            "detail": "No results",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def test_transcript_interaction(dataset_ID: int = None, enst_number=None, sponge_db_version: int = LATEST):
@@ -524,7 +653,12 @@ def test_transcript_interaction(dataset_ID: int = None, enst_number=None, sponge
     if len(transcripts) > 0:
         transcript_ID = [t.transcript_ID for t in transcripts]
     else:
-        abort(404, "No transcripts found for given enst_number(s)")
+        return jsonify({
+            "detail": "No transcripts found for given enst_number(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     run = db.session.execute(text(
         f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"))
@@ -592,7 +726,12 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
         run_IDs = [i.sponge_run_ID for i in run]
         queries.append(models.miRNAInteractionTranscript.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     transcript = models.Transcript.query \
         .filter(models.Transcript.enst_number.in_(enst_number)) \
@@ -602,7 +741,12 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
     if len(transcript) > 0:
         transcript_IDs = [t.transcript_ID for t in transcript]
     else:
-        abort(404, "No transcript found for given identifiers.")
+        return jsonify({
+            "detail": "No transcript found for given identifiers.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     interaction_result = []
     if between:
@@ -627,7 +771,13 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
         some_engine.dispose()
 
         if len(mirna_filter) == 0:
-            abort(404, "No shared miRNA between genes found.")
+            return jsonify({
+                "detail": "No shared miRNA between genes found.",
+                "status": 200,
+                "title": "No Content",
+                "type": "about:blank",
+                "data": []
+            }), 200
 
         flat_mirna_filter = [item for sublist in mirna_filter for item in sublist]
         queries.append(models.miRNAInteractionTranscript.miRNA_ID.in_(flat_mirna_filter))
@@ -644,7 +794,13 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
     if len(interaction_result) > 0:
         return models.miRNAInteractionSchemaTranscript(many=True).dump(interaction_result)
     else:
-        abort(404, "No data found with input parameter")
+        return jsonify({
+            "detail": "No data found that satisfies the given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=None, minCountAll=None,
@@ -679,7 +835,12 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
         run_IDs = [i.sponge_run_ID for i in run]
         queries.append(models.TranscriptCounts.sponge_run_ID.in_(run_IDs))
     else:
-        abort(404, "No dataset with given disease_name found")
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     transcript = models.Transcript.query \
         .filter(models.Transcript.enst_number.in_(enst_number)) \
@@ -690,7 +851,12 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
         queries.append(models.TranscriptCounts.transcript_ID.in_(transcript_ID))
 
     else:
-        abort(404, "No transcript found for given enst_number(s)")
+        return jsonify({
+            "detail": "No transcript found for given enst_number(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # add count filter if provided
     if minCountAll is not None:
@@ -706,47 +872,126 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
         return models.TranscriptCountSchema(many=True).dump(results)
 
     else:
-        abort(404, "No data found with input parameter")
+        return jsonify({
+            "detail": "No data found that satisfies the given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
-# def get_distinc_ceRNA_sets(dataset_ID: int = None, disease_name: int = None):
-#     # scheint nichts zu machen und nicht fertig implementiert zu sein?
-#     """
-#     Function returns list of distinct transcript_IDs (enst_nr) contributing to a significant interaction (adjusted pVal <= 0.05) in one specific cancer
-#     :param dataset_ID: dataset_ID of the dataset of interest
-#     :param disease_name: cancer type of interest
-#     :return: List of distinct transcript_IDs (enst_nr)
-#     """
 
-#     # if specific disease_name is given:
-#     run_IDs = []
+def get_transcript_network(dataset_ID: int = None, disease_name=None,
+                            minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
+                            pValue=0.05, pValueDirection="<",
+                            mscor=None, mscorDirection="<", 
+                            correlation=None, correlationDirection="<",
+                            sorting=None, descending=True, limit=100, offset=0, sponge_db_version: int = LATEST):
+    """
+    Optimized function for fetching ceRNA network nodes and edges with applied filters and sorting. Handles route /ceRNAInteraction/getTranscriptNetwork
+    :param dataset_ID: dataset_ID of interest
+    :param disease_name: disease_name of interest
+    :param minBetweenness: betweenness cutoff (>)
+    :param minNodeDegree: degree cutoff (>)
+    :param minEigenvector: eigenvector cutoff (>)
+    :param pValue: pValue cutoff
+    :param pValueDirection: < or >
+    :param mscor:  multiple miRNA sensitivity correlation
+    :param mscorDirection: < or >
+    :param correlation: correlation cutoff
+    :param correlationDirection: < or >
+    :param sorting: how the results of the db query should be sorted, one of 'pValue', 'mscor', 'correlation', 'betweenness', 'degree', 'eigenvector'
+    :param descending: should the results be sorted in descending or ascending order
+    :param limit: number of results that should be shown
+    :param offset: startpoint from where results should be shown
+    :param sponge_db_version: version of the sponge database
+    :return: all ceRNAInteractions in the dataset of interest that satisfy the given filters
+    
+    """
 
-#     run = db.select(models.SpongeRun)
+    # Step 1: Filter for SpongeRun IDs
+    run_query = db.select(models.SpongeRun.sponge_run_ID).filter(
+        models.SpongeRun.sponge_db_version == sponge_db_version
+    )
+    if disease_name:
+        run_query = run_query.join(models.Dataset).filter(
+            models.Dataset.disease_name.like(f"%{disease_name}%")
+        )
+    if dataset_ID:
+        run_query = run_query.filter(
+            models.SpongeRun.dataset_ID == dataset_ID
+        )
 
-#     # if specific disease_name is given
-#     if disease_name is not None:
-#         run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-#             .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
+    # Step 2: Prefilter edges by SpongeRun ID and p-value
+    edge_query = db.select(models.TranscriptInteraction).filter(
+        models.TranscriptInteraction.sponge_run_ID.in_(run_query),
+    )
+    if pValue: 
+        edge_query = edge_query.filter(
+            models.TranscriptInteraction.p_value < pValue if pValueDirection == "<" else models.TranscriptInteraction.p_value > pValue
+        )
+    
+    # Get prefiltered edges 
+    edges = db.session.execute(edge_query).scalars().all()
+    tr_ids_in_edges = set([edge.transcript_ID_1 for edge in edges] + [edge.transcript_ID_2 for edge in edges])
 
-#     if dataset_ID is not None:
-#         run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
+    # Step 3: Filter nodes by edges that pass the p-value filter
+    node_query = db.select(models.networkAnalysisTranscript).filter(
+        models.networkAnalysisTranscript.sponge_run_ID.in_(run_query),
+        models.networkAnalysisTranscript.transcript_ID.in_(tr_ids_in_edges)
+    )
 
-#     run = db.session.execute(run).scalars().all()
+    # Apply node-specific filters
+    if minBetweenness:
+        node_query = node_query.filter(models.networkAnalysisTranscript.betweenness >= minBetweenness)
+    if minNodeDegree:
+        node_query = node_query.filter(models.networkAnalysisTranscript.node_degree >= minNodeDegree)
+    if minEigenvector:
+        node_query = node_query.filter(models.networkAnalysisTranscript.eigenvector >= minEigenvector)
 
-#     if len(run) > 0:
-#         run_IDs = [i.sponge_run_ID for i in run]
-#     else:
-#         abort(404, "No dataset with given disease_name found")
+    # Step 4: Finalize edges by filtering based on filtered nodes
+    nodes = db.session.execute(node_query).scalars().all()
+    node_tr_ids = set([node.transcript_ID for node in nodes])
+    edge_query = db.select(models.TranscriptInteraction).filter(
+        or_(
+            models.TranscriptInteraction.transcript_ID_1.in_(node_tr_ids),
+            models.TranscriptInteraction.transcript_ID_2.in_(node_tr_ids)
+        )
+    )
 
-#     if len(run_IDs) > 0:
-#         some_engine = sa.create_engine(os.getenv("SPONGE_DB_URI"), pool_recycle=30)
+    # Apply edge-specific filters
+    if mscor:
+        edge_query = edge_query.filter(models.TranscriptInteraction.mscor <= mscor if mscorDirection == "<" else models.TranscriptInteraction.mscor >= mscor)
+    if correlation:
+        edge_query = edge_query.filter(models.TranscriptInteraction.correlation <= correlation if correlationDirection == "<" else models.TranscriptInteraction.correlation >= correlation)
 
-#         # create a configured "Session" class
-#         Session = sa.orm.sessionmaker(bind=some_engine)
+    # Apply sorting
+    # Sorting
+    if sorting:
+        sort_column = {
+            "pValue": models.GeneInteraction.p_value,
+            "mscor": models.GeneInteraction.mscor,
+            "correlation": models.GeneInteraction.correlation,
+            "betweenness": models.networkAnalysisTranscript.betweenness, 
+            "degree": models.networkAnalysisTranscript.node_degree,      
+            "eigenvector": models.networkAnalysisTranscript.eigenvector  
+        }.get(sorting)
+        if sorting in ["pValue", "mscor", "correlation"]:
+            edge_query = edge_query.order_by(sort_column.desc() if descending else sort_column.asc())
+        elif sorting in ['betweenness', 'degree', 'eigenvector']:
+            node_query = node_query.order_by(sort_column.desc() if descending else sort_column.asc())
 
-#         # create a Session
-#         session = Session()
-#         # test for each dataset if the gene(s) of interest are included in the ceRNA network
+    # Pagination
+    edge_query = edge_query.offset(offset).limit(limit)
+    node_query = node_query.offset(offset).limit(limit)
 
-#         id1 = session.execute(
-#             text("SELECT DISTINCT transcript_ID_1 FROM interactions_transcripttranscipt where sponge_run_ID IN (" +
-#                  ','.join(str(e) for e in run_IDs) + ") AND p_value <= 0.05"))
+    # Execute queries
+    node_results = db.session.execute(node_query).scalars().all()
+    edge_results = db.session.execute(edge_query).scalars().all()
+
+    # Return results 
+    return jsonify({
+        "edges": models.TranscriptInteractionDatasetLongSchema(many=True).dump(edge_results),
+        "nodes": models.networkAnalysisSchemaTranscript(many=True).dump(node_results)
+    })
+

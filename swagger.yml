@@ -17,6 +17,210 @@ components:
       required: false
       schema:
         type: string
+  schemas:
+    TranscriptSchema:
+      type: object
+      properties:
+        enst_number:
+          type: string
+          description: Enst number of the transcript.
+        gene:
+          type: object
+          description: Gene the transcript belongs to.
+          properties:
+            ensg_number:
+              type: string
+              description: Ensg number of the gene.
+            gene_symbol:
+              type: string
+              description: From official gene nomenclature committees such as HGNC (for human). Source - Ensembl - only provided if available.
+        canonical_transcript: 
+          type: integer
+          description: Is a canonical transcript
+        transcript_type:
+          type: string
+          description: The transcript type includes both status (e.g. known) and biotype (e.g. protein coding).
+        start_pos:
+          type: integer
+          description: Starting position of the gene.
+        end_pos:
+          type: integer
+          description: Endposition of the gene.
+    GeneInteractionDatasetLongSchema:
+      type: object
+      properties:
+        correlation:
+          type: number
+          description: Correlation of the corresponding ceRNA interaction.
+        mscor:
+          type: number
+          description: Multiple sensitivity correlation (mscor) of the corresponding ceRNA interaction.
+        p_value:
+          type: number
+          description: FDR adjusted p-value of the corresponding ceRNA interaction.
+        sponge_run:
+          type: object
+          description: Information about specific run and corresponding cancer type/dataset.
+          properties:
+            dataset:
+              type: object
+              properties:
+                data_origin:
+                  type: string
+                  description: Origin of the dataset.
+                dataset_ID:
+                  type: integer
+                  description: Internal database ID of the cancer type/dataset.
+                disease_name:
+                  type: string
+                  description: Name of the cancer type/dataset.
+            sponge_run_ID:
+              type: integer
+              description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+        gene1:
+          type: object
+          description: One of the two interacting ceRNAs.
+          properties:
+            ensg_number:
+              type: string
+              description: Ensg number of the gene.
+            gene_symbol:
+              type: string
+              description: From official gene nomenclature committees such as HGNC (for human). Source - Ensembl - only provided if available.
+        gene2:
+          type: object
+          description: The other part of the ceRNA interaction.
+          properties:
+            ensg_number:
+              type: string
+              description: Ensg number of the gene.
+            gene_symbol:
+              type: string
+              description: From official gene nomenclature committees such as HGNC (for human). Source - Ensembl - only provided if available.
+    TranscriptInteractionDatasetLongSchema:
+      type: object
+      properties:
+        correlation:
+          type: number
+          description: Correlation of the corresponding ceRNA interaction.
+        mscor:
+          type: number
+          description: Multiple sensitivity correlation (mscor) of the corresponding ceRNA interaction.
+        p_value:
+          type: number
+          description: FDR adjusted p-value of the corresponding ceRNA interaction.
+        sponge_run:
+          type: object
+          description: Information about specific run and corresponding cancer type/dataset.
+          properties:
+            dataset:
+              type: object
+              properties:
+                data_origin:
+                  type: string
+                  description: Origin of the dataset.
+                dataset_ID:
+                  type: integer
+                  description: Internal database ID of the cancer type/dataset.
+                disease_name:
+                  type: string
+                  description: Name of the cancer type/dataset.
+            sponge_run_ID:
+              type: integer
+              description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+        transcript1: 
+          $ref: '#/components/schemas/TranscriptSchema'
+        transcript2: 
+          $ref: '#/components/schemas/TranscriptSchema'
+    NetworkAnalysisSchema:
+      type: object
+      properties:
+        betweenness:
+          type: number
+          description: Betweenness of the corresponding gene (considered as node) in the specific network.
+        eigenvector:
+          type: number
+          description: Eigenvector of the corresponding gene (considered as node) in the specific network.
+        node_degree:
+          type: number
+          description: Degree of the corresponding gene (considered as node) in the specific network.
+        gene:
+          type: object
+          description: Information about the gene that satisfies all filters.
+          properties:
+            ensg_number:
+              type: string
+              description: Ensg number of the gene.
+            gene_symbol:
+              type: string
+              description: From official gene nomenclature committees such as HGNC (for human). Source - Ensembl - only provided if available.
+        sponge_run:
+          type: object
+          description: Information about specific run and corresponding cancer type/dataset.
+          properties:
+            dataset:
+              type: object
+              properties:
+                data_origin:
+                  type: string
+                  description: Origin of the dataset.
+                dataset_ID:
+                  type: integer
+                  description: Internal database ID of the cancer type/dataset.
+                disease_name:
+                  type: string
+                  description: Name of the cancer type/dataset.
+            sponge_run_ID:
+              type: integer
+              description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
+    NetworkAnalysisSchemaTranscript:
+      type: object
+      properties:
+        betweenness:
+          type: number
+          description: Betweenness of the corresponding gene (considered as node) in the specific network.
+        eigenvector:
+          type: number
+          description: Eigenvector of the corresponding gene (considered as node) in the specific network.
+        node_degree:
+          type: number
+          description: Degree of the corresponding gene (considered as node) in the specific network.
+        transcript:
+          type: object
+          description: Information about the transcript that satisfies all filters.
+          properties:
+            enst_number:
+              type: string
+              description: Enst number of the transcript.
+            gene:
+              type: object
+              description: Gene the transcript belongs to.
+              properties:
+                ensg_number:
+                  type: string
+                  description: Ensg number of the gene.
+                gene_symbol:
+                  type: string
+                  description: From official gene nomenclature committees such as HGNC (for human). Source - Ensembl - only provided if available.
+        sponge_run:
+          type: object
+          description: Information about specific run and corresponding cancer type/dataset.
+          properties:
+            dataset:
+              type: object
+              properties:
+                data_origin:
+                  type: string
+                  description: Origin of the dataset.
+                dataset_ID:
+                  type: integer
+                  description: Internal database ID of the cancer type/dataset.
+                disease_name:
+                  type: string
+                  description: Name of the cancer type/dataset.
+            sponge_run_ID:
+              type: integer
+              description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
 paths:
   /datasets:
     get:
@@ -1155,6 +1359,282 @@ paths:
                       required:
                         - dataset
                         - sponge_run_ID
+  /ceRNAInteraction/getGeneNetwork:
+    get:
+      operationId: geneInteraction.get_gene_network
+      tags:
+        - ceRNANetwork
+      summary: Get all nodes and edges of the ceRNA network using various filters.
+      description: Get all nodes and edges of the ceRNA network using all filters of both methods read_all_gene_network_analysis and read_specific_interaction together.
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: false
+          schema:
+            type: string
+        - name: minBetweenness
+          in: query
+          description: Threshold of the betweenness.
+          required: false
+          schema:
+            type: number
+        - name: minNodeDegree
+          in: query
+          description: Threshold of the degree.
+          required: false
+          schema:
+            type: number
+        - name: minEigenvector
+          in: query
+          description: Threshold of the eigenvector.
+          required: false
+          schema:
+            type: number
+        - name: pValue
+          in: query
+          required: false
+          description: Threshold of the FDR adjusted p-value. Default is 0.05.
+          schema:
+            type: number
+            default: 0.05
+        - name: pValueDirection
+          in: query
+          required: false
+          description: Direction of the FDR adjusted p-value threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: mscor
+          in: query
+          required: false
+          description: Threshold of the 'multiple sensitivity correlation' (mscor).
+          schema:
+            type: number
+        - name: mscorDirection
+          in: query
+          required: false
+          description: Direction of the mscor threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: correlation
+          in: query
+          required: false
+          description: Threshold of the correlation.
+          schema:
+            type: number
+        - name: correlationDirection
+          in: query
+          required: false
+          description: Direction of the correlation threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: sorting
+          in: query
+          required: false
+          description: Possibilities for sorting of the results.
+          schema:
+            type: string
+            enum:
+              - pValue
+              - mscor
+              - correlation
+              - betweenness
+              - degree
+              - eigenvector
+        - name: descending
+          in: query
+          required: false
+          description: Descending (true) or ascending (false) ordering of the results.
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Successfully retrieved nodes and edges of the ceRNA network.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gene_interactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeneInteractionDatasetLongSchema'
+                  network_analysis:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NetworkAnalysisSchema'
+  /ceRNAInteraction/getTranscriptNetwork:
+    get:
+      operationId: transcriptInteraction.get_transcript_network
+      tags:
+        - ceRNANetwork
+      summary: Get all nodes and edges of the ceRNA network using various filters.
+      description: Get all nodes and edges of the ceRNA network using all filters of both methods read_all_gene_network_analysis and read_specific_interaction together.
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: dataset_ID
+          in: query
+          description: Internal database ID of the cancer type/dataset.
+          required: false
+          schema:
+            type: integer
+        - name: disease_name
+          in: query
+          description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+          required: false
+          schema:
+            type: string
+        - name: minBetweenness
+          in: query
+          description: Threshold of the betweenness.
+          required: false
+          schema:
+            type: number
+        - name: minNodeDegree
+          in: query
+          description: Threshold of the degree.
+          required: false
+          schema:
+            type: number
+        - name: minEigenvector
+          in: query
+          description: Threshold of the eigenvector.
+          required: false
+          schema:
+            type: number
+        - name: pValue
+          in: query
+          required: false
+          description: Threshold of the FDR adjusted p-value. Default is 0.05.
+          schema:
+            type: number
+            default: 0.05
+        - name: pValueDirection
+          in: query
+          required: false
+          description: Direction of the FDR adjusted p-value threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: mscor
+          in: query
+          required: false
+          description: Threshold of the 'multiple sensitivity correlation' (mscor).
+          schema:
+            type: number
+        - name: mscorDirection
+          in: query
+          required: false
+          description: Direction of the mscor threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - < 
+              - ">"
+            default: <
+        - name: correlation
+          in: query
+          required: false
+          description: Threshold of the correlation.
+          schema:
+            type: number
+        - name: correlationDirection
+          in: query
+          required: false
+          description: Direction of the correlation threshold (<=, >=).
+          schema:
+            type: string
+            enum:
+              - <
+              - ">"
+            default: <
+        - name: sorting
+          in: query
+          required: false
+          description: Possibilities for sorting of the results.
+          schema:
+            type: string
+            enum:
+              - pValue
+              - mscor
+              - correlation
+              - betweenness
+              - degree
+              - eigenvector
+        - name: descending
+          in: query
+          required: false
+          description: Descending (true) or ascending (false) ordering of the results.
+          schema:
+            type: boolean
+            default: true
+        - name: limit
+          in: query
+          description: Number of results that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          description: Starting point from where results should be shown.
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Successfully retrieved nodes and edges of the ceRNA network.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transcript_interactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TranscriptInteractionDatasetLongSchema'
+                  network_analysis:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NetworkAnalysisSchemaTranscript'
+
+                    
   /findceRNA:
     get:
       operationId: geneInteraction.read_all_gene_network_analysis
@@ -2835,9 +3315,19 @@ paths:
                 type: array
                 items:
                   properties:
-                    ensg_number:
+                    gene:
+                      type: object
+                      description: Information about the gene.
+                      properties:
+                        ensg_number:
+                          type: string
+                          description: Ensg number of the gene.
+                        gene_symbol:
+                          type: string
+                          description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+                    enst_number:
                       type: string
-                      description: Ensg number of according gene.
+                      description: Ensembl transcript ID
                     transcript_type:
                       type: string
                       description: Type of transcript.
@@ -3069,16 +3559,18 @@ paths:
         style: form
       responses:
         "200":
-          description: Get all included transcripts of a gene of interest.
+          description: Successfully retrieved transcript IDs for the given gene IDs.
           content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  properties:
-                    enst_number:
-                      type: string
-                      description: Enst number of the transcript of the gene of interest.
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: array
+                    items:
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Ensembl transcript ID
   /survivalAnalysis/sampleInformation:
     get:
       operationId: survivalAnalysis.get_patient_information
@@ -3461,6 +3953,24 @@ paths:
       summary: Retrieve all psi values for a specific event type of a transcript of interest.
       description: Retrieve all psi values for a specific event type of a transcript of interest.
       parameters:
+      - name: dataset_ID
+        in: query
+        description: Internal database ID of the cancer type/dataset.
+        required: false
+        schema:
+          type: integer
+      - name: disease_name
+        in: query
+        description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: false
+        schema:
+          type: string
+      - name: data_origin
+        in: query
+        description: Origin of the data (e.g. TCGA, GTEx, ...)
+        required: false
+        schema:
+          type: string
       - name: transcript_ID
         in: query
         description: Internal database ID of the transcript of interest.
@@ -3497,6 +4007,7 @@ paths:
         schema:
           type: integer
         required: false
+      - $ref: '#/components/parameters/VersionParam'
       responses:
         "200":
           description: Retrieve all psi values for a specific event type of a transcript of interest.
@@ -4325,7 +4836,6 @@ paths:
       operationId: gsea.gsea_sets
       tags:
       - GSEA
-      - GSEA Sets
       summary: Get gene sets.
       description: Get all gene sets for which GSEA results are available for the given type, subtype and condition combination.
       parameters:
@@ -4394,7 +4904,6 @@ paths:
       operationId: gsea.gsea_terms
       tags:
       - GSEA
-      - GSEA Terms
       summary: Get GSEA terms.
       description: Get all terms for which GSEA results are available for the given gene set, type/subtype, and condition combination.
       parameters:
@@ -4469,7 +4978,6 @@ paths:
       operationId: gsea.gsea_results
       tags:
       - GSEA
-      - GSEA Results
       summary: Get GSEA results.
       description: Get GSEA results for the given gene set, type, subtype, and condition combination.
       parameters:
@@ -4609,7 +5117,6 @@ paths:
       operationId: gsea.gsea_plot
       tags:
       - GSEA
-      - GSEA Plot
       summary: Get GSEA plot.
       description: Get GSEA plot for the given gene set, type/subtype, and condition combination.
       parameters:

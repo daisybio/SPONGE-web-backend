@@ -1,4 +1,4 @@
-from flask import abort
+from flask import jsonify
 import app.models as models
 from gseapy.plot import GSEAPlot
 import base64
@@ -28,9 +28,20 @@ def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int =
 
     # check inputs
     if dataset_ID_1 is None and disease_name_1 is None:
-        abort(404, "No dataset_ID_1 or disease_name_1 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     if dataset_ID_2 is None and disease_name_2 is None:
-        abort(404, "No dataset_ID_2 or disease_name_2 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter datasets
     dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
@@ -51,7 +62,14 @@ def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int =
     if len(result) > 0:
         return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaSetSchema(many=True).dump(result))] 
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results for given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
 
 
 
@@ -74,9 +92,19 @@ def gsea_terms(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_
 
     # check inputs
     if dataset_ID_1 is None and disease_name_1 is None:
-        abort(404, "No dataset_ID_1 or disease_name_1 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     if dataset_ID_2 is None and disease_name_2 is None:
-        abort(404, "No dataset_ID_2 or disease_name_2 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter datasets
     dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
@@ -98,7 +126,13 @@ def gsea_terms(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_
     if len(result) > 0:
         return [dict(s) for s in set(frozenset(d.items()) for d in models.GseaTermsSchema(many=True).dump(result))] 
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results for given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, term=None, sponge_db_version: int = LATEST):
@@ -121,9 +155,19 @@ def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_nam
 
     # check inputs
     if dataset_ID_1 is None and disease_name_1 is None:
-        abort(404, "No dataset_ID_1 or disease_name_1 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     if dataset_ID_2 is None and disease_name_2 is None:
-        abort(404, "No dataset_ID_2 or disease_name_2 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter datasets
     dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
@@ -159,7 +203,13 @@ def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_nam
 
         return result
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results for given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, term=None, gene_set=None, sponge_db_version: int = LATEST):
@@ -182,9 +232,19 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
 
     # check inputs
     if dataset_ID_1 is None and disease_name_1 is None:
-        abort(404, "No dataset_ID_1 or disease_name_1 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     if dataset_ID_2 is None and disease_name_2 is None:
-        abort(404, "No dataset_ID_2 or disease_name_2 given")
+        return jsonify({
+            "detail": "Missing dataset id or disease id",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # filter datasets
     dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, dataset_ID=dataset_ID_1, disease_name=disease_name_1, disease_subtype=disease_subtype_1)
@@ -202,13 +262,18 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
         .filter(models.Gsea.comparison_ID == comparison_ID) \
         .filter(models.Gsea.term.like("%" + term + "%")) \
         .filter(models.Gsea.gene_set == gene_set) \
+    
+    # get res and ranging genes 
+    gsea = gsea.join(models.GseaRes, models.Gsea.gsea_ID == models.GseaRes.gsea_ID) \
+        .join(models.GseaRankingGenes, models.Gsea.gsea_ID == models.GseaRankingGenes.gsea_ID) \
         .all()
+
 
     if len(gsea) > 0:
         gsea = models.GseaSchemaPlot(many=True).dump(gsea)
 
         gene_map = models.Gene.query \
-            .filter(models.Gene.gene_ID.in_([x["gene_ID"] for x in gsea[0]["gsea_ranking_genes"]])) \
+            .filter(models.Gene.gene_ID.in_([x.gene_ID for x in gsea[0]["gsea_ranking_genes"]])) \
             .all()                                                               # There are some gene symbols with multiple entries in the gene table
         ranking_gene_ids = {x.gene_symbol: x.gene_ID for x in gene_map}.values() # both ids are present with identical values in the diff expr. table, but only one is needed
 
@@ -225,9 +290,9 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
         if reverse:
             g = GSEAPlot(
                 term=term,
-                tag=[ranking_ids.index(x["gene_ID"]) for x in gsea[0]["matched_genes"]],
+                tag=[ranking_ids.index(x.gene_ID) for x in gsea[0]["matched_genes"]],
                 rank_metric=[-x["log2FoldChange"] for x in ranking],
-                runes=[-y["score"] for y in sorted(gsea[0]["res"], key= lambda x: -x["res_ID"])],
+                runes=[-y.score for y in sorted(gsea[0]["res"], key= lambda x: -x.res_ID)],
                 nes=-gsea[0]["nes"],
                 pval=gsea[0]["pvalue"],
                 fdr=gsea[0]["fdr"],
@@ -240,9 +305,9 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
         else:
             g = GSEAPlot(
                 term=term,
-                tag=[ranking_ids.index(x["gene_ID"]) for x in gsea[0]["matched_genes"]],
+                tag=[ranking_ids.index(x.gene_ID) for x in gsea[0]["matched_genes"]],
                 rank_metric=[x["log2FoldChange"] for x in ranking],
-                runes=[y["score"] for y in sorted(gsea[0]["res"], key= lambda x: x["res_ID"])],
+                runes=[y["score"] for y in sorted(gsea[0]["res"], key= lambda x: x.res_ID)],
                 nes=gsea[0]["nes"],
                 pval=gsea[0]["pvalue"],
                 fdr=gsea[0]["fdr"],
@@ -262,5 +327,11 @@ def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1
         
         return pic_hash.decode()
     else:
-        abort(404, "No data found.")
+        return jsonify({
+            "detail": "No results for given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 

@@ -4,12 +4,11 @@ import random
 import string
 import subprocess
 import tempfile
-from flask import request, jsonify, abort
+from flask import request, jsonify
 import app.config as config
 from app.controllers.externalInformation import get_genes, get_transcripts
 import app.models as models
-from app.config import LATEST, db
-from server import logger
+from app.config import LATEST, db, logger
 
 
 def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", sponge_db_version: int = LATEST):
@@ -48,7 +47,12 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     sponge_run_IDs = db.session.execute(query).scalars().all()
 
     if len(sponge_run_IDs) == 0:
-        abort(404, f"No sponge run found for disease_name: {disease_name} and dataset_ID: {dataset_ID}")
+        return jsonify({
+            "detail": f"No sponge run found for disease_name: {disease_name} and dataset_ID: {dataset_ID}",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # Build the query to get spong_effects_run_ID
     query = db.select(models.SpongEffectsRun).where(models.SpongEffectsRun.sponge_run_ID.in_(sponge_run_IDs))
@@ -63,7 +67,12 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     spong_effects_run_IDs = [spong_effects_run_ID.spongEffects_run_ID for spong_effects_run_ID in spong_effects_run_IDs]
 
     if len(spong_effects_run_IDs) == 0:
-        abort(404, f"No spongEffects run found for sponge_run_ID: {sponge_run_IDs}")
+        return jsonify({
+            "detail": f"No spongEffects run found for sponge_run_ID: {sponge_run_IDs}",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     else:
         return spong_effects_run_IDs
 
@@ -86,7 +95,13 @@ def get_run_performance(dataset_ID: int = None, disease_name: str = None, level:
     if len(query) > 0:
         return models.SpongEffectsRunPerformanceSchema(many=True).dump(query)
     else:
-        abort(404, 'No spongEffects model performance found for name: {disease_name}'.format(disease_name=disease_name))
+        return jsonify({
+            "detail": 'No spongEffects model performance found for name: {disease_name}'.format(disease_name=disease_name),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', sponge_db_version: int = LATEST):
@@ -107,7 +122,13 @@ def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, 
     if len(query) > 0:
         return models.SpongEffectsRunClassPerformanceSchema(many=True).dump(query)
     else:
-        abort(404, f'No spongEffects run class performance found for name: {disease_name}')
+        return jsonify({
+            "detail": f'No spongEffects run class performance found for name: {disease_name}',
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', sponge_db_version: int = LATEST):
@@ -122,7 +143,14 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
     """
     level = level.lower()
     if level not in ['gene', 'transcript']:
-        abort(404, 'Provided level not recognised, please use one of gene/transcript')
+        return jsonify({
+            "detail": "Provided level not recognised, please use one of gene/transcript'",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
+
     # extract spongEffects_run_ID
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, sponge_db_version)
     # extract density data for spongEffects run
@@ -132,7 +160,13 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
     if len(query) > 0:
         return models.SpongEffectsEnrichmentClassDensitySchema(many=True).dump(query)
     else:
-        abort(404, 'No spongEffects class enrichment score distribution data found for given parameters')
+        return jsonify({
+            "detail": 'No spongEffects class enrichment score distribution data found for given parameters',
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
@@ -168,7 +202,13 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     if len(query) > 0:
         return models.SpongEffectsGeneModuleSchema(many=True).dump(query)
     else:
-        abort(404, "No spongEffects modules found for given disease")
+        return jsonify({
+            "detail": "No spongEffects modules found for given disease",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST, limit: int = 1000):
@@ -214,7 +254,13 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
     if len(data) > 0:
         return models.SpongEffectsGeneModuleMembersSchema(many=True).dump(data)
     else:
-        abort(404, "No module members found for given disease name and gene identifier")
+        return jsonify({
+            "detail": "No module members found for given disease name and gene identifier",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, sponge_db_version: int = LATEST):
@@ -252,7 +298,13 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     if len(query) > 0:
         return models.SpongEffectsTranscriptModuleSchema(many=True).dump(query)
     else:
-        abort(404, "No spongEffects modules found for given disease")
+        return jsonify({
+            "detail": "No spongEffects modules found for given disease",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def get_transcript_module_members(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: int = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: str = None, sponge_db_version: int = LATEST, limit: int = 1000):
@@ -287,7 +339,13 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
     if len(data) > 0:
         return models.SpongEffectsTranscriptModuleMembersSchema(many=True).dump(data)
     else:
-        abort(404, "No module members found for given disease name and gene identifier")
+        return jsonify({
+            "detail": "No module members found for given disease name and gene identifier",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def generate_random_filename(length=12, extension=None):
@@ -366,7 +424,12 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
         with open(out_path, 'r') as json_file:
             return json.load(json_file)
     except subprocess.CalledProcessError as e:
-        abort(500, e)
+        return jsonify({
+            "detail": f"{e}",
+            "status": 500,
+            "title": "Error",
+            "type": "about:blank"
+        }), 500
 
 
 def upload_file():
@@ -380,7 +443,13 @@ def upload_file():
     run_parameters: Params = Params(request.form)
     apply_log_scale: bool = request.form.get('log') == "true"
     if uploaded_file.filename == '':
-        abort(404, "File upload failed")
+        return jsonify({
+            "detail": "File upload failed",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     # create tmp upload file
     if not os.path.exists(config.UPLOAD_DIR):
         os.makedirs(config.UPLOAD_DIR)
@@ -445,4 +514,10 @@ def get_spongeffects_runs(dataset_ID: str = None, disease_name: str = None, incl
             })
         return jsonify(combined_data)
     else:
-        abort(404, 'No spongEffects run found for name: {disease_name}'.format(disease_name=disease_name))
+        return jsonify({
+            "detail": 'No spongEffects run found for name: {disease_name}'.format(disease_name=disease_name),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200

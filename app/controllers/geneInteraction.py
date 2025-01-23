@@ -810,11 +810,11 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
 
 def get_gene_network(dataset_ID: int = None, disease_name=None,
                       minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
-                      pValue=0.05, pValueDirection="<",
-                      mscor=None, mscorDirection="<", 
-                      correlation=None, correlationDirection="<",
-                      edgeSorting: str = None, nodeSorting: str = None, descending=True, 
-                      maxNodes: int = 100, maxEdges: int = 100, offsetNodes: int = None, offsetEdges: int = None, sponge_db_version: int = LATEST):
+                      maxPValue=0.05, minMscor=None, minCorrelation=None,
+                      edgeSorting: str = None, nodeSorting: str = None,
+                      maxNodes: int = 100, maxEdges: int = 100, 
+                      offsetNodes: int = None, offsetEdges: int = None, 
+                      sponge_db_version: int = LATEST):
     """
     Optimized function for fetching ceRNA network nodes and edges with applied filters and sorting. Handles route /ceRNAInteraction/getGeneNetwork
     :param dataset_ID: dataset_ID of interest
@@ -856,9 +856,9 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     edge_query = db.select(models.GeneInteraction).filter(
         models.GeneInteraction.sponge_run_ID.in_(run_query)
     )
-    if pValue:
+    if maxPValue:
         edge_query = edge_query.filter(
-            models.GeneInteraction.p_value <= pValue if pValueDirection == "<" else models.GeneInteraction.p_value >= pValue
+            models.GeneInteraction.p_value <= maxPValue
         )
 
     # Get prefiltered edges
@@ -889,26 +889,28 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     )
 
     # Apply edge-specific filters
-    if mscor:
-        edge_query = edge_query.filter(models.GeneInteraction.mscor <= mscor if mscorDirection == "<" else models.GeneInteraction.mscor >= mscor)
-    if correlation:
-        edge_query = edge_query.filter(models.GeneInteraction.correlation <= correlation if correlationDirection == "<" else models.GeneInteraction.correlation >= correlation)
+    if minMscor:
+        edge_query = edge_query.filter(models.GeneInteraction.mscor >= minMscor)
+    if minCorrelation:
+        edge_query = edge_query.filter(models.GeneInteraction.correlation >= minCorrelation)
 
-    # Sorting
-    if edgeSorting:
-        sort_column_edge= {
-            "pValue": models.GeneInteraction.p_value,
-            "mscor": models.GeneInteraction.mscor,
-            "correlation": models.GeneInteraction.correlation
-        }.get(edgeSorting)
-        edge_query = edge_query.order_by(sort_column_edge.desc() if descending else sort_column_edge.asc())
-    if nodeSorting:
-        sort_column_node = {
-            "betweenness": models.networkAnalysis.betweenness,
-            "degree": models.networkAnalysis.node_degree,
-            "eigenvector": models.networkAnalysis.eigenvector
-        }.get(nodeSorting)
-        node_query = node_query.order_by(sort_column_node.desc() if descending else sort_column_node.asc())
+    # Sorting edges
+    if edgeSorting == "pValue":
+        edge_query = edge_query.order_by(models.GeneInteraction.p_value.asc())
+    elif edgeSorting == "mscor":
+        edge_query = edge_query.order_by(models.GeneInteraction.mscor.desc())
+    elif edgeSorting == "correlation":
+        edge_query = edge_query.order_by(models.GeneInteraction.correlation.desc())
+    else: 
+        raise ValueError("Invalid edge sorting key. Choose one of 'pValue', 'mscor', 'correlation'")
+
+    # Sorting nodes
+    if nodeSorting == "betweenness":
+        node_query = node_query.order_by(models.networkAnalysis.betweenness.desc())
+    elif nodeSorting == "degree":
+        node_query = node_query.order_by(models.networkAnalysis.node_degree.desc())
+    elif nodeSorting == "eigenvector":
+        node_query = node_query.order_by(models.networkAnalysis.eigenvector.desc())
 
     # Pagination
     edge_query = edge_query.offset(offsetEdges).limit(maxEdges)

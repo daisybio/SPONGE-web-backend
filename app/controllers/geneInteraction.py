@@ -192,7 +192,7 @@ def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, 
 
 def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, 
                               pValue=0.05, pValueDirection="<", 
-                              minBetweenness: float = 0, minNodeDegree: int = 0, minEigenvector: float = 0,
+                            #   minBetweenness: float = 0, minNodeDegree: int = 0, minEigenvector: float = 0,
                               sorting: str = "betweenness", descending: bool = True,
                               limit: int=100, offset=0, sponge_db_version: int = LATEST):
     """
@@ -1015,10 +1015,11 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
 
 def get_gene_network(dataset_ID: int = None, disease_name=None,
                       minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
-                      pValue=0.05, pValueDirection="<",
-                      mscor=None, mscorDirection="<", 
-                      correlation=None, correlationDirection="<",
-                      sorting=None, descending=True, limit=100, offset=0, sponge_db_version: int = LATEST):
+                      maxPValue=0.05, minMscor=None, minCorrelation=None,
+                      edgeSorting: str = None, nodeSorting: str = None,
+                      maxNodes: int = 100, maxEdges: int = 100, 
+                      offsetNodes: int = None, offsetEdges: int = None, 
+                      sponge_db_version: int = LATEST):
     """
     Optimized function for fetching ceRNA network nodes and edges with applied filters and sorting. Handles route /ceRNAInteraction/getGeneNetwork
     :param dataset_ID: dataset_ID of interest
@@ -1032,10 +1033,13 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     :param mscorDirection: < or >
     :param correlation: correlation cutoff
     :param correlationDirection: < or >
-    :param sorting: how the results of the db query should be sorted, one of 'pValue', 'mscor', 'correlation', 'betweenness', 'degree', 'eigenvector'
+    :param edgeSorting: how the results of the db query should be sorted, one of 'pValue', 'mscor', 'correlation', 
+    :param nodeSorting: sort nodes, one of 'betweenness', 'degree', 'eigenvector'
     :param descending: should the results be sorted in descending or ascending order
-    :param limit: number of results that should be shown
-    :param offset: startpoint from where results should be shown
+    :param maxNodes: number of nodes that should be shown
+    :param maxEdges: number of edges that should be shown
+    :param offsetNodes: startpoint from where results should be shown
+    :param offsetEdges: startpoint from where results should be shown
     :param sponge_db_version: version of the sponge database
     :return: all ceRNAInteractions in the dataset of interest that satisfy the given filters
     
@@ -1057,16 +1061,16 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     edge_query = db.select(models.GeneInteraction).filter(
         models.GeneInteraction.sponge_run_ID.in_(run_query)
     )
-    if pValue:
+    if maxPValue:
         edge_query = edge_query.filter(
-            models.GeneInteraction.p_value <= pValue if pValueDirection == "<" else models.GeneInteraction.p_value >= pValue
+            models.GeneInteraction.p_value <= maxPValue
         )
 
     # Get prefiltered edges
     edges = db.session.execute(edge_query).scalars().all()
     gene_ids_in_edges = set([edge.gene_ID1 for edge in edges] + [edge.gene_ID2 for edge in edges])
 
-    # Step 3: Filter nodes by edges that pass the p-value filter
+    # Filter nodes by edges that pass the p-value filter & sponge run
     node_query = db.select(models.networkAnalysis).filter(
         models.networkAnalysis.sponge_run_ID.in_(run_query),
         models.networkAnalysis.gene_ID.in_(gene_ids_in_edges)    )
@@ -1079,40 +1083,45 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     if minEigenvector:
         node_query = node_query.filter(models.networkAnalysis.eigenvector >= minEigenvector)
 
-    # Step 4: Finalize edges by filtering based on filtered nodes
+    # Sorting nodes
+    if nodeSorting == "betweenness":
+        node_query = node_query.order_by(models.networkAnalysis.betweenness.desc())
+    elif nodeSorting == "degree":
+        node_query = node_query.order_by(models.networkAnalysis.node_degree.desc())
+    elif nodeSorting == "eigenvector":
+        node_query = node_query.order_by(models.networkAnalysis.eigenvector.desc())
+
+    # node agination
+    node_query = node_query.offset(offsetNodes).limit(maxNodes)
+
+    # filter edges based on filtered nodes
     nodes = db.session.execute(node_query).scalars().all()
     node_gene_ids = set([node.gene_ID for node in nodes])
     edge_query = edge_query.filter(
-        or_(
+        and_(
             models.GeneInteraction.gene_ID1.in_(node_gene_ids),
             models.GeneInteraction.gene_ID2.in_(node_gene_ids)
         )
     )
 
     # Apply edge-specific filters
-    if mscor:
-        edge_query = edge_query.filter(models.GeneInteraction.mscor <= mscor if mscorDirection == "<" else models.GeneInteraction.mscor >= mscor)
-    if correlation:
-        edge_query = edge_query.filter(models.GeneInteraction.correlation <= correlation if correlationDirection == "<" else models.GeneInteraction.correlation >= correlation)
+    if minMscor:
+        edge_query = edge_query.filter(models.GeneInteraction.mscor >= minMscor)
+    if minCorrelation:
+        edge_query = edge_query.filter(models.GeneInteraction.correlation >= minCorrelation)
 
-    # Sorting
-    if sorting:
-        sort_column = {
-            "pValue": models.GeneInteraction.p_value,
-            "mscor": models.GeneInteraction.mscor,
-            "correlation": models.GeneInteraction.correlation,
-            "betweenness": models.networkAnalysis.betweenness, 
-            "degree": models.networkAnalysis.node_degree,      
-            "eigenvector": models.networkAnalysis.eigenvector  
-        }.get(sorting)
-        if sorting in ["pValue", "mscor", "correlation"]:
-            edge_query = edge_query.order_by(sort_column.desc() if descending else sort_column.asc())
-        elif sorting in ['betweenness', 'degree', 'eigenvector']:
-            node_query = node_query.order_by(sort_column.desc() if descending else sort_column.asc())
-
-    # Pagination
-    edge_query = edge_query.offset(offset).limit(limit)
-    node_query = node_query.offset(offset).limit(limit)
+    # Sorting edges
+    if edgeSorting == "pValue":
+        edge_query = edge_query.order_by(models.GeneInteraction.p_value.asc())
+    elif edgeSorting == "mscor":
+        edge_query = edge_query.order_by(models.GeneInteraction.mscor.desc())
+    elif edgeSorting == "correlation":
+        edge_query = edge_query.order_by(models.GeneInteraction.correlation.desc())
+    else: 
+        raise ValueError("Invalid edge sorting key. Choose one of 'pValue', 'mscor', 'correlation'")
+    
+    # edge pagination 
+    edge_query = edge_query.offset(offsetEdges).limit(maxEdges)
 
     # Execute queries
     node_results = db.session.execute(node_query).scalars().all()

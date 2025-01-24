@@ -417,6 +417,7 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
         cmd.extend(params.get_cmd_options())
     try:
         # execute command
+        logger.info(f"Running spongEffects with command: {' '.join(cmd)}")
         process = subprocess.run(cmd, capture_output=True, text=True, check=True)
         # get prediction output
         stderr = process.stderr

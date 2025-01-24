@@ -58,7 +58,15 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_DIR
 def log_request():
     logger.info(f"Incoming request: {request.method} {request.url}")
     logger.info(f"Headers: {dict(request.headers)}")
-    logger.info(f"Body: {request.get_data(as_text=True)}")
+    if (request.method == 'POST'):
+        if (request.content_type.startswith('multipart/form-data')):
+            body = {'args': request.args.to_dict(), 
+                    'form': request.form.to_dict(), 
+                    'files': {k: f'{v.read(1000)}...' for k, v in request.files.items()}
+                    }
+    else:        
+        body = request.get_data(as_text=True)
+    logger.info(f"Body: {body[:1000] if len(body) > 1000 else body}")
 
 @app.after_request
 def add_header(response):

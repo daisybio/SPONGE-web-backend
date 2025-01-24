@@ -3,6 +3,7 @@ import os
 from flask import jsonify
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import text
+from app.controllers.dataset import _dataset_query
 import app.models as models
 from app.config import LATEST, db
 
@@ -699,7 +700,7 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
     and returns all miRNAs that contribute to all interactions between the given identifications (enst_number)
     :param dataset_ID: dataset_ID of the dataset of interest
     :param disease_name: disease_name of interest
-    :param enst_number: esnt number of the transcripts of interest
+    :param enst_number: enst number of the transcripts of interest
     :param between: If false, all interactions where one of the interaction partners fits the given transcripts of interest
                     will be considered.
                     If true, just interactions between the transcripts of interest will be considered.
@@ -707,95 +708,55 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
     :return: all miRNAs contributing to the interactions between transcripts of interest
     """
 
-    queries = []
-    run_IDs = []
+    # get datasets 
+    disease_query = _dataset_query(disease_name=disease_name, dataset_ID=dataset_ID)
+    diseases = [d.dataset_ID for d in disease_query]  
 
-    run = db.select(models.SpongeRun)
+    # get runs
+    run_query = db.select(models.SpongeRun.sponge_run_ID).where(models.SpongeRun.dataset_ID.in_(diseases))
 
-    # if specific disease_name is given
-    if disease_name is not None:
-        run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-            .where(models.Dataset.disease_name.like("%" + disease_name + "%"))
+    # get transcripts 
+    transcript_query = db.select(models.Transcript.transcript_ID).where(models.Transcript.enst_number.in_(enst_number))
+    
+    # get interactions for given transcripts and runs
+    base_interaction_query = db.select(models.miRNAInteractionTranscript).where(
+        models.miRNAInteractionTranscript.transcript_ID.in_(transcript_query),
+        models.miRNAInteractionTranscript.sponge_run_ID.in_(run_query)
+    )
 
-    if dataset_ID is not None:
-        run = run.where(models.SpongeRun.dataset_ID == dataset_ID)
+    base_interaction = db.session.execute(base_interaction_query).scalars().all()
+    print(base_interaction)
 
-    run = db.session.execute(run).scalars().all()
-
-    if len(run) > 0:
-        run_IDs = [i.sponge_run_ID for i in run]
-        queries.append(models.miRNAInteractionTranscript.sponge_run_ID.in_(run_IDs))
-    else:
-        return jsonify({
-            "detail": "No dataset with given disease_name found",
-            "status": 400,
-            "title": "Bad Request",
-            "type": "about:blank"
-        }), 400
-
-    transcript = models.Transcript.query \
-        .filter(models.Transcript.enst_number.in_(enst_number)) \
-        .all()
-
-    transcript_IDs = []
-    if len(transcript) > 0:
-        transcript_IDs = [t.transcript_ID for t in transcript]
-    else:
-        return jsonify({
-            "detail": "No transcript found for given identifiers.",
-            "status": 400,
-            "title": "Bad Request",
-            "type": "about:blank"
-        }), 400
-
-    interaction_result = []
     if between:
-        # an Engine, which the Session will use for connection resources
-        some_engine = sa.create_engine('mysql://root:spongebob@10.162.163.20:9669/SPONGEdb_v2',
-                                       pool_recycle=30)
+        # subquery to count distinct transcripts
+        distinct_query = db.select(db.func.count(db.distinct(models.miRNAInteractionTranscript.transcript_ID))) \
+            .where(models.miRNAInteractionTranscript.transcript_ID.in_(transcript_query)) \
+            .where(models.miRNAInteractionTranscript.sponge_run_ID.in_(run_query))
+        
 
-        # create a configured "Session" class
-        Session = sa.orm.sessionmaker(bind=some_engine)
+        # subquery to get miRNA IDs that are shared between transcripts
+        mirna_query = db.select(models.miRNAInteractionTranscript.miRNA_ID) \
+            .where(models.miRNAInteractionTranscript.transcript_ID.in_(transcript_query)) \
+            .where(models.miRNAInteractionTranscript.sponge_run_ID.in_(run_query)) \
+            .group_by(models.miRNAInteractionTranscript.miRNA_ID) \
+            .having(db.func.count(models.miRNAInteractionTranscript.transcript_ID) == distinct_query)
+        
+        mirnas = db.session.execute(mirna_query).scalars().all()
+        print(mirnas)
 
-        # create a Session
-        session = Session()
-        # test for each dataset if the gene(s) of interest are included in the ceRNA network
-
-        mirna_filter = session.execute(
-            text("select mirna_ID from interactions_transcriptmirna where sponge_run_ID IN ( "
-                 + ','.join(str(e) for e in run_IDs) + ") and transcript_ID IN ( "
-                 + ','.join(str(e) for e in transcript_IDs)
-                 + ") group by mirna_ID HAVING count(mirna_ID) >= 2;")).fetchall()
-
-        session.close()
-        some_engine.dispose()
-
-        if len(mirna_filter) == 0:
-            return jsonify({
-                "detail": "No shared miRNA between genes found.",
-                "status": 200,
-                "title": "No Content",
-                "type": "about:blank",
-                "data": []
-            }), 200
-
-        flat_mirna_filter = [item for sublist in mirna_filter for item in sublist]
-        queries.append(models.miRNAInteractionTranscript.miRNA_ID.in_(flat_mirna_filter))
-
-        interaction_result = models.miRNAInteractionTranscript.query \
-            .filter(*queries) \
-            .all()
+        # filter interactions by the miRNA IDs from the previous subquery
+        interaction_query = base_interaction_query.where(models.miRNAInteractionTranscript.miRNA_ID.in_(mirna_query))
 
     else:
-        interaction_result = models.miRNAInteractionTranscript.query \
-            .filter(*queries) \
-            .all()
+        interaction_query = base_interaction_query
+
+    interaction_result = db.session.execute(interaction_query).scalars().all()
 
     if len(interaction_result) > 0:
         return models.miRNAInteractionSchemaTranscript(many=True).dump(interaction_result)
     else:
         return jsonify({
-            "detail": "No data found that satisfies the given input",
+            "detail": "No shared miRNA between transcripts found.",
             "status": 200,
             "title": "No Content",
             "type": "about:blank",

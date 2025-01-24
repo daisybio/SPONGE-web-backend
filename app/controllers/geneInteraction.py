@@ -865,7 +865,7 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     edges = db.session.execute(edge_query).scalars().all()
     gene_ids_in_edges = set([edge.gene_ID1 for edge in edges] + [edge.gene_ID2 for edge in edges])
 
-    # Step 3: Filter nodes by edges that pass the p-value filter
+    # Filter nodes by edges that pass the p-value filter & sponge run
     node_query = db.select(models.networkAnalysis).filter(
         models.networkAnalysis.sponge_run_ID.in_(run_query),
         models.networkAnalysis.gene_ID.in_(gene_ids_in_edges)    )
@@ -878,11 +878,22 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     if minEigenvector:
         node_query = node_query.filter(models.networkAnalysis.eigenvector >= minEigenvector)
 
-    # Step 4: Finalize edges by filtering based on filtered nodes
+    # Sorting nodes
+    if nodeSorting == "betweenness":
+        node_query = node_query.order_by(models.networkAnalysis.betweenness.desc())
+    elif nodeSorting == "degree":
+        node_query = node_query.order_by(models.networkAnalysis.node_degree.desc())
+    elif nodeSorting == "eigenvector":
+        node_query = node_query.order_by(models.networkAnalysis.eigenvector.desc())
+
+    # node agination
+    node_query = node_query.offset(offsetNodes).limit(maxNodes)
+
+    # filter edges based on filtered nodes
     nodes = db.session.execute(node_query).scalars().all()
     node_gene_ids = set([node.gene_ID for node in nodes])
     edge_query = edge_query.filter(
-        or_(
+        and_(
             models.GeneInteraction.gene_ID1.in_(node_gene_ids),
             models.GeneInteraction.gene_ID2.in_(node_gene_ids)
         )
@@ -903,18 +914,9 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
         edge_query = edge_query.order_by(models.GeneInteraction.correlation.desc())
     else: 
         raise ValueError("Invalid edge sorting key. Choose one of 'pValue', 'mscor', 'correlation'")
-
-    # Sorting nodes
-    if nodeSorting == "betweenness":
-        node_query = node_query.order_by(models.networkAnalysis.betweenness.desc())
-    elif nodeSorting == "degree":
-        node_query = node_query.order_by(models.networkAnalysis.node_degree.desc())
-    elif nodeSorting == "eigenvector":
-        node_query = node_query.order_by(models.networkAnalysis.eigenvector.desc())
-
-    # Pagination
+    
+    # edge pagination 
     edge_query = edge_query.offset(offsetEdges).limit(maxEdges)
-    node_query = node_query.offset(offsetNodes).limit(maxNodes)
 
     # Execute queries
     node_results = db.session.execute(node_query).scalars().all()

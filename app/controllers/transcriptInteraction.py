@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import os
 from flask import jsonify
-from sqlalchemy import desc, or_, and_
+from sqlalchemy import desc, and_
 from sqlalchemy.sql import text
 import app.models as models
 from app.config import LATEST, db
@@ -966,7 +966,7 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     nodes = db.session.execute(node_query).scalars().all()
     node_tr_ids = set([node.transcript_ID for node in nodes])
     edge_query = db.select(models.TranscriptInteraction).filter(
-        or_(
+        and_(
             models.TranscriptInteraction.transcript_ID_1.in_(node_tr_ids),
             models.TranscriptInteraction.transcript_ID_2.in_(node_tr_ids)
         )

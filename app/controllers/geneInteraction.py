@@ -3,6 +3,7 @@ import os
 from flask import jsonify
 from sqlalchemy import desc, or_, and_
 from sqlalchemy.sql import text
+from app.controllers.dataset import _dataset_query
 import app.models as models
 from app.config import LATEST, db
 
@@ -1027,22 +1028,18 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     :param minBetweenness: betweenness cutoff (>)
     :param minNodeDegree: degree cutoff (>)
     :param minEigenvector: eigenvector cutoff (>)
-    :param pValue: pValue cutoff
-    :param pValueDirection: < or >
-    :param mscor:  multiple miRNA sensitivity correlation
-    :param mscorDirection: < or >
-    :param correlation: correlation cutoff
-    :param correlationDirection: < or >
-    :param edgeSorting: how the results of the db query should be sorted, one of 'pValue', 'mscor', 'correlation', 
-    :param nodeSorting: sort nodes, one of 'betweenness', 'degree', 'eigenvector'
-    :param descending: should the results be sorted in descending or ascending order
-    :param maxNodes: number of nodes that should be shown
-    :param maxEdges: number of edges that should be shown
-    :param offsetNodes: startpoint from where results should be shown
-    :param offsetEdges: startpoint from where results should be shown
+    :param maxPValue: p-value cutoff (<)
+    :param minMscor: mscor cutoff (>)
+    :param minCorrelation: correlation cutoff (>)
+    :param edgeSorting: sorting key for edges
+    :param nodeSorting: sorting key for nodes
+    :param maxNodes: maximum number of nodes
+    :param maxEdges: maximum number of edges
+    :param offsetNodes: offset for node pagination
+    :param offsetEdges: offset for edge pagination
     :param sponge_db_version: version of the sponge database
     :return: all ceRNAInteractions in the dataset of interest that satisfy the given filters
-    
+
     """
     # Step 1: Filter for SpongeRun IDs
     run_query = db.select(models.SpongeRun.sponge_run_ID).filter(
@@ -1090,6 +1087,8 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
         node_query = node_query.order_by(models.networkAnalysis.node_degree.desc())
     elif nodeSorting == "eigenvector":
         node_query = node_query.order_by(models.networkAnalysis.eigenvector.desc())
+    else:
+        raise ValueError("Invalid node sorting key. Choose one of 'betweenness', 'degree', 'eigenvector'")
 
     # node agination
     node_query = node_query.offset(offsetNodes).limit(maxNodes)

@@ -62,7 +62,7 @@ def log_request():
         if (request.content_type.startswith('multipart/form-data')):
             body = {'args': request.args.to_dict(), 
                     'form': request.form.to_dict(), 
-                    'files': {k: f'{v.read(1000)}...' for k, v in request.files.items()}
+                    'files': {k: f'{v.read(1000)}...{v.seek(0)}' for k, v in request.files.items()}
                     }
     else:        
         body = request.get_data(as_text=True)

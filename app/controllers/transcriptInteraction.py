@@ -926,7 +926,7 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     # filter edges based on filtered nodes
     nodes = db.session.execute(node_query).scalars().all()
     node_tr_ids = set([node.transcript_ID for node in nodes])
-    edge_query = db.select(models.TranscriptInteraction).filter(
+    edge_query = edge_query.filter(
         and_(
             models.TranscriptInteraction.transcript_ID_1.in_(node_tr_ids),
             models.TranscriptInteraction.transcript_ID_2.in_(node_tr_ids)

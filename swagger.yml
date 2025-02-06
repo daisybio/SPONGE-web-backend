@@ -1432,11 +1432,13 @@ paths:
           required: false
           description: Possibilities for sorting of the nodes.
           schema:
-            type: string
-            enum:
-              - betweenness
-              - degree
-              - eigenvector
+            type: array
+            items:
+              type: string
+            # enum:
+            #   - betweenness
+            #   - degree
+            #   - eigenvector
         - name: maxNodes
           in: query
           description: Number of nodes that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
@@ -1552,11 +1554,13 @@ paths:
           required: false
           description: Possibilities for sorting of the nodes.
           schema:
-            type: string
-            enum:
-              - betweenness
-              - degree
-              - eigenvector
+            type: array
+            items:
+              type: string
+            # enum:
+            #   - betweenness
+            #   - degree
+            #   - eigenvector
         - name: maxNodes
           in: query
           description: Number of nodes that should be shown. Default value is 100 and can be up to 1000. For more results please use batches, the provided offset parameter or download the whole dataset.
@@ -1714,7 +1718,7 @@ paths:
           type: string
           enum:
           - betweenness
-          - degree
+          - node_degree
           - eigenvector
       - name: descending
         in: query
@@ -1895,7 +1899,7 @@ paths:
             type: string
             enum:
               - betweenness
-              - degree
+              - node_degree
               - eigenvector
         - name: descending
           in: query

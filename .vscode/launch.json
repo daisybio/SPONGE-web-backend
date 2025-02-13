@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "type": "debugpy",
+            "request": "launch",
+            "name": "lauch spongedb",
+            "program": "${workspaceFolder}/server.py",
+            "env": {
+                "SPONGE_DB_URI": "mysql://root:spongebob@127.0.0.1:9669/SPONGEdb_v2",
+                "SPONGE_DB_UPLOAD_DIR": "${workspaceFolder}/uploads",
+                "SPONGEFFECTS_PREDICT_SCRIPT": "${workspaceFolder}/scripts/spongEffects/classify.R",
+                // "SPONGEFFECTS_MODEL_PATH": "$/localssd/SPONGEdb/static_file_server_data/csvs_FTP/spongEffects",
+                // "SPONGEFFECTS_MODEL_PATH": "${workspaceFolder}/../SPONGEdb_v2/spongEffects",
+                "SPONGEFFECTS_MODEL_PATH": "/home/lena/Projects/SPONGEdb_v2/models.RDS",
+            }
+            
+        }
+    ],
+    "inputs": [
+        {
+            "type": "promptString",
+            "id": "programName",
+            "description": "Name of the Python file to launch"
+        }
+    ]
+}

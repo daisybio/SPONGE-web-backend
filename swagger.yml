@@ -1430,7 +1430,7 @@ paths:
         - name: nodeSorting
           in: query
           required: false
-          description: Possibilities for sorting of the nodes.
+          description: On or more metrics for sorting the nodes. Options are 'betweenness', 'node_degree', 'eigenvector'. Default is 'betweenness'. If multiple metrics are provided, the mean rank is used.
           schema:
             type: array
             items:

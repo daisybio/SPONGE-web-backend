@@ -1,6 +1,6 @@
 from flask import jsonify
 import app.models as models
-from app.config import LATEST, db
+from app.config import LATEST, db, logger
 
 
 def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
@@ -27,7 +27,8 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
                 "type": "about:blank"
             }), 400
 
-    query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
+    if not sponge_db_version == 'any':
+        query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
     data = db.session.execute(query).scalars().all()
 
     if len(data) == 0:

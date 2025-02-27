@@ -9,6 +9,7 @@ import app.config as config
 from app.controllers.externalInformation import get_genes, get_transcripts
 import app.models as models
 from app.config import LATEST, db, logger
+import traceback
 
 
 def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", sponge_db_version: int = LATEST):
@@ -387,6 +388,8 @@ class Params:
         cmd: list = []
         for name, value in vars(self).items():
             cmd.append(f'--{name}')
+            if name == "method":
+                value = value.lower()
             cmd.append(value)
         return cmd
 
@@ -425,12 +428,14 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
         with open(out_path, 'r') as json_file:
             return json.load(json_file)
     except subprocess.CalledProcessError as e:
-        return jsonify({
+        logger.error(f"Error running spongEffects: {e}, traceback: {traceback.print_exception(type(e), e, e.__traceback__)})")
+        logger.error("Rscript output: " + e.stderr)
+        return {
             "detail": f"{e}",
             "status": 500,
             "title": "Error",
             "type": "about:blank"
-        }), 500
+        }, 500
 
 
 def upload_file():

@@ -4623,7 +4623,7 @@ paths:
   /spongEffects/predictCancerType:
     post:
       operationId: spongEffects.upload_file
-      summary: Upload a gene/transcript expression file to predict which cancer type it originated from
+      summary: Upload a gene/transcript expression file to predict which cancer type it originated from.
       requestBody:
         content:
           multipart/form-data:
@@ -4633,6 +4633,7 @@ paths:
                 file:
                   type: string
                   format: binary
+                  description: The gene/transcript expression file to upload. Row names need to be ENSG or ENST IDs. Column names need to be sample IDs.
                 subtypes:
                   type: boolean
                   description: Whether to prediction subtype level or only predict types

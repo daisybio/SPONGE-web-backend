@@ -32,7 +32,7 @@ importlib_metadata==8.5.0
 importlib_resources==6.4.5
 inflection==0.5.1
 itsdangerous==2.2.0
-Jinja2==3.1.4
+Jinja2==3.1.6
 joblib==1.4.2
 jsonschema==4.23.0
 jsonschema-path==0.3.3

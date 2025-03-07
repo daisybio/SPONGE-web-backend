@@ -845,7 +845,7 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
 def get_transcript_network(dataset_ID: int = None, disease_name=None,
                             minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
                             maxPValue=0.05, minMscor=None, minCorrelation=None,
-                            edgeSorting: str = None, nodeSorting: str = None,
+                            edgeSorting: str = None, nodeSorting: list[str] = None,
                             maxNodes: int = 100, maxEdges: int = 100, 
                             offsetNodes: int = None, offsetEdges: int = None,
                             sponge_db_version: int = LATEST):
@@ -860,7 +860,7 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     :param minMscor: mscor cutoff (>)
     :param minCorrelation: correlation cutoff (>)
     :param edgeSorting: sorting key for edges
-    :param nodeSorting: sorting key for nodes
+    :param nodeSorting: sorting key(s) for nodes (options are 'betweenness', 'node_degree', 'eigenvector')
     :param maxNodes: maximum number of nodes
     :param maxEdges: maximum number of edges
     :param offsetNodes: offset for node pagination
@@ -910,15 +910,13 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     if minEigenvector:
         node_query = node_query.filter(models.networkAnalysisTranscript.eigenvector >= minEigenvector)
 
-    # Sorting nodes 
-    if nodeSorting == "betweenness":
-        node_query = node_query.order_by(models.networkAnalysisTranscript.betweenness.desc())
-    elif nodeSorting == "degree":
-        node_query = node_query.order_by(models.networkAnalysisTranscript.node_degree.desc())
-    elif nodeSorting == "eigenvector":
-        node_query = node_query.order_by(models.networkAnalysisTranscript.eigenvector.desc())
-    else: 
-        raise ValueError("Invalid node sorting key. Choose one of 'betweenness', 'degree', 'eigenvector'")
+    # Sorting nodes: if more than one sorting key, rank by each key individually and sort by the mean of the ranks
+    if nodeSorting:
+        if any([key not in ['betweenness', 'node_degree', 'eigenvector'] for key in nodeSorting]):
+            raise ValueError("Invalid node sorting key. Choose from 'betweenness', 'node_degree', 'eigenvector'")
+        rank_columns = [db.func.rank().over(order_by=getattr(models.networkAnalysisTranscript, col).desc()).label(f"{col}_rank") for col in nodeSorting]
+        mean_rank = sum(rank_columns) / len(rank_columns)
+        node_query = node_query.order_by(mean_rank)
 
     # node pagination
     node_query = node_query.offset(offsetNodes).limit(maxNodes)    

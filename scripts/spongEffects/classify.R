@@ -5,6 +5,8 @@ load_packages <- sapply(packages, function(p) {
   suppressWarnings(suppressPackageStartupMessages(library(p, character.only = T)))
 })
 
+set.seed(12345)
+
 args.effects = commandArgs(trailingOnly = T)
 
 parser <- arg_parser("Argument parser for spongEffects module", name = "spongEffects_parser")
@@ -55,6 +57,7 @@ predict_subtype <- function(df, all_models, test_modules, threshold) {
 
     # get common modules
     common_modules <- intersect(model$coefnames, rownames(test_modules))
+    message(Sys.time(), " - found ", length(common_modules), " common modules", common_modules)
     if (length(common_modules) > 0) {
       test_modules <- test_modules[common_modules,,drop=F]
     } else {
@@ -65,6 +68,7 @@ predict_subtype <- function(df, all_models, test_modules, threshold) {
 
     # fill missing modules if needed
     missing_modules <- setdiff(model$coefnames, rownames(test_modules))
+    message(Sys.time(), " - found ", length(missing_modules), " missing modules")
     if (length(missing_modules) > 0) {
       median_value <- median(apply(test_modules, 2, median))
       frac <- 100
@@ -144,7 +148,7 @@ if (!argv_predict$local) {
   cl <- makeCluster(argv_predict$enrichment_cores)
   registerDoParallel(cl)
 } else {
-  message("running on single core")
+  message(Sys.time(), " - running on single core")
 }
 message(Sys.time(), " - enriching type modules (test)")
 test.modules.uploaded <-  enrichment_modules(Expr.matrix = test_expr,
@@ -207,8 +211,10 @@ if (argv_predict$subtypes) {
 
 # build supplementary information
 meta <- data.frame(runtime=runTime, level=level, n_samples=nrow(predictions),
-                   type_predict=dominant_type, subtype_predict=dominant_subtype)
+                   type_predict=dominant_type, subtype_predict=dominant_subtype, script_version="0.1.1")
 
 # return as JSON for API processing
 responseObj <- list(meta=meta, data=predictions)
+message(Sys.time(), " - FINISHED EXECUTION")
+message("Writing output file to ", argv_predict$output)
 write_json(responseObj, path = argv_predict$output)

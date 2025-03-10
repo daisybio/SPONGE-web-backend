@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 import os
 from flask import jsonify
-from sqlalchemy import desc, literal_column, or_, and_
+from sqlalchemy import desc, engine_from_config, literal_column, or_, and_
 from sqlalchemy.sql import text
 from app.controllers.dataset import _dataset_query
 import app.models as models
@@ -878,7 +878,7 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
             models.miRNAInteraction.miRNA_ID.in_(mirna_query)
         )
     else:
-            interaction_query = base_interaction_query
+        interaction_query = base_interaction_query
 
     interaction_result = db.session.execute(interaction_query).scalars().all()
 

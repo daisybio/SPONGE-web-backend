@@ -1,6 +1,8 @@
 from flask import jsonify
+from sqlalchemy import and_
 import app.models as models
-from app.config import LATEST, db, logger
+from app.config import LATEST, db
+from typing import List
 
 
 def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
@@ -43,7 +45,50 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
     return data
 
 
-def get_datasets(dataset_ID: int = None, disease_name: str = None, data_origin=None, sponge_db_version: int = LATEST):
+def get_diseases(disease_ID: int = None, disease_name: str = None, disease_subtype: str = None, versions: List[int] = None):
+    """
+    This function responds to a request for /sponge/diseases
+    with the complete lists of diseases passing the filter parameters
+
+    :param disease_ID: ID of the disease to find.
+    :param disease_name: Name of the disease to find.
+    :param disease_subtype: Subtype of the disease to find.
+    :param versions: List of sponge_db_versions in which the disease need to be present.
+    :return: All diseases that match the filter.
+    """
+
+    query = db.select(models.Disease)
+
+    if disease_ID is not None: 
+        query = query.where(models.Disease.disease_ID == disease_ID)
+    if disease_name is not None:
+        query = query.where(models.Disease.disease_name.like("%" + disease_name + "%"))
+    if disease_subtype is not None:
+        query = query.where(models.Disease.disease_subtype.like("%" + disease_subtype + "%"))
+    if versions is not None:
+        conditions = [models.Disease.versions.like(f"%{version}%") for version in versions]
+        query = query.where(and_(*conditions))
+        
+    diseases = db.session.execute(query).scalars().all()
+
+    if len(diseases) > 0:
+        for disease in diseases:
+            dataset_query = db.select(models.Dataset.dataset_ID).where(models.Dataset.disease_ID == disease.disease_ID)
+            dataset_IDs = db.session.execute(dataset_query).scalars().all()
+            disease.dataset_IDs = dataset_IDs
+
+        return models.DiseaseSchema(many=True).dump(diseases)
+    else:
+        return jsonify({
+            "detail": 'No data found for name: {disease_name}'.format(disease_name=disease_name),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
+
+def get_datasets(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, data_origin=None, sponge_db_version: int = LATEST):
     """
         This function responds to a request for /sponge/datasets?data_origin={data_origin}&sponge_db_version={version}
         with one matching entry to the specified data_origin
@@ -57,7 +102,7 @@ def get_datasets(dataset_ID: int = None, disease_name: str = None, data_origin=N
     # Query dataset table
     query = db.select(models.Dataset)
 
-    data = _dataset_query(query, sponge_db_version, dataset_ID=dataset_ID, disease_name=disease_name, data_origin=data_origin)
+    data = _dataset_query(query, sponge_db_version, dataset_ID=dataset_ID, disease_name=disease_name, disease_subtype=disease_subtype, data_origin=data_origin)
 
     # Did we find a source?
     if len(data) > 0:

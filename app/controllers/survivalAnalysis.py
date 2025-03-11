@@ -3,12 +3,13 @@ import app.models as models
 from app.config import LATEST
 from app.controllers.dataset import _dataset_query
 
-def get_patient_information(dataset_ID: int = None, disease_name=None, sample_ID=None, sponge_db_version: int = LATEST):
+def get_patient_information(dataset_ID: int = None, disease_name=None, disease_subtype=None, sample_ID=None, sponge_db_version: int = LATEST):
     """
     API call /survivalAnalysis/sampleInformation
     to get all available clinical information for patients/samples
     :param dataset_ID: dataset_ID of the dataset of interest
     :param disease_name: disease_name of interest
+    :param disease_subtype: disease_subtype of interest
     :param sample_ID: sample ID of the patient of interest
     :param sponge_db_version: version of the database
     :return: all patient information for the samples of interest
@@ -27,7 +28,7 @@ def get_patient_information(dataset_ID: int = None, disease_name=None, sample_ID
     #    abort(404, "No samples found for given IDs)")
 
     # filter for database version 
-    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, dataset_ID=dataset_ID)
+    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
 
     # save all needed queries to get correct results
     queries = []
@@ -62,12 +63,13 @@ def get_patient_information(dataset_ID: int = None, disease_name=None, sample_ID
         }), 200
 
 
-def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_number = None, gene_symbol = None, sample_ID = None, sponge_db_version: int = LATEST):
+def get_survival_rate(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, ensg_number = None, gene_symbol = None, sample_ID = None, sponge_db_version: int = LATEST):
     """
     API call /survivalAnalysis/getRates
     Get all raw data for kaplan meier plots
     :param dataset_ID: dataset_ID of the dataset of interest
     :param disease_name: disease_name of interest
+    :param disease_subtype: disease_subtype of interest
     :param ensg_number: esng number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
     :param sample_ID: sample_Id of patient/sample of interest
@@ -136,7 +138,7 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_num
             }), 400
 
     # filter for database version
-    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, dataset_ID=dataset_ID)
+    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
     
     if len(dataset) > 0:
         dataset_IDs = [i.dataset_ID for i in dataset]
@@ -164,11 +166,13 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, ensg_num
             "data": []
         }), 200
 
-def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, ensg_number = None, gene_symbol = None, sponge_db_version: int = LATEST):
+
+def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, ensg_number = None, gene_symbol = None, sponge_db_version: int = LATEST):
     """
     API call /survivalAnalysis/getPValues
     Retrieve pValues from log rank test based on raw survival analysis data
     :param disease_name: disease_name of interest
+    :param disease_subtype: disease_subtype of interest
     :param ensg_number: esng number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
     :param sponge_db_version: version of the database
@@ -216,9 +220,9 @@ def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, ensg_n
         }), 400
 
     # filter for database version
-    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, dataset_ID=dataset_ID)
+    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
 
-    if len(dataset) > 0:
+    if len(dataset) > 0 and getattr(dataset[0], 'dataset_ID', None) is not None:
         dataset_IDs = [i.dataset_ID for i in dataset]
         queries.append(models.SurvivalPValue.dataset_ID.in_(dataset_IDs))
     else:

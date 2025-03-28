@@ -203,13 +203,7 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     if len(query) > 0:
         return models.SpongEffectsGeneModuleSchema(many=True).dump(query)
     else:
-        return jsonify({
-            "detail": "No spongEffects modules found for given disease",
-            "status": 200,
-            "title": "No Content",
-            "type": "about:blank",
-            "data": []
-        }), 200
+        return []
 
 
 def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST, limit: int = 1000):
@@ -227,6 +221,13 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
     # get the modules using get_gene_modules
     modules = get_gene_modules(spongEffects_gene_module_ID, dataset_ID, disease_name, gene_ID, ensg_number, gene_symbol, sponge_db_version)
     module_IDs = [module['spongEffects_gene_module_ID'] for module in modules]
+    if len(module_IDs) == 0:
+        return jsonify({
+            "detail": "No spongEffects gene modules found for given parameters",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # get the members
     query = db.select(models.SpongEffectsGeneModuleMembers) \
@@ -327,6 +328,14 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
     # get the modules using get_transcript_modules
     modules = get_transcript_modules(spongEffects_transcript_module_ID, dataset_ID, disease_name, gene_ID, ensg_number, gene_symbol, transcript_ID, enst_number, sponge_db_version)
     module_IDs = [module['spongEffects_transcript_module_ID'] for module in modules]
+
+    if len(module_IDs) == 0:
+        return jsonify({
+            "detail": "No spongEffects transcript modules found for given parameters",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     # get the members
     query = db.select(models.SpongEffectsTranscriptModuleMembers) \

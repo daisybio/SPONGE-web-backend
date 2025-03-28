@@ -4471,6 +4471,9 @@ paths:
                   mean_accuracy_decrease:
                     type: number
                     description: Mean decrease in accuracy
+                  spongeEffects_run_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects run.
   /spongEffects/getSpongEffectsGeneModuleMembers:
     get:
       operationId: spongEffects.get_gene_module_members
@@ -4618,6 +4621,9 @@ paths:
                   mean_accuracy_decrease:
                     type: number
                     description: Mean decrease in accuracy
+                  spongEffects_run?_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects run.
   /spongEffects/getSpongEffectsTranscriptModuleMembers:
     get:
       operationId: spongEffects.get_transcript_module_members

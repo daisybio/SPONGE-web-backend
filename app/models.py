@@ -4,6 +4,13 @@ from sqlalchemy.orm import relationship
 from app.config import db, ma
 
 
+class Disease(db.Model):
+    __tablename__ = 'disease'
+    disease_ID = db.Column(db.Integer, primary_key=True)
+    disease_name = db.Column(db.String(32))
+    disease_subtype = db.Column(db.String(32))
+    versions = db.Column(db.String(255))
+
 class Dataset(db.Model):
     __tablename__ = 'dataset'
     dataset_ID = db.Column(db.Integer, primary_key=True)
@@ -13,6 +20,8 @@ class Dataset(db.Model):
     download_url = db.Column(db.String(32))
     disease_subtype = db.Column(db.String(32))
     sponge_db_version = db.Column(db.Integer)
+    disease_ID = db.Column(db.Integer, db.ForeignKey('disease.disease_ID'), nullable=False)
+    disease = relationship("Disease", foreign_keys=[disease_ID])
 
     
 class SpongeRun(db.Model):
@@ -629,10 +638,17 @@ class PsiVec(db.Model):
 ############# SCHEMAS ##############
 ####################################
 
+class DiseaseSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Disease
+        sqla_session = db.session
+
+    dataset_IDs = fields.List(fields.Integer)
+
 class DatasetSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Dataset
-        sqla_session = db.session
+        sqla_session = db.session    
 
 class SpongeRunSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

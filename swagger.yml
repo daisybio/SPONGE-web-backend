@@ -17,6 +17,7 @@ components:
       required: false
       schema:
         type: string
+        nullable: true
   schemas:
     TranscriptSchema:
       type: object
@@ -222,6 +223,57 @@ components:
               type: integer
               description: Internal database ID for different runs with SPONGE with the same expression values for one cancer_type/dataset.
 paths:
+  /diseases: 
+    get: 
+      operationId: dataset.get_diseases
+      tags:
+        - Dataset
+      summary: Get information on all diseases
+      description: Get information on all diseases
+      parameters:
+        - name: disease_ID
+          in: query
+          description: Internal database ID of the disease.
+          required: false
+          schema:
+            type: integer
+        - name: disease_name
+          in: query
+          description: Name of the disease.
+          required: false
+          schema:
+            type: string
+        - name: disease_subtype
+          in: query
+          description: Subtype of the disease.
+          required: false
+          schema:
+            type: string
+        - name: versions
+          in: query
+          description: List of sponge_db_versions in which the disease need to be present.
+          required: false
+          schema:
+            type: array
+            items: 
+              type: string
+      responses:
+        "200":
+          description: Successfully read information about all diseases.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  disease_name:
+                    type: string
+                    description: Name of the disease
+                  disease_subtype:
+                    type: string
+                    description: Subtype of the disease
+                  data_origin:
+                    type: string
+                    description: Name of the data origin (e.g. TCGA)
   /datasets:
     get:
       operationId: dataset.get_datasets
@@ -240,6 +292,12 @@ paths:
         - name: disease_name
           in: query
           description: Name of the disease
+          required: false
+          schema:
+            type: string
+        - name: disease_subtype
+          in: query
+          description: Subtype of the disease
           required: false
           schema:
             type: string
@@ -1430,7 +1488,7 @@ paths:
         - name: nodeSorting
           in: query
           required: false
-          description: Possibilities for sorting of the nodes.
+          description: On or more metrics for sorting the nodes. Options are 'betweenness', 'node_degree', 'eigenvector'. Default is 'betweenness'. If multiple metrics are provided, the mean rank is used.
           schema:
             type: array
             items:
@@ -2710,7 +2768,7 @@ paths:
     get:
       operationId: geneInteraction.read_mirna_for_specific_interaction
       tags:
-      - ceRNANetwork
+        - ceRNANetwork
       description: Get all miRNAs that contribute to all interactions between the given identifiers (ensg_number or gene_symbol).
       summary: Get all miRNAs that contribute to all interactions between the given identifiers (ensg_number or gene_symbol).
       parameters:
@@ -2751,7 +2809,7 @@ paths:
         style: form
       - name: between
         in: query
-        description: If false, all interactions where one of the interaction partners fits the given genes of interestwill be considered.If true, just interactions between the genes of interest will be considered.
+        description: If false, all interactions where one of the interaction partners fits the given genes of interes twill be considered. If true, just interactions between the genes of interest will be considered.
         required: true
         schema:
           type: boolean
@@ -3562,6 +3620,12 @@ paths:
         required: false
         schema:
           type: string
+      - name: disease_subtype
+        in: query
+        description: name of the disease subtype to get (e.g. "Her2" or just "Her")
+        required: false
+        schema:
+          type: string
       - name: sample_ID
         in: query
         description: A comma-separated list of sample_ID of the patient/sample of interest (e.g. TCGA-BP-4968, TCGA-B8-A54F).
@@ -3619,6 +3683,12 @@ paths:
       - name: disease_name
         in: query
         description: Name of the specific cancer type/dataset. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
+        required: false
+        schema:
+          type: string
+      - name: disease_subtype
+        in: query
+        description: name of the disease subtype to get (e.g. "Her2" or just "Her")
         required: false
         schema:
           type: string
@@ -3721,6 +3791,12 @@ paths:
       - name: disease_name
         in: query
         description: name of the disease to get (e.g. "kidney clear cell carcinoma" or just "kidney")
+        required: false
+        schema:
+          type: string
+      - name: disease_subtype
+        in: query
+        description: name of the disease subtype to get (e.g. "Her2" or just "Her")
         required: false
         schema:
           type: string
@@ -4395,6 +4471,9 @@ paths:
                   mean_accuracy_decrease:
                     type: number
                     description: Mean decrease in accuracy
+                  spongeEffects_run_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects run.
   /spongEffects/getSpongEffectsGeneModuleMembers:
     get:
       operationId: spongEffects.get_gene_module_members
@@ -4542,6 +4621,9 @@ paths:
                   mean_accuracy_decrease:
                     type: number
                     description: Mean decrease in accuracy
+                  spongEffects_run?_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects run.
   /spongEffects/getSpongEffectsTranscriptModuleMembers:
     get:
       operationId: spongEffects.get_transcript_module_members
@@ -4623,7 +4705,7 @@ paths:
   /spongEffects/predictCancerType:
     post:
       operationId: spongEffects.upload_file
-      summary: Upload a gene/transcript expression file to predict which cancer type it originated from
+      summary: Upload a gene/transcript expression file to predict which cancer type it originated from.
       requestBody:
         content:
           multipart/form-data:
@@ -4633,6 +4715,7 @@ paths:
                 file:
                   type: string
                   format: binary
+                  description: The gene/transcript expression file to upload. Row names need to be ENSG or ENST IDs. Column names need to be sample IDs.
                 subtypes:
                   type: boolean
                   description: Whether to prediction subtype level or only predict types

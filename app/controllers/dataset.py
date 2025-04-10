@@ -10,17 +10,19 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
     if query is None: 
         query = db.select(models.Dataset)
     for key, value in kwargs.items():
-        if type(value) == str:
+        # special cases: 
+        if value is None or value == 'any':
+            continue
+        elif key == 'disease_subtype' and value == 'unspecific':
+            query = query.where(getattr(models.Dataset, key).is_(None))
+        # filter standart cases
+        elif type(value) == str:
             query = query.where(getattr(models.Dataset, key).like("%" + value + "%"))
         elif type(value) == int:
             query = query.where(getattr(models.Dataset, key) == value)
         elif type(value) == list:
             query = query.where(getattr(models.Dataset, key).in_(value))
-        elif value is None:
-            if key == 'disease_subtype':
-                query = query.where(models.Dataset.disease_subtype.is_(None))
-            else: 
-                continue
+
         else:
             return jsonify({
                 "detail": "Unknown input type",

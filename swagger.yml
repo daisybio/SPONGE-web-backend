@@ -297,7 +297,7 @@ paths:
             type: string
         - name: disease_subtype
           in: query
-          description: Subtype of the disease
+          description: Subtype of the disease. Search for "unspecific" to get all datasets without subtype.
           required: false
           schema:
             type: string
@@ -332,10 +332,33 @@ paths:
                     description: URL to cancer type/dataset annotation.
                   disease_subtype:
                     type: string
-                    description: Subtype of specific cancer type (NA if no relevant subtype is present)
+                    description: Subtype of specific cancer type ('null' if no relevant subtype is present)
                   sponge_db_version:
                     type: integer
                     description: SPONGEdb version used
+  /get_disease_from_sample:
+    get:
+      operationId: dataset.get_disease_from_sample
+      tags:
+        - Dataset
+      summary: Get the disease name from a sample ID
+      description: Get the disease name sample ID. The Tissue Source Site Code of the TCGA sample ID is used to identify the disease of the specific sample. 
+      parameters:
+        - $ref: '#/components/parameters/VersionParam'
+        - name: sample_ID
+          in: query
+          description: Sample ID of the cancer type/dataset. If not specified, all diseases will be returned.
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully read information about the disease from a sample ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Mapping of sample ID to disease name. If no sample ID is provided, mapping of TSS code to disease name is returned.
   /dataset/spongeRunInformation:
     get:
       operationId: dataset.read_spongeRunInformation
@@ -3009,6 +3032,24 @@ paths:
           minItems: 0
         explode: false
         style: form
+      - name: limit
+        in: query
+        description: Number of results that should be shown.
+        required: false
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        description: Starting point from where results should be shown.
+        required: false
+        schema:
+          type: integer
+      - name: cluster
+        in: query
+        description: If true, the results will be clustered by gene and sample.
+        required: false
+        schema:
+          type: boolean
       responses:
         "200":
           description: Get all expression values for gene(s) of interest.
@@ -3101,6 +3142,24 @@ paths:
           minItems: 0
         explode: false
         style: form
+      - name: limit
+        in: query
+        description: Number of results that should be shown.
+        required: false
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        description: Starting point from where results should be shown.
+        required: false
+        schema:
+          type: integer
+      - name: cluster
+        in: query
+        description: If true, the results will be clustered by gene and sample.
+        required: false
+        schema:
+          type: boolean
       responses:
         "200":
           description: Expression values for all transcripts that fit the provided filters
@@ -4444,6 +4503,18 @@ paths:
         required: false
         schema:
           type: string
+      - name: limit
+        in: query
+        description: Limit the number of results. 
+        schema:
+          type: integer
+        required: false
+      - name: offset
+        in: query
+        description: Offset for pagination.
+        schema:
+          type: integer
+        required: false
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -4513,6 +4584,18 @@ paths:
         required: false
         schema:
           type: string
+      - name: limit
+        in: query
+        description: Limit the number of results. 
+        schema:
+          type: integer
+        required: false
+      - name: offset
+        in: query
+        description: Offset for pagination.
+        schema:
+          type: integer
+        required: false
       responses:
         "200":
           description: Successfully extracted all module members of hub node(s)
@@ -4594,6 +4677,18 @@ paths:
         required: false
         schema:
           type: string
+      - name: limit
+        in: query
+        description: Limit the number of results.
+        schema:
+          type: integer
+        required: false
+      - name: offset
+        in: query
+        description: Offset for pagination.
+        schema:
+          type: integer
+        required: false
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -4615,6 +4710,13 @@ paths:
                       enst_number:
                         type: string
                         description: Enst number of the transcript.
+                      gene:
+                        type: object
+                        description: Information about the gene.
+                        properties:
+                          gene_symbol:
+                            type: string
+                            description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
                   mean_gini_decrease:
                     type: number
                     description: Mean decrease in Gini-index
@@ -4702,6 +4804,13 @@ paths:
                       enst_number:
                         type: string
                         description: Enst number of the transcript.
+                      gene:
+                        type: object
+                        description: Information about the gene.
+                        properties:
+                          gene_symbol:
+                            type: string
+                            description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
   /spongEffects/predictCancerType:
     post:
       operationId: spongEffects.upload_file

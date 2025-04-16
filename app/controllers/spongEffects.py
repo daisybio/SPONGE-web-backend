@@ -170,16 +170,18 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
         }), 200
 
 
-def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
+def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsGeneModules
     :param spongEffects_gene_module_ID: Gene module ID as string
     :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
-    :param sponge_db_version: Database version (defaults to most recent version)
     :param gene_ID: Gene ID as string
     :param ensg_number: ENSG number of gene
     :param gene_symbol: Gene symbol
+    :param limit: Limit for the number of results
+    :param offset: Offset for the number of results
+    :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects gene modules for given disease
     """
     # get spongEffects_run_ID
@@ -198,6 +200,11 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     if spongEffects_gene_module_ID is not None:
         query = query.where(models.SpongEffectsGeneModule.spongEffects_gene_module_ID == spongEffects_gene_module_ID)
 
+    if limit is not None:
+        query = query.limit(limit)
+    if offset is not None:
+        query = query.offset(offset)
+
     query = db.session.execute(query).scalars().all()
 
     if len(query) > 0:
@@ -206,7 +213,7 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
         return []
 
 
-def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST, limit: int = 1000):
+def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsGeneModuleMembers
     :param spongEffects_gene_module_ID: Gene module ID as string
@@ -215,6 +222,8 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
     :param gene_ID: Gene ID as string
     :param ensg_number: ENSG number of gene
     :param gene_symbol: Gene symbol
+    :param limit: Limit for the number of results
+    :param offset: Offset for the number of results
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: spongEffects gene module members for given disease and gene identifier
     """
@@ -249,7 +258,10 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
     #     query.where(models.Gene.gene_ID == gene_ID)
 
     # add limit to the query
-    query = query.limit(limit)
+    if limit is not None:
+        query = query.limit(limit)
+    if offset is not None:
+        query = query.offset(offset)
 
     data = db.session.execute(query).scalars().all()
     
@@ -265,7 +277,7 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
         }), 200
 
 
-def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, sponge_db_version: int = LATEST):
+def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsTranscriptModules
     :param spongEffects_transcript_module_ID: Transcript module ID as string
@@ -276,6 +288,8 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     :param gene_symbol: Gene symbol
     :param transcript_ID: Transcript ID as string
     :param enst_number: ENST number of transcript
+    :param limit: Limit for the number of results
+    :param offset: Offset for the number of results
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: module hub elements for a given disease and level
     """
@@ -294,22 +308,21 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
 
     if spongEffects_transcript_module_ID is not None:
         modules_query = modules_query.where(models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID == spongEffects_transcript_module_ID)
+
+    if limit is not None:
+        query = query.limit(limit)
+    if offset is not None:
+        query = query.offset(offset)
         
     query = db.session.execute(query).scalars().all()
 
     if len(query) > 0:
         return models.SpongEffectsTranscriptModuleSchema(many=True).dump(query)
     else:
-        return jsonify({
-            "detail": "No spongEffects modules found for given disease",
-            "status": 200,
-            "title": "No Content",
-            "type": "about:blank",
-            "data": []
-        }), 200
+        return []
 
 
-def get_transcript_module_members(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: int = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: str = None, sponge_db_version: int = LATEST, limit: int = 1000):
+def get_transcript_module_members(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: int = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: str = None, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getTranscriptModuleMembers
     :param spongEffects_transcript_module_ID: Transcript module ID as string
@@ -320,6 +333,8 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
     :param gene_symbol: Gene symbol
     :param transcript_ID: Transcript ID as string
     :param enst_number: ENST number of transcript
+    :param limit: Limit for the number of results
+    :param offset: Offset for the number of results
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: spongEffects transcript module members for given disease and gene identifier    
     """
@@ -342,7 +357,10 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
         .where(models.SpongEffectsTranscriptModuleMembers.spongEffects_transcript_module_ID.in_(module_IDs))
 
     # add limit to the query
-    query = query.limit(limit)
+    if limit is not None:
+        query = query.limit(limit)
+    if offset is not None:
+        query = query.offset(offset)
 
     data = db.session.execute(query).scalars().all()
 

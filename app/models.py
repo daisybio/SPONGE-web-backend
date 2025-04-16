@@ -1032,7 +1032,7 @@ class ExpressionDataTranscriptSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["dataset", "transcript", "expr_value", "sample_ID"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name", "disease_subtype")))
     transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 

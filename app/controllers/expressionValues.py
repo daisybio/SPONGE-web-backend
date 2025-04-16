@@ -136,7 +136,7 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
         if limit is not None:
             result = result[:limit]
 
-        def generate():
+        def _generate():
             yield "["
             first = True
             for r in result:
@@ -146,8 +146,7 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
                 first = False
             yield "]"
             
-            
-        return Response(stream_with_context(generate()), content_type='application/json')
+        return Response(stream_with_context(_generate()), content_type='application/json')
         
         # return models.geneExpressionSchema(many=True).dump(result)
     else:
@@ -163,7 +162,7 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
 
 
 
-def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, cluster: bool = False, gene_symbol: str = None, limit: int = None, sponge_db_version: int = LATEST):
+def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, cluster: bool = False, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     Handles API call /exprValue/getTranscriptExpr to return transcript expressions
     :param dataset_ID: dataset_ID of interest
@@ -262,7 +261,11 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
             # Convert result to a DataFrame for clustering
             data = pd.DataFrame([{
                 "ensembl_ID": r.transcript.enst_number + "___" + (r.transcript.gene.gene_symbol if r.transcript.gene.gene_symbol else r.transcript.gene.ensg_number),
-                "sample_ID": r.sample_ID + "___" + str(r.dataset.disease_subtype),
+                "sample_ID": r.sample_ID + "___" + (
+                    str(r.dataset.disease_name) if disease_name == "pancancer" else
+                    str(r.dataset.disease_subtype)
+                    ),
+                "expression_value": r.expr_value,
                 "expression_value": r.expr_value,
             } for r in result])
 
@@ -282,10 +285,30 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
             result = [models.ExpressionDataTranscript(
                 transcript={"enst_number": row['ensembl_ID'].split("___")[0], "gene": {"gene_symbol": row['ensembl_ID'].split('___')[1]}}, 
                 expr_value=row['expression_value'],
-                sample_ID=row['sample_ID'].split('___')[0],
+                sample_ID=row['sample_ID'], #.split('___')[0],
+                # note that this is 'pancancer' if the disease is 'pancancer'
                 dataset={"disease_subtype": row['sample_ID'].split('___')[1]},
             )for _, row in result.iterrows()]
-        return models.ExpressionDataTranscriptSchema(many=True).dump(result)
+
+        # Limit the number of results if specified
+        if offset is not None:
+            result = result[offset:]
+        if limit is not None:
+            result = result[:limit]
+
+        def _generate():
+            yield "["
+            first = True
+            for r in result:
+                if not first:
+                    yield ","
+                yield models.ExpressionDataTranscriptSchema().dumps(r)
+                first = False
+            yield "]"
+            
+        return Response(stream_with_context(_generate()), content_type='application/json')
+    
+        # return models.ExpressionDataTranscriptSchema(many=True).dump(result)
     else:
         return jsonify({
             "detail": "No transcript expression data found for the given filters.",

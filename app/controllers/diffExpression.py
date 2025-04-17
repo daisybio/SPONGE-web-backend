@@ -45,10 +45,10 @@ def get_diff_expr(dataset_ID_1: str = None, dataset_ID_2: int = None, disease_na
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
 
-    dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name_1, dataset_ID=dataset_ID_1)
+    dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name_1, dataset_ID=dataset_ID_1, disease_subtype=disease_subtype_1)
     dataset_1 = [x.dataset_ID for x in dataset_1]
 
-    dataset_2 = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name_2, dataset_ID=dataset_ID_2)
+    dataset_2 = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name_2, dataset_ID=dataset_ID_2, disease_subtype=disease_subtype_2)
     dataset_2 = [x.dataset_ID for x in dataset_2]
 
     comparisons, reverse = _comparison_query(dataset_1, dataset_2, condition_1, condition_2, "gene")
@@ -109,10 +109,10 @@ def get_diff_expr_transcript(dataset_ID_1: int = None, dataset_ID_2: int = None,
     if len(transcript) > 0:
         transcript_IDs = [i.transcript_ID for i in transcript]
 
-    dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name_1, dataset_ID=dataset_ID_1)
+    dataset_1 = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name_1, dataset_ID=dataset_ID_1, disease_subtype=disease_subtype_1)
     dataset_1 = [x.dataset_ID for x in dataset_1]
 
-    dataset_2 = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name_2, dataset_ID=dataset_ID_2)
+    dataset_2 = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name_2, dataset_ID=dataset_ID_2, disease_subtype=disease_subtype_1)
     dataset_2 = [x.dataset_ID for x in dataset_2]
 
     comparisons, reverse = _comparison_query(dataset_1, dataset_2, condition_1, condition_2, "transcript")

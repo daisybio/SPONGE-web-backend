@@ -1133,7 +1133,7 @@ class DESchema(ma.SQLAlchemyAutoSchema):
         model = DifferentialExpression
         sqla_session = db.session
     
-    gene = ma.Nested(lambda: GeneSchemaShort(only=("gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchemaShort(only=("gene_symbol", )))
 
 class DETranscriptSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

@@ -5368,28 +5368,6 @@ paths:
         required: false
         schema:
           type: integer
-      - name: disease_name_1
-        in: query
-        description: Name of the disease type for the first part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: false
-        schema:
-          type: string
-      - name: disease_name_2
-        in: query
-        description: Name of the disease type for the second part of the differential expression analysis. Fuzzy search is available (e.g. "kidney clear cell carcinoma" or just "kidney").
-        required: false
-        schema:
-          type: string
-      - name: disease_subtype_1
-        in: query
-        description: Name of the specific subtype for the first part of the differential expression analysis. Fuzzy search is available (e.g. "LMS").
-        schema:
-          type: string
-      - name: disease_subtype_2
-        in: query
-        description: Name of the specific subtype for the second part of the differential expression analysis. Fuzzy search is available (e.g. "LMS").
-        schema:
-          type: string
       - name: condition_1
         in: query
         description: Condition of the first part of the differential expression analysis (e.g. "disease" or "normal").
@@ -5424,6 +5402,18 @@ paths:
           minItems: 0
         explode: false
         style: form
+      - name: limit
+        in: query
+        description: Limit the number of results. 
+        schema:
+          type: integer
+        required: false
+      - name: offset
+        in: query
+        description: Offset for pagination.
+        schema:
+          type: integer
+        required: false
       responses:
         "200":
           description: Successfully retrieved differential expression results for the given gene, type, subtype, and condition combination.

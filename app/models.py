@@ -676,6 +676,14 @@ class GeneSchemaShort(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["ensg_number","gene_symbol"]
 
+class TranscriptSchemaShort(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Transcript
+        sqla_session = db.session
+        fields = ["enst_number", "gene"]
+    
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+
 class TargetDatabasesSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = TargetDatabases

@@ -3287,7 +3287,6 @@ paths:
       summary: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
       description: Retrieve all possible matching ensg numbers, gene-symbols, hs-numbers or mimat numbers for the search string (mainly used for autocomplete function on the SPONGE webside)
       parameters:
-      - $ref: '#/components/parameters/VersionParam'
       - name: searchString
         in: query
         description: Prefix of a gene name/ensg number or mirna identification
@@ -3306,6 +3305,46 @@ paths:
                     autocompleteSuggestion:
                       type: string
                       description: Possible autocompletion for the searchString
+  /stringSearchTranscript: 
+    get:
+      operationId: externalInformation.getAutocompleteTranscripts
+      tags:
+      - ExternalInformation
+      summary: Retrieve all possible matching enst numbers or gene-symbols for the search string (mainly used for autocomplete function on the SPONGE webside)
+      description: Retrieve all possible matching enst numbers or gene-symbols for the search string (mainly used for autocomplete function on the SPONGE webside)
+      parameters:
+      - name: searchString
+        in: query
+        description: Prefix of a transcript enst number or a gene 
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Retrieve all possible matchings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    autocompleteSuggestion:
+                      type: object
+                      description: Possible autocompletion for the searchString
+                      properties:
+                        enst_number:
+                          type: string
+                          description: Ensembl transcript ID
+                        gene:
+                          type: object
+                          description: Gene of interest.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg from Ensemble number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
   /getGeneInformation:
     get:
       operationId: externalInformation.getGeneInformation
@@ -4304,6 +4343,24 @@ paths:
         required: true
         schema:
           type: string
+      - name: modules_cutoff
+        in: query
+        description: Threshold for the modules.
+        required: false
+        schema:
+          type: number
+      - name: p_adj_threshold
+        in: query
+        description: Threshold for the p-adjusted value.
+        required: false
+        schema:
+          type: number
+      - name: m_scor_threshold
+        in: query
+        description: Threshold for the m-score.
+        required: false
+        schema:
+          type: number
       responses:
         "200":
           description: Successfully queried spongEffects model performance for given disease
@@ -4366,6 +4423,24 @@ paths:
         required: true
         schema:
           type: string
+      - name: modules_cutoff
+        in: query
+        description: Threshold for the modules.
+        required: false
+        schema:
+          type: number
+      - name: p_adj_threshold
+        in: query
+        description: Threshold for the p-adjusted value.
+        required: false
+        schema:
+          type: number
+      - name: m_scor_threshold
+        in: query
+        description: Threshold for the m-score.
+        required: false
+        schema:
+          type: number
       responses:
         "200":
           description: Successfully extracted spongEffects model performances for given disease and level
@@ -4447,6 +4522,24 @@ paths:
         required: true
         schema:
           type: string
+      - name: modules_cutoff
+        in: query
+        description: Threshold for the modules.
+        required: false
+        schema:
+          type: number
+      - name: p_adj_threshold
+        in: query
+        description: Threshold for the p-adjusted value.
+        required: false
+        schema:
+          type: number
+      - name: m_scor_threshold
+        in: query
+        description: Threshold for the m-score.
+        required: false
+        schema:
+          type: number
       responses:
         "200":
           description: Successfully calculated enrichment class distributions for given disease and level
@@ -4515,6 +4608,24 @@ paths:
         schema:
           type: integer
         required: false
+      - name: modules_cutoff
+        in: query
+        description: Threshold for the modules.
+        required: false
+        schema:
+          type: number
+      - name: p_adj_threshold
+        in: query
+        description: Threshold for the p-adjusted value.
+        required: false
+        schema:
+          type: number
+      - name: m_scor_threshold
+        in: query
+        description: Threshold for the m-score.
+        required: false
+        schema:
+          type: number
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -4689,6 +4800,24 @@ paths:
         schema:
           type: integer
         required: false
+      - name: modules_cutoff
+        in: query
+        description: Threshold for the modules.
+        required: false
+        schema:
+          type: number
+      - name: p_adj_threshold
+        in: query
+        description: Threshold for the p-adjusted value.
+        required: false
+        schema:
+          type: number
+      - name: m_scor_threshold
+        in: query
+        description: Threshold for the m-score.
+        required: false
+        schema:
+          type: number
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease

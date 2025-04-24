@@ -9,14 +9,17 @@ import app.config as config
 from app.controllers.externalInformation import get_genes, get_transcripts
 import app.models as models
 from app.config import LATEST, db, logger
-import traceback
+import traceback    
 
 
-def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", sponge_db_version: int = LATEST):
+def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", 
+                            spongEffects_params: dict = None,
+                            sponge_db_version: int = LATEST):
     """
-
+    :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param level: One of gene/transcript
+    :param spongEffects_params: Select only runs with given parameters
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: spongEffects_run_ID for given disease name and level
     """
@@ -62,32 +65,44 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     if level is not None:
         query = query.where(models.SpongEffectsRun.level == level)
 
+    # filter for spongEffects_params
+    if spongEffects_params is not None:
+        for key, value in spongEffects_params.items():
+            if value is None:
+                continue
+            if hasattr(models.SpongEffectsRun, key):
+                query = query.where(getattr(models.SpongEffectsRun, key) == value)
+            else:
+                return ValueError("Invalid parameter: {key}")
+
     # Execute the query and fetch the result
     spong_effects_run_IDs = db.session.execute(query).scalars().all()
 
     spong_effects_run_IDs = [spong_effects_run_ID.spongEffects_run_ID for spong_effects_run_ID in spong_effects_run_IDs]
-
-    if len(spong_effects_run_IDs) == 0:
-        return jsonify({
-            "detail": f"No spongEffects run found for sponge_run_ID: {sponge_run_IDs}",
-            "status": 400,
-            "title": "Bad Request",
-            "type": "about:blank"
-        }), 400
-    else:
-        return spong_effects_run_IDs
+    
+    return spong_effects_run_IDs
 
 
-def get_run_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', sponge_db_version: int = LATEST):
+def get_run_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', 
+                        m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None,
+                        sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getRunPerformance
     :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param level: One of gene/transcript
+    :param m_scor_threshold: Minimum m_scor threshold
+    :param p_adj_threshold: Minimum p_adj threshold
+    :param modules_cutoff: Minimum number of modules
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects model performances for given disease and level
     """
-    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, sponge_db_version)
+    spongEffects_params = {
+        "m_scor_threshold": m_scor_threshold,
+        "p_adj_threshold": p_adj_threshold,
+        "modules_cutoff": modules_cutoff
+    }
+    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, spongEffects_params, sponge_db_version)
     query = models.SpongEffectsRunPerformance.query \
         .join(models.SpongEffectsRun, models.SpongEffectsRun.spongEffects_run_ID == models.SpongEffectsRunPerformance.spongEffects_run_ID) \
         .filter(models.SpongEffectsRun.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
@@ -105,16 +120,26 @@ def get_run_performance(dataset_ID: int = None, disease_name: str = None, level:
         }), 200
 
 
-def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', sponge_db_version: int = LATEST):
+def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', 
+                              m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None,                    
+                              sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getRunClassPerformance
     :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param level: One of gene/transcript
+    :param m_scor_threshold: Minimum m_scor threshold
+    :param p_adj_threshold: Minimum p_adj threshold
+    :param modules_cutoff: Minimum number of modules
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects model class performances for given disease and level
     """
-    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, sponge_db_version)
+    spongEffects_params = {
+        "m_scor_threshold": m_scor_threshold,
+        "p_adj_threshold": p_adj_threshold,
+        "modules_cutoff": modules_cutoff
+    }
+    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, spongEffects_params, sponge_db_version)
     query = models.SpongEffectsRunClassPerformance.query \
         .join(models.SpongEffectsRunPerformance,
               models.SpongEffectsRunPerformance.spongEffects_run_performance_ID == models.SpongEffectsRunClassPerformance.spongEffects_run_performance_ID) \
@@ -132,13 +157,18 @@ def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, 
         }), 200
 
 
-def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', sponge_db_version: int = LATEST):
+def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', 
+                                             m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
+                                             sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/enrichmentScoreDistributions?disease_name={disease_name}
     Get spongEffects enrichment score distributions for a given disease_name
     :param dataset_ID: Dataset ID as string
     :param disease_name: Name of the disease to filter for
     :param level: one of gene/transcript
+    :param m_scor_threshold: Minimum m_scor threshold
+    :param p_adj_threshold: Minimum p_adj threshold
+    :param modules_cutoff: Minimum number of modules
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: enrichment score class distribution for all available subtypes of given disease
     """
@@ -153,8 +183,13 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
 
 
     # extract spongEffects_run_ID
-    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, sponge_db_version)
-    # extract density data for spongEffects run
+    spongEffects_params = {
+        "m_scor_threshold": m_scor_threshold,
+        "p_adj_threshold": p_adj_threshold,
+        "modules_cutoff": modules_cutoff
+    }
+    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, spongEffects_params, sponge_db_version)
+        # extract density data for spongEffects run
     query = models.SpongEffectsEnrichmentClassDensity.query \
         .filter(models.SpongEffectsEnrichmentClassDensity.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
         .all()
@@ -170,7 +205,9 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
         }), 200
 
 
-def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
+def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None, 
+                     m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
+                     sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsGeneModules
     :param spongEffects_gene_module_ID: Gene module ID as string
@@ -181,12 +218,20 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     :param gene_symbol: Gene symbol
     :param limit: Limit for the number of results
     :param offset: Offset for the number of results
+    :param m_scor_threshold: Minimum m_scor threshold
+    :param p_adj_threshold: Minimum p_adj threshold
+    :param modules_cutoff: Minimum number of modules
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects gene modules for given disease
     """
     # get spongEffects_run_ID
-    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, "gene", sponge_db_version)
-
+    spongEffects_params = {
+        "m_scor_threshold": m_scor_threshold,
+        "p_adj_threshold": p_adj_threshold,
+        "modules_cutoff": modules_cutoff
+    }
+    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'gene', spongEffects_params, sponge_db_version)
+    
     # get the gene ids
     gene_data = get_genes(gene_ID, ensg_number, gene_symbol)
     gene_IDs = [gene.gene_ID for gene in gene_data]
@@ -277,7 +322,9 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
         }), 200
 
 
-def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
+def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, limit: int = None, offset: int = None, 
+                           m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
+                           sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsTranscriptModules
     :param spongEffects_transcript_module_ID: Transcript module ID as string
@@ -290,13 +337,21 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     :param enst_number: ENST number of transcript
     :param limit: Limit for the number of results
     :param offset: Offset for the number of results
+    :param m_scor_threshold: Minimum m_scor threshold
+    :param p_adj_threshold: Minimum p_adj threshold
+    :param modules_cutoff: Minimum number of modules
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: module hub elements for a given disease and level
     """
 
     # get spongEffects_run_ID
-    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, "transcript", sponge_db_version)
-
+    spongEffects_params = {
+        "m_scor_threshold": m_scor_threshold,
+        "p_adj_threshold": p_adj_threshold,
+        "modules_cutoff": modules_cutoff
+    }
+    spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'transcript', spongEffects_params, sponge_db_version)
+    
     # get the transcripts
     transcript_data = get_transcripts(gene_ID, ensg_number, gene_symbol, transcript_ID, enst_number)
     transcript_IDs = [transcript.transcript_ID for transcript in transcript_data]
@@ -499,7 +554,7 @@ def upload_file():
 
 def get_spongeffects_runs(dataset_ID: str = None, disease_name: str = None, include_empty_spongeffects: bool = False, sponge_db_version: int = LATEST):
     """
-    API request for /spongEffects/getSpongEffectsRun
+    API request for /spongEffects/getSpongEffectsRuns
     :param dataset_ID: Dataset ID as string
     :param disease_name: Disease name as string (fuzzy search)
     :param include_empty: Include datasets/sponge runs without spongEffects runs

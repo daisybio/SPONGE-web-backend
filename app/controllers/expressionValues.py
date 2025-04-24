@@ -1,8 +1,10 @@
-from flask import jsonify
+from flask import Response, jsonify, stream_with_context
+from scipy.cluster.hierarchy import linkage, dendrogram
+import pandas as pd
 import app.models as models
 from app.config import LATEST, db
 
-def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
+def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, cluster: bool = False, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     Handles API call /exprValue/getceRNA to get gene expression values
     :param dataset_ID: dataset_ID of interest
@@ -10,9 +12,10 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
     :param ensg_number: esng number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
     :param sponge_db_version: version of the database
+    :param cluster: whether to cluster the gene expression (rows and columns)
+    :param limit: limit the number of results
     :return: all expression values for the genes of interest
     """
-
     # test if any of the two identification possibilities is given
     if ensg_number is None and gene_symbol is None:
         return jsonify({
@@ -82,9 +85,70 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
     result = models.GeneExpressionValues.query \
         .filter(*queries) \
         .all()
-
+    
     if len(result) > 0:
-        return models.geneExpressionSchema(many=True).dump(result)
+        # perform hierarchical clustering on rows and columns
+        if cluster:
+            # Convert result to a DataFrame for clustering
+            data = pd.DataFrame([{
+                "gene_ID": r.gene.gene_symbol if r.gene.gene_symbol else r.gene.ensg_number,
+                "sample_ID": r.sample_ID + "___" + (
+                    str(r.dataset.disease_name) if disease_name == "pancancer" else
+                    str(r.dataset.disease_subtype)
+                    ),
+                "expression_value": r.expr_value,
+            } for r in result])
+
+            # Pivot the data to create a matrix for clustering
+            expression_matrix = data.pivot(index="gene_ID", columns="sample_ID", values="expression_value").fillna(0)
+
+            # Perform hierarchical clustering on rows (genes) and columns (datasets)
+            try:
+                row_linkage = linkage(expression_matrix, method='ward', optimal_ordering=False)
+                col_linkage = linkage(expression_matrix.T, method='ward', optimal_ordering=False)
+            except ValueError as e:
+                # Handle the case where the data is not suitable for clustering
+                return jsonify({
+                    "detail": str(e),
+                    "status": 400,
+                    "title": "Bad Request",
+                    "type": "about:blank"
+                }), 400
+
+            # Add clustering results to the response
+            row_order = dendrogram(row_linkage, labels=expression_matrix.index, no_plot=True).get('leaves')
+            col_order = dendrogram(col_linkage, labels=expression_matrix.columns, no_plot=True).get('leaves')
+            expression_matrix = expression_matrix.iloc[row_order, col_order]
+
+            result = expression_matrix.reset_index().melt(id_vars='gene_ID', var_name='sample_ID', value_name='expression_value')
+            result = [models.GeneExpressionValues(gene={"gene_symbol": row['gene_ID'], "ensg_number": None}, 
+                                                    expr_value=row['expression_value'],
+                                                    sample_ID=row['sample_ID'], #.split('___')[0],
+                                                    # note that this is 'pancancer' if the disease is 'pancancer'
+                                                    dataset={"disease_subtype": row['sample_ID'].split('___')[1]},
+                                                    )
+                for _, row in result.iterrows()]
+            
+
+        # Limit the number of results if specified
+        if offset is not None:
+            result = result[offset:]
+        if limit is not None:
+            result = result[:limit]
+
+        def _generate():
+            yield "["
+            first = True
+            for r in result:
+                if not first:
+                    yield ","
+                yield models.geneExpressionSchema().dumps(r)
+                first = False
+            yield "]"
+            
+        return Response(stream_with_context(_generate()), content_type='application/json')
+        
+        # return models.geneExpressionSchema(many=True).dump(result)
     else:
         return jsonify({
             "detail": "No results.",
@@ -93,9 +157,12 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
             "type": "about:blank",
             "data": []
         }), 200
+        
+    
 
 
-def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, sponge_db_version: int = LATEST):
+
+def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, cluster: bool = False, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     Handles API call /exprValue/getTranscriptExpr to return transcript expressions
     :param dataset_ID: dataset_ID of interest
@@ -103,6 +170,8 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
     :param enst_number: Ensembl transcript ID
     :param ensg_number: Ensembl gene ID
     :param gene_symbol: gene symbol
+    :param limit: limit the number of results
+    :param cluster: whether to cluster the gene expression (rows and columns)
     :param sponge_db_version: version of the database
     :return: expression values for given search parameters
     """
@@ -187,7 +256,59 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
     result = db.session.execute(query).scalars().all()
 
     if len(result) > 0:
-        return models.ExpressionDataTranscriptSchema(many=True).dump(result)
+                # perform hierarchical clustering on rows and columns
+        if cluster:
+            # Convert result to a DataFrame for clustering
+            data = pd.DataFrame([{
+                "ensembl_ID": r.transcript.enst_number + "___" + (r.transcript.gene.gene_symbol if r.transcript.gene.gene_symbol else r.transcript.gene.ensg_number),
+                "sample_ID": r.sample_ID + "___" + (
+                    str(r.dataset.disease_name) if disease_name == "pancancer" else
+                    str(r.dataset.disease_subtype)
+                    ),
+                "expression_value": r.expr_value,
+                "expression_value": r.expr_value,
+            } for r in result])
+
+            # Pivot the data to create a matrix for clustering
+            expression_matrix = data.pivot(index="ensembl_ID", columns="sample_ID", values="expression_value").fillna(0)
+
+            # Perform hierarchical clustering on rows (genes) and columns (datasets)
+            row_linkage = linkage(expression_matrix, method='ward')
+            col_linkage = linkage(expression_matrix.T, method='ward')
+
+            # Add clustering results to the response
+            row_order = dendrogram(row_linkage, labels=expression_matrix.index, no_plot=True).get('leaves')
+            col_order = dendrogram(col_linkage, labels=expression_matrix.columns, no_plot=True).get('leaves')
+            expression_matrix = expression_matrix.iloc[row_order, col_order]
+
+            result = expression_matrix.reset_index().melt(id_vars='ensembl_ID', var_name='sample_ID', value_name='expression_value')
+            result = [models.ExpressionDataTranscript(
+                transcript={"enst_number": row['ensembl_ID'].split("___")[0], "gene": {"gene_symbol": row['ensembl_ID'].split('___')[1]}}, 
+                expr_value=row['expression_value'],
+                sample_ID=row['sample_ID'], #.split('___')[0],
+                # note that this is 'pancancer' if the disease is 'pancancer'
+                dataset={"disease_subtype": row['sample_ID'].split('___')[1]},
+            )for _, row in result.iterrows()]
+
+        # Limit the number of results if specified
+        if offset is not None:
+            result = result[offset:]
+        if limit is not None:
+            result = result[:limit]
+
+        def _generate():
+            yield "["
+            first = True
+            for r in result:
+                if not first:
+                    yield ","
+                yield models.ExpressionDataTranscriptSchema().dumps(r)
+                first = False
+            yield "]"
+            
+        return Response(stream_with_context(_generate()), content_type='application/json')
+    
+        # return models.ExpressionDataTranscriptSchema(many=True).dump(result)
     else:
         return jsonify({
             "detail": "No transcript expression data found for the given filters.",

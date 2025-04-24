@@ -633,6 +633,13 @@ class PsiVec(db.Model):
     psi_value = db.Column(db.Float)
 
 
+class TissueSourceSite(db.Model):
+    __tablename__ = 'tissue_source_site'
+    tissue_source_site_ID = db.Column(db.Integer, primary_key=True)
+    tissue_source_site_code = db.Column(db.String(32))
+    disease_name = db.Column(db.String(255))
+
+
 
 ####################################
 ############# SCHEMAS ##############
@@ -668,6 +675,14 @@ class GeneSchemaShort(ma.SQLAlchemyAutoSchema):
         model = Gene
         sqla_session = db.session
         fields = ["ensg_number","gene_symbol"]
+
+class TranscriptSchemaShort(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Transcript
+        sqla_session = db.session
+        fields = ["enst_number", "gene"]
+    
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 class TargetDatabasesSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -797,7 +812,7 @@ class geneExpressionSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["dataset", "expr_value", "gene", "sample_ID"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name", "disease_subtype")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 
@@ -1025,8 +1040,8 @@ class ExpressionDataTranscriptSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["dataset", "transcript", "expr_value", "sample_ID"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name", "disease_subtype")))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 
@@ -1105,7 +1120,7 @@ class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):
                   'mean_gini_decrease',
                   'mean_accuracy_decrease']
         
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
 
 
 class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
@@ -1117,7 +1132,8 @@ class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
                   'spongEffects_transcript_module_ID',
                    'transcript']
         
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 
 class DESchema(ma.SQLAlchemyAutoSchema):
@@ -1125,7 +1141,7 @@ class DESchema(ma.SQLAlchemyAutoSchema):
         model = DifferentialExpression
         sqla_session = db.session
     
-    gene = ma.Nested(lambda: GeneSchemaShort(only=("gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchemaShort(only=("gene_symbol", )))
 
 class DETranscriptSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

@@ -3,6 +3,7 @@ from sqlalchemy import and_
 import app.models as models
 from app.config import LATEST, db
 from typing import List
+import re
 
 
 def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
@@ -174,3 +175,60 @@ def read_spongeRunInformation(dataset_ID: int = None, disease_name: str = None, 
             "type": "about:blank",
             "data": []
         }), 200
+    
+def _extract_tss_code(sample_id):
+    """
+    Extracts the Tissue Source Site (TSS) code from a TCGA sample ID.
+
+    Args:
+        sample_id (str): The TCGA sample ID.
+
+    Returns:
+        str: The TSS code (2 characters) or None if not found.
+    """
+    match = re.match(r"TCGA-([A-Z0-9]{2})-[A-Z0-9]{4}-[A-Z0-9]{2}.*", sample_id)
+    return match.group(1) if match else None
+
+
+def get_disease_from_sample(sample_ID: str = None):
+    """
+    Get the disease name from a sample ID. This handles the api route /sponge/get_disease_from_sample?sample_ID={sample_ID}&sponge_db_version={sponge_db_version} 
+    Args:
+        sample_ID (str): The TCGA sample ID.
+        sponge_db_version (int): The version of the database.
+    Returns:
+        str: The disease name or None if not found.
+    """
+    # Extract the TSS code from the sample ID
+    
+    query = db.select(models.TissueSourceSite)
+    if sample_ID: 
+        tss_code = _extract_tss_code(sample_ID)
+
+        if tss_code is None:
+            return jsonify({
+                "detail": 'No valid sample ID.',
+                "status": 200,
+                "title": "No Content",
+                "type": "about:blank",
+                "data": []
+            }), 200
+        
+        query = query.where(models.TissueSourceSite.tissue_source_site_code == tss_code)
+
+    data = db.session.execute(query).scalars().all()
+
+    if len(data) == 0:
+        return jsonify({
+            "detail": 'Issue with sample ID: {sample_ID}'.format(sample_ID=sample_ID),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
+    if sample_ID: 
+        return {sample_ID: data[0].disease_name}
+    else:
+        return {d.tissue_source_site_code: d.disease_name for d in data}   
+

@@ -9,7 +9,7 @@ from app.config import LATEST, db
 
 def getAutocomplete(searchString):
     """
-    Funtion to retrieve the autocomplete possibilities for the webside
+    Funtion to retrieve the autocomplete possibilities for the webside (API route /stringSearch)
     :param searchString: String (ensg_number, gene_symbol, hs_number or mimat_number)
     :return: list of all genes/mirnas having search string as a prefic
     """
@@ -74,6 +74,43 @@ def getAutocomplete(searchString):
                 "type": "about:blank",
                 "data": []
             }), 200
+        
+def getAutocompleteTranscripts(searchString):
+        
+    """
+    Funtion to retrieve the autocomplete possibilities for the webside (API route /stringSearchTranscript)
+    :param searchString: String (ensg_number, gene_symbol, hs_number or mimat_number)
+    :return: list of all genes/mirnas having search string as a prefic
+    """
+    # Note: this function does not check for the database version because this would take too long
+
+    if searchString.startswith("ENST") or searchString.startswith("enst"):
+        query = db.select(models.Transcript) \
+                .where(models.Transcript.enst_number.ilike(searchString + "%"))
+        data = db.session.execute(query).scalars().all()
+
+    elif searchString.startswith("ENSG") or searchString.startswith("ensg"):
+        query = db.select(models.Transcript) \
+                .join(models.Gene, models.Transcript.gene_ID == models.Gene.gene_ID) \
+                .where(models.Gene.ensg_number.ilike(searchString + "%"))
+        data = db.session.execute(query).scalars().all()
+
+    else: 
+        query = db.select(models.Transcript) \
+                .join(models.Gene, models.Transcript.gene_ID == models.Gene.gene_ID) \
+                .where(models.Gene.gene_symbol.ilike(searchString + "%"))
+        data = db.session.execute(query).scalars().all()    
+
+    if len(data) > 0:
+        return models.TranscriptSchemaShort(many=True).dump(data)
+    else:
+        return jsonify({
+            "detail": "No gene symbol found for the given input",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 def getGeneInformation(ensg_number=None, gene_symbol=None):

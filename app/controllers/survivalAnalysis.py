@@ -1,9 +1,9 @@
 from flask import jsonify
 import app.models as models
-from app.config import LATEST
+from app.config import LATEST, db
 from app.controllers.dataset import _dataset_query
 
-def get_patient_information(dataset_ID: int = None, disease_name=None, disease_subtype=None, sample_ID=None, sponge_db_version: int = LATEST):
+def get_patient_information(dataset_ID: int = None, disease_name=None, disease_subtype=None, sample_ID: list=None):
     """
     API call /survivalAnalysis/sampleInformation
     to get all available clinical information for patients/samples
@@ -15,41 +15,35 @@ def get_patient_information(dataset_ID: int = None, disease_name=None, disease_s
     :return: all patient information for the samples of interest
       """
 
-    #patient = []
-    ## if sample_ID is given for specify patient, get the intern patient_ID(primary_key)
-    #if (sample_ID is not None):
-    #    patient = models.PatientInformation.query \
-    #        .filter(models.PatientInformation.sample_ID.in_(sample_ID)) \
-    #        .all()
+    query = db.select(models.PatientInformation)
 
-    #if (len(patient) > 0):
-    #    sample_IDs = [i.sample_ID for i in patient]
-    #else:
-    #    abort(404, "No samples found for given IDs)")
-
-    # filter for database version 
-    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
-
-    # save all needed queries to get correct results
-    queries = []
-    if len(dataset) > 0:
-        dataset_IDs = [i.dataset_ID for i in dataset]
-        queries = [models.PatientInformation.dataset_ID.in_(dataset_IDs)]
-    else:
-        return jsonify({
-            "detail": "No dataset with given disease_name found",
-            "status": 400,
-            "title": "Bad Request",
-            "type": "about:blank"
-        }), 400
-
+    if dataset_ID is not None:
+        dataset = _dataset_query(sponge_db_version='any', dataset_ID=dataset_ID)
+        if type(dataset) == list and len(dataset) > 0:
+            dataset_IDs = [i.dataset_ID for i in dataset]
+            query = query.where(models.PatientInformation.dataset_ID.in_(dataset_IDs))
+        else:
+            return jsonify({
+                "detail": "No dataset with given disease_name found",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
+        
+    if disease_name is not None or disease_subtype is not None:
+        disease = db.select(models.Disease)
+        if disease_name is not None:
+            disease = disease.where(models.Disease.disease_name == disease_name)
+        if disease_subtype is not None:
+            disease = disease.where(models.Disease.disease_subtype == disease_subtype)
+        diseases = db.session.execute(disease).scalars().all()
+        disease_IDs = [i.disease_ID for i in diseases]
+        query = query.where(models.PatientInformation.disease_ID.in_(disease_IDs))
 
     if (sample_ID is not None):
-        queries.append(models.PatientInformation.sample_ID.in_([sample_ID]))
+        query = query.where(models.PatientInformation.sample_ID.in_(sample_ID))
 
-    result = models.PatientInformation.query \
-        .filter(*queries) \
-        .all()
+    result = db.session.execute(query).scalars().all()
 
     if len(result) > 0:
         return models.PatientInformationSchema(many=True).dump(result)
@@ -63,7 +57,7 @@ def get_patient_information(dataset_ID: int = None, disease_name=None, disease_s
         }), 200
 
 
-def get_survival_rate(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, ensg_number = None, gene_symbol = None, sample_ID = None, sponge_db_version: int = LATEST):
+def get_survival_rate(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, ensg_number = None, gene_symbol = None, sample_ID = None):
     """
     API call /survivalAnalysis/getRates
     Get all raw data for kaplan meier plots
@@ -138,7 +132,7 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, disease_
             }), 400
 
     # filter for database version
-    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
+    dataset = _dataset_query(sponge_db_version=1, disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
     
     if len(dataset) > 0:
         dataset_IDs = [i.dataset_ID for i in dataset]
@@ -167,7 +161,7 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, disease_
         }), 200
 
 
-def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, ensg_number = None, gene_symbol = None, sponge_db_version: int = LATEST):
+def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, ensg_number = None, gene_symbol = None):
     """
     API call /survivalAnalysis/getPValues
     Retrieve pValues from log rank test based on raw survival analysis data
@@ -220,7 +214,7 @@ def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, diseas
         }), 400
 
     # filter for database version
-    dataset = _dataset_query(sponge_db_version=sponge_db_version, disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
+    dataset = _dataset_query(disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
 
     if len(dataset) > 0 and getattr(dataset[0], 'dataset_ID', None) is not None:
         dataset_IDs = [i.dataset_ID for i in dataset]

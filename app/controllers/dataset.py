@@ -192,7 +192,7 @@ def _extract_tss_code(sample_id):
 
 def get_disease_from_sample(sample_ID: str = None):
     """
-    Get the disease name from a sample ID. This handles the api route /sponge/get_disease_from_sample?sample_ID={sample_ID}&sponge_db_version={sponge_db_version} 
+    Get the disease name from a sample ID. This handles the api route /sponge/get_disease_from_sample?sample_ID={sample_ID}
     Args:
         sample_ID (str): The TCGA sample ID.
         sponge_db_version (int): The version of the database.

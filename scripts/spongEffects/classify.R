@@ -4,7 +4,7 @@ packages <- c("SPONGE", "doParallel", "foreach", "dplyr", "randomForest", "argpa
 load_packages <- sapply(packages, function(p) {
   suppressWarnings(suppressPackageStartupMessages(library(p, character.only = T)))
 })
-
+sessionInfo()
 set.seed(12345)
 
 args.effects = commandArgs(trailingOnly = T)
@@ -159,6 +159,8 @@ test.modules.uploaded <-  enrichment_modules(Expr.matrix = test_expr,
                                              min.expr = argv_predict$min_expr,
                                              method = argv_predict$method,
                                              cores = argv_predict$enrichment_cores)
+save(test.modules.uploaded, file = "test_modules.RData")    
+write.table(test.modules.uploaded, file = "test_modules.tsv", sep = "\t", quote = F)                                     
 message(Sys.time(), " - finished enriching type modules (test)")
 #--------------------------PREDICT CANCER TYPE----------------------------------
 #---------------------------LOAD MODEL------------------------------------------
@@ -214,7 +216,7 @@ meta <- data.frame(runtime=runTime, level=level, n_samples=nrow(predictions),
                    type_predict=dominant_type, subtype_predict=dominant_subtype, script_version="0.1.1")
 
 # return as JSON for API processing
-responseObj <- list(meta=meta, data=predictions)
+responseObj <- list(meta=meta, data=predictions, scores=test.modules.uploaded)
 message(Sys.time(), " - FINISHED EXECUTION")
 message("Writing output file to ", argv_predict$output)
 write_json(responseObj, path = argv_predict$output)

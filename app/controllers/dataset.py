@@ -38,7 +38,7 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
 
     if len(data) == 0:
         return jsonify({
-            "detail": "No transcript(s) found for the given enst_number(s)!",
+            "detail": "No dataset found!",
             "status": 200,
             "title": "No Content",
             "type": "about:blank",

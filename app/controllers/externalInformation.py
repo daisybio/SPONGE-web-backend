@@ -1,10 +1,12 @@
 from flask import jsonify
+from app.controllers import dataset
 import app.models as models
 from flask import Response
 from sqlalchemy.sql import text
 from sqlalchemy import case, func, select, join
 from sqlalchemy.orm import aliased
-from app.config import LATEST, db 
+from app.config import LATEST, db
+from app.controllers.dataset import _dataset_query
 
 
 def getAutocomplete(searchString):
@@ -202,11 +204,12 @@ def getTranscriptInformation(enst_number):
         }), 200
 
 
-def getOverallCount(sponge_db_version: int = LATEST):
+def getOverallCount(sponge_db_version: int = LATEST, level: str = "gene"):
     """
     Function return current statistic about database - amount of shared miRNA, significant and insignificant
-     interactions per dataset
+     interactions per dataset. Handles the route /getOverallCounts/?sponge_db_version={sponge_db_version}
     :param sponge_db_version: Version of the database
+    :param level: Level of the statistic to be returned, either "gene" or "transcript"
     :return: Current statistic about database
     """
 
@@ -221,6 +224,10 @@ def getOverallCount(sponge_db_version: int = LATEST):
     #         "(SELECT dataset.disease_name, sponge_run.sponge_run_ID from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID) "
     #         "WHERE dataset.version = 2 AND sponge_run.version = 2 as t3 "
     #         "using(sponge_run_ID);")).fetchall()
+
+    # datasets
+    dataset_query = _dataset_query(sponge_db_version=sponge_db_version)
+    dataset_ids = [dataset.dataset_ID for dataset in dataset_query]
 
     # Aliases for tables
     t1 = (
@@ -245,6 +252,7 @@ def getOverallCount(sponge_db_version: int = LATEST):
     t3 = (
         select(
             models.Dataset.disease_name,
+            models.Dataset.disease_subtype,
             models.SpongeRun.sponge_run_ID
         )
         .select_from(
@@ -252,7 +260,8 @@ def getOverallCount(sponge_db_version: int = LATEST):
         )
         .where(
             models.Dataset.sponge_db_version == sponge_db_version,
-            models.SpongeRun.sponge_db_version == sponge_db_version
+            models.SpongeRun.sponge_db_version == sponge_db_version,
+            models.Dataset.dataset_ID.in_(dataset_ids),
         )
         .subquery("t3")
     )
@@ -264,7 +273,8 @@ def getOverallCount(sponge_db_version: int = LATEST):
             t1.c.count_interactions_sign,
             t1.c.sponge_run_ID,
             t2.c.count_shared_mirnas_gene,
-            t3.c.disease_name
+            t3.c.disease_name,
+            t3.c.disease_subtype
         )
         .select_from(
             t1.outerjoin(t2, t1.c.sponge_run_ID == t2.c.sponge_run_ID)

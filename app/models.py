@@ -915,6 +915,7 @@ class OverallCountSchema(ma.SQLAlchemyAutoSchema):
     count_interactions_sign = fields.Integer()
     sponge_run_ID = fields.Integer()
     disease_name = fields.String()
+    disease_subtype = fields.String()
     count_shared_miRNAs = fields.Integer()
 
 class GeneOntologySchema(ma.SQLAlchemyAutoSchema):

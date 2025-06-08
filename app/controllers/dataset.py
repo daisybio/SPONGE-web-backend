@@ -31,6 +31,9 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
                 "title": "Bad Request",
                 "type": "about:blank"
             }), 400
+        
+    # hide all 'parkinsons disease' datasets 
+    query = query.where(models.Dataset.disease_name != 'parkinsons disease')
 
     if not sponge_db_version == 'any':
         query = query.where(models.Dataset.sponge_db_version == sponge_db_version)

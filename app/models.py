@@ -11,6 +11,7 @@ class Disease(db.Model):
     disease_subtype = db.Column(db.String(32))
     versions = db.Column(db.String(255))
 
+
 class Dataset(db.Model):
     __tablename__ = 'dataset'
     dataset_ID = db.Column(db.Integer, primary_key=True)
@@ -22,6 +23,7 @@ class Dataset(db.Model):
     sponge_db_version = db.Column(db.Integer)
     disease_ID = db.Column(db.Integer, db.ForeignKey('disease.disease_ID'), nullable=False)
     disease = relationship("Disease", foreign_keys=[disease_ID])
+    sample_count = db.Column(db.Integer)
 
     
 class SpongeRun(db.Model):

@@ -336,6 +336,9 @@ paths:
                   sponge_db_version:
                     type: integer
                     description: SPONGEdb version used
+                  sample_count: 
+                    type: integer
+                    description: Number of samples in the dataset.
   /get_disease_from_sample:
     get:
       operationId: dataset.get_disease_from_sample

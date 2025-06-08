@@ -225,29 +225,52 @@ def getOverallCount(sponge_db_version: int = LATEST, level: str = "gene"):
     #         "WHERE dataset.version = 2 AND sponge_run.version = 2 as t3 "
     #         "using(sponge_run_ID);")).fetchall()
 
+    # Note: the info in the gene_counts table is e.g. 
+    # count_interactions_sign: SELECT * FROM interactions_genegene WHERE sponge_run_ID = 57 and p_value < 0.01;
+
     # datasets
     dataset_query = _dataset_query(sponge_db_version=sponge_db_version)
     dataset_ids = [dataset.dataset_ID for dataset in dataset_query]
 
     # Aliases for tables
-    t1 = (
-        select(
-            (func.sum(models.GeneCount.count_all) / 2).label("count_interactions"),
-            (func.sum(models.GeneCount.count_sign) / 2).label("count_interactions_sign"),
-            models.GeneCount.sponge_run_ID
+    if level == "gene":
+        t1 = (
+            select(
+                (func.sum(models.GeneCount.count_all) / 2).label("count_interactions"),
+                (func.sum(models.GeneCount.count_sign) / 2).label("count_interactions_sign"),
+                models.GeneCount.sponge_run_ID
+            )
+            .group_by(models.GeneCount.sponge_run_ID)
+            .subquery("t1")
         )
-        .group_by(models.GeneCount.sponge_run_ID)
-        .subquery("t1")
-    )
 
-    t2 = (
-        select(
-            (func.sum(models.OccurencesMiRNA.occurences)).label("count_shared_mirnas_gene"),
-            models.OccurencesMiRNA.sponge_run_ID
+        t2 = (
+            select(
+                (func.sum(models.OccurencesMiRNA.occurences)).label("count_shared_mirnas"),
+                models.OccurencesMiRNA.sponge_run_ID
+            )
+            .group_by(models.OccurencesMiRNA.sponge_run_ID)
+            .subquery("t2")
         )
-        .group_by(models.OccurencesMiRNA.sponge_run_ID)
-        .subquery("t2")
-    )
+    elif level == "transcript":
+        t1 = (
+            select(
+                (func.sum(models.TranscriptCounts.count_all) / 2).label("count_interactions"),
+                (func.sum(models.TranscriptCounts.count_sign) / 2).label("count_interactions_sign"),
+                models.TranscriptCounts.sponge_run_ID
+            )
+            .group_by(models.TranscriptCounts.sponge_run_ID)
+            .subquery("t1")
+        )
+
+        t2 = (
+            select(
+                (func.sum(models.OccurencesMiRNATranscript.occurences)).label("count_shared_mirnas"),
+                models.OccurencesMiRNATranscript.sponge_run_ID
+            )
+            .group_by(models.OccurencesMiRNATranscript.sponge_run_ID)
+            .subquery("t2")
+        )
 
     t3 = (
         select(
@@ -272,7 +295,7 @@ def getOverallCount(sponge_db_version: int = LATEST, level: str = "gene"):
             t1.c.count_interactions,
             t1.c.count_interactions_sign,
             t1.c.sponge_run_ID,
-            t2.c.count_shared_mirnas_gene,
+            t2.c.count_shared_mirnas,
             t3.c.disease_name,
             t3.c.disease_subtype
         )

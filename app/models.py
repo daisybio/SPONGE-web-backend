@@ -11,6 +11,7 @@ class Disease(db.Model):
     disease_subtype = db.Column(db.String(32))
     versions = db.Column(db.String(255))
 
+
 class Dataset(db.Model):
     __tablename__ = 'dataset'
     dataset_ID = db.Column(db.Integer, primary_key=True)
@@ -22,6 +23,7 @@ class Dataset(db.Model):
     sponge_db_version = db.Column(db.Integer)
     disease_ID = db.Column(db.Integer, db.ForeignKey('disease.disease_ID'), nullable=False)
     disease = relationship("Disease", foreign_keys=[disease_ID])
+    sample_count = db.Column(db.Integer)
 
     
 class SpongeRun(db.Model):
@@ -206,6 +208,8 @@ class PatientInformation(db.Model):
     sample_ID = db.Column(db.String(32))
     disease_status = db.Column(db.Integer)
     survival_time = db.Column(db.Integer)
+    disease_ID = db.Column(db.Integer, db.ForeignKey('disease.disease_ID'), nullable=False)
+    disease = relationship("Disease", foreign_keys=[disease_ID])
 
 class SurvivalRate(db.Model):
     __tablename__ = "survival_rate"
@@ -810,9 +814,9 @@ class geneExpressionSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = GeneExpressionValues
         sqla_session = db.session
-        fields = ["dataset", "expr_value", "gene", "sample_ID"]
+        fields = ["expr_value", "gene", "sample_ID"]
 
-    dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name", "disease_subtype")))
+    # dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name", "disease_subtype")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
 
 
@@ -850,9 +854,10 @@ class PatientInformationSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = PatientInformation
         sqla_session = db.session
-        fields = ["dataset", "sample_ID", "disease_status", "survival_time"]
+        fields = ["dataset", "sample_ID", "disease_status", "survival_time", "disease"]
         
     dataset = ma.Nested(lambda: DatasetSchema(only=("dataset_ID", "disease_name")))
+    disease = ma.Nested(lambda: DiseaseSchema(only=("disease_ID", "disease_name", "disease_subtype")))
 
 class SurvivalRateSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

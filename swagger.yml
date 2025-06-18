@@ -336,6 +336,9 @@ paths:
                   sponge_db_version:
                     type: integer
                     description: SPONGEdb version used
+                  sample_count: 
+                    type: integer
+                    description: Number of samples in the dataset.
   /get_disease_from_sample:
     get:
       operationId: dataset.get_disease_from_sample
@@ -344,7 +347,6 @@ paths:
       summary: Get the disease name from a sample ID
       description: Get the disease name sample ID. The Tissue Source Site Code of the TCGA sample ID is used to identify the disease of the specific sample. 
       parameters:
-        - $ref: '#/components/parameters/VersionParam'
         - name: sample_ID
           in: query
           description: Sample ID of the cancer type/dataset. If not specified, all diseases will be returned.
@@ -3763,6 +3765,9 @@ paths:
                     survival_time:
                       type: integer
                       description: Time of survival in days.
+                    disease_ID: 
+                      type: integer
+                      description: Internal database ID of the disease of this patient. 
   /survivalAnalysis/getRates:
     get:
       operationId: survivalAnalysis.get_survival_rate

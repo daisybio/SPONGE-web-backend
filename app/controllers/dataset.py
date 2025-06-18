@@ -31,6 +31,9 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
                 "title": "Bad Request",
                 "type": "about:blank"
             }), 400
+        
+    # hide all 'parkinsons disease' datasets 
+    query = query.where(models.Dataset.disease_name != 'parkinsons disease')
 
     if not sponge_db_version == 'any':
         query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
@@ -38,7 +41,7 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
 
     if len(data) == 0:
         return jsonify({
-            "detail": "No transcript(s) found for the given enst_number(s)!",
+            "detail": "No dataset found!",
             "status": 200,
             "title": "No Content",
             "type": "about:blank",
@@ -192,7 +195,7 @@ def _extract_tss_code(sample_id):
 
 def get_disease_from_sample(sample_ID: str = None):
     """
-    Get the disease name from a sample ID. This handles the api route /sponge/get_disease_from_sample?sample_ID={sample_ID}&sponge_db_version={sponge_db_version} 
+    Get the disease name from a sample ID. This handles the api route /sponge/get_disease_from_sample?sample_ID={sample_ID}
     Args:
         sample_ID (str): The TCGA sample ID.
         sponge_db_version (int): The version of the database.

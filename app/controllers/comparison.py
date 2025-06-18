@@ -57,23 +57,8 @@ def _comparison_query(dataset_1, dataset_2, condition_1=None, condition_2=None, 
         comparisons = comparison.all()    
     
     # error if no comparison found
-    if len(comparisons) == 0:
-        return jsonify({
-            "detail": "No comparison found for given inputs",
-            "status": 200,
-            "title": "No Content",
-            "type": "about:blank",
-            "data": []
-        }), 200
-
-    if len(comparisons) > 1:
-        return jsonify({
-            "detail": "Multiple comparisons found for given inputs",
-            "status": 200,
-            "title": "Wrong Content",
-            "type": "about:blank",
-            "data": []
-        }), 200
+    # if len(comparisons) != 1:
+    #     raise ValueError("No or more than one comparison found for given inputs")
 
     return comparisons, reverse
     

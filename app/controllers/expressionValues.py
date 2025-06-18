@@ -1,14 +1,21 @@
+from random import seed
 from flask import Response, jsonify, stream_with_context
 from scipy.cluster.hierarchy import linkage, dendrogram
 import pandas as pd
+from app.controllers.dataset import _dataset_query
 import app.models as models
 from app.config import LATEST, db
+import numpy as np
+from scipy.cluster.vq import kmeans
 
-def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, cluster: bool = False, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
-    """
+np.random.seed(0)
+
+def get_gene_expr(dataset_ID: int = None, disease_name=None, disease_subtype: str = None, ensg_number=None, gene_symbol=None, cluster: bool = False, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
+    """˜
     Handles API call /exprValue/getceRNA to get gene expression values
     :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
+    :param disease_subtype: disease_subtype of interest
     :param ensg_number: esng number of the gene of interest
     :param gene_symbol: gene symbol of the gene of interest
     :param sponge_db_version: version of the database
@@ -57,19 +64,8 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
     # save all needed queries to get correct results
     queries = [models.GeneExpressionValues.gene_ID.in_(gene_IDs)]
 
-    # filter datasets by database version 
-    dataset_query = models.Dataset.query.filter(models.Dataset.sponge_db_version == sponge_db_version)
-
-    # if specific disease_name is given:
-    if disease_name is not None:
-        dataset_query = dataset_query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
-        
-    if dataset_ID is not None:
-        dataset_query = dataset_query \
-            .filter(models.Dataset.dataset_ID == dataset_ID)
-    
-    dataset = dataset_query.all()
+    # filter datasets
+    dataset = _dataset_query(dataset_ID=dataset_ID, disease_name=disease_name, disease_subtype=disease_subtype, sponge_db_version=sponge_db_version)
 
     if len(dataset) > 0:
         dataset_IDs = [i.dataset_ID for i in dataset]
@@ -92,10 +88,11 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
             # Convert result to a DataFrame for clustering
             data = pd.DataFrame([{
                 "gene_ID": r.gene.gene_symbol if r.gene.gene_symbol else r.gene.ensg_number,
-                "sample_ID": r.sample_ID + "___" + (
-                    str(r.dataset.disease_name) if disease_name == "pancancer" else
-                    str(r.dataset.disease_subtype)
-                    ),
+                "sample_ID": r.sample_ID ,
+                    # + "___" + (
+                    # str(r.dataset.disease_name) if disease_name == "pancancer" else
+                    # str(r.dataset.disease_subtype)
+                    # ),
                 "expression_value": r.expr_value,
             } for r in result])
 
@@ -119,13 +116,31 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, ensg_number=None, g
             row_order = dendrogram(row_linkage, labels=expression_matrix.index, no_plot=True).get('leaves')
             col_order = dendrogram(col_linkage, labels=expression_matrix.columns, no_plot=True).get('leaves')
             expression_matrix = expression_matrix.iloc[row_order, col_order]
-
             result = expression_matrix.reset_index().melt(id_vars='gene_ID', var_name='sample_ID', value_name='expression_value')
+            
+            # add subtype 
+            # patient_ids = result['sample_ID'].str.extract(r'([^-]+-[^-]+-[^-]+)').unique()
+            # patient_subtype_query = db.select(models.PatientInformation).filter(models.PatientInformation.sample_ID.in_(patient_ids))
+            # patient_subtype = db.session.execute(patient_subtype_query).scalars().all()
+            # result = pd.merge(result, pd.DataFrame([{
+            #     "sample_ID": i.sample_ID,
+            #     "disease_subtype": i.disease_subtype
+            # } for i in patient_subtype]), on="sample_ID", how="left")
+            # # get disase subtype from disease_ID
+            # disease_query = db.select(models.Disease).filter(models.Disease.disease_ID.in_(result['disease_subtype']))
+            # disease_subtype = db.session.execute(disease_query).scalars().all()
+            # result = pd.merge(result, pd.DataFrame([{
+            #     "disease_subtype": i.disease_ID,
+            #     "disease_name": i.disease_name
+            # } for i in disease_subtype]), on="disease_subtype", how="left")
+
+            # jsonify
             result = [models.GeneExpressionValues(gene={"gene_symbol": row['gene_ID'], "ensg_number": None}, 
                                                     expr_value=row['expression_value'],
                                                     sample_ID=row['sample_ID'], #.split('___')[0],
                                                     # note that this is 'pancancer' if the disease is 'pancancer'
-                                                    dataset={"disease_subtype": row['sample_ID'].split('___')[1]},
+                                                    # dataset={"disease_subtype": row['sample_ID'].split('___')[1]},
+
                                                     )
                 for _, row in result.iterrows()]
             

@@ -1,4 +1,0 @@
-id,sample1,sample2,sample3,sample4,sample5
-ENSG00000000233,0,2,6,3,4
-ENSG00000000412,4,3,7,9,4
-ENSG00000000442,7,8,6,4,3

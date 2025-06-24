@@ -174,10 +174,15 @@ message(Sys.time(), " - Loading pancan model")
 trained.model <- models$expression_across_types$model
 # filter for common modules in test and train
 common_modules <- intersect(trained.model$Model$coefnames, rownames(test.modules.uploaded))
+message(Sys.time(), " - modules in train: ", length(trained.model$Model$coefnames), " and in test: ", length(rownames(test.modules.uploaded)))
+message(Sys.time(), " - found ", length(common_modules), " common modules")
+# message(Sys.time(), " - train modules: ", paste(trained.model$Model$coefnames, collapse = ", "))
+# message(Sys.time(), " - test modules: ", paste(rownames(test.modules.uploaded), collapse = ", "))
 test.modules.uploaded.pancan <- test.modules.uploaded[common_modules, ]
 
 # fill missing modules if needed
 missing_modules <- setdiff(trained.model$Model$coefnames, rownames(test.modules.uploaded))
+message(Sys.time(), " - found ", length(missing_modules), " missing modules")
 if (length(missing_modules) > 0) {
   median_value <- median(apply(test.modules.uploaded, 2, median))
   frac <- 100

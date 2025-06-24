@@ -915,6 +915,7 @@ class OverallCountSchema(ma.SQLAlchemyAutoSchema):
     count_interactions_sign = fields.Integer()
     sponge_run_ID = fields.Integer()
     disease_name = fields.String()
+    disease_subtype = fields.String()
     count_shared_miRNAs = fields.Integer()
 
 class GeneOntologySchema(ma.SQLAlchemyAutoSchema):
@@ -1033,9 +1034,9 @@ class TranscriptCountSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = TranscriptCounts
         sqla_session = db.session
-        fields = ["spongEffects_run", "transcript", "count_all", "count_sign"]
+        fields = ["sponge_run", "transcript", "count_all", "count_sign"]
 
-    spongeEffects_run = ma.Nested(lambda: SpongEffectsRun(only=("spongEffects_run_ID", "sponge_run_ID")))
+    sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
     transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
 
 

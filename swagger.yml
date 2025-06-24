@@ -3477,6 +3477,15 @@ paths:
       description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: level
+        in: query
+        description: Level of the statistic that should be returned. If not provided, all levels will be returned.
+        required: false
+        schema:
+          type: string
+          enum:
+          - gene
+          - transcript
       responses:
         "200":
           description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
@@ -3501,6 +3510,9 @@ paths:
                     disease_name:
                       type: string
                       description: Name of the cancer type/dataset.
+                    disease_subtype:
+                      type: string
+                      description: Name of the disease subtype.
   /getGeneOntology:
     get:
       operationId: externalInformation.getGeneOntology

@@ -14,7 +14,7 @@ contourpy==1.3.0
 cycler==0.12.1
 exceptiongroup==1.2.2
 Flask==3.0.3
-Flask-Cors==4.0.0
+Flask-Cors==4.0.2
 flask-marshmallow==1.2.1
 Flask-SQLAlchemy==3.1.1
 fonttools==4.54.1

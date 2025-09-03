@@ -8,10 +8,11 @@ from flask import request, jsonify
 import app.config as config
 from app.controllers.externalInformation import get_genes, get_transcripts
 import app.models as models
-from app.config import LATEST, db, logger
+from app.config import LATEST, db, logger, cache
 import traceback    
 
 
+@cache.cached(query_string=True)
 def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", 
                             spongEffects_params: dict = None,
                             sponge_db_version: int = LATEST):
@@ -83,6 +84,7 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     return spong_effects_run_IDs
 
 
+@cache.cached(query_string=True)
 def get_run_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', 
                         m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None,
                         sponge_db_version: int = LATEST):
@@ -120,6 +122,7 @@ def get_run_performance(dataset_ID: int = None, disease_name: str = None, level:
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', 
                               m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None,                    
                               sponge_db_version: int = LATEST):
@@ -157,6 +160,7 @@ def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, 
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_name: str = None, level: str = 'gene', 
                                              m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
                                              sponge_db_version: int = LATEST):
@@ -205,6 +209,7 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None, 
                      m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
                      sponge_db_version: int = LATEST):
@@ -258,6 +263,7 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
         return []
 
 
+@cache.cached(query_string=True)
 def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsGeneModuleMembers
@@ -322,6 +328,7 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, limit: int = None, offset: int = None, 
                            m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
                            sponge_db_version: int = LATEST):
@@ -377,6 +384,7 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
         return []
 
 
+@cache.cached(query_string=True)
 def get_transcript_module_members(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: int = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: str = None, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getTranscriptModuleMembers
@@ -552,6 +560,7 @@ def upload_file():
                                     log=apply_log_scale, subtype_level=predict_subtypes))
 
 
+@cache.cached(query_string=True)
 def get_spongeffects_runs(dataset_ID: str = None, disease_name: str = None, include_empty_spongeffects: bool = False, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsRuns

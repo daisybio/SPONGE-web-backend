@@ -3,8 +3,10 @@ from sqlalchemy import or_
 from app.controllers.dataset import _dataset_query
 import app.models as models
 from flask import Response
-from app.config import db, LATEST
+from app.config import db, LATEST, cache
 
+
+@cache.cached(query_string=True)
 def get_transcript_events(enst_number):
     """
     :param enst_number: Enst number of the transcript of interest
@@ -51,6 +53,8 @@ def get_transcript_events(enst_number):
             "data": []
         }), 200
 
+
+@cache.cached(query_string=True)
 def get_event_positions(enst_number, event_type):
     """
     :param enst_number: Enst number of the transcript of interst
@@ -104,6 +108,7 @@ def get_event_positions(enst_number, event_type):
         }), 400
 
 
+@cache.cached(query_string=True)
 def get_exons_for_position(start_pos: int, end_pos: int):
     """
     This function response for the request: /alternativeSplicing/getExonsForPosition/
@@ -132,6 +137,7 @@ def get_exons_for_position(start_pos: int, end_pos: int):
         }), 400
 
 
+@cache.cached(query_string=True)
 def get_psi_values(dataset_ID: str = None, disease_name: str = None, data_origin: str = None, transcript_ID: str = None, enst_number: str =None, psivec_ID: int = None, alternative_splicing_event_transcripts_ID: str = None, sample_ID: str = None, limit=100, sponge_db_version: int = LATEST):
     """
     This function response for the request: /alternativeSplicing/getPsiValue/

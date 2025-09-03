@@ -5,9 +5,10 @@ from sqlalchemy import desc, engine_from_config, literal_column, or_, and_
 from sqlalchemy.sql import text
 from app.controllers.dataset import _dataset_query
 import app.models as models
-from app.config import LATEST, db
+from app.config import LATEST, db, cache
 
 
+@cache.cached(query_string=True)
 def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None, pValue=0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
                    sorting=None, descending=True, limit=100, offset=0, information=True, sponge_db_version: int = LATEST):
@@ -191,6 +192,7 @@ def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, 
         }), 200
 
 
+@cache.cached(query_string=True)
 def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, 
                               pValue=0.05, pValueDirection="<", 
                             #   minBetweenness: float = 0, minNodeDegree: int = 0, minEigenvector: float = 0,
@@ -323,6 +325,7 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_nu
         }), 200
 
 
+@cache.cached(query_string=True)
 def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, gene_type=None,
                                    minBetweenness=None, minNodeDegree=None, minEigenvector=None,
                                    sorting=None, descending=True, limit=100, offset=0, sponge_db_version: int = LATEST):
@@ -472,7 +475,7 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
         }), 200
 
 
-
+@cache.cached(query_string=True)
 def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=None, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /ceRNAInteraction/checkGeneInteraction
@@ -551,6 +554,7 @@ def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=No
     return schema.dump(result)
 
 
+@cache.cached(query_string=True)
 def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, pValue=0.05,
                    pValueDirection="<", mscor=None, mscorDirection="<", correlation=None, correlationDirection="<",
                    limit=100, offset=0, sponge_db_version: int = LATEST):
@@ -704,6 +708,8 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
             "data": []
         }), 200
 
+
+@cache.cached(query_string=True)
 def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, occurences=None, sorting=None, descending=None,
                    limit=100, offset=0, sponge_db_version: int = LATEST):
     """
@@ -820,6 +826,7 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
         }), 200
 
 
+@cache.cached(query_string=True)
 def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, between=False, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNA
@@ -896,6 +903,7 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
         }), 200
 
 
+@cache.cached(query_string=True)
 def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, gene_symbol=None, minCountAll=None, minCountSign=None, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /getGeneCount
@@ -1014,6 +1022,7 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_gene_network(dataset_ID: int = None, disease_name=None,
                       minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
                       maxPValue=0.05, minMscor=None, minCorrelation=None,

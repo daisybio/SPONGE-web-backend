@@ -1,6 +1,6 @@
 from flask import jsonify
 import app.models as models
-from app.config import LATEST, db
+from app.config import LATEST, db, cache
 from app.controllers.dataset import _dataset_query
 
 
@@ -63,6 +63,7 @@ def _comparison_query(dataset_1, dataset_2, condition_1=None, condition_2=None, 
     return comparisons, reverse
     
 
+@cache.cached(query_string=True)
 def get_comparison(dataset_ID: str = None, disease_name: str = None, disease_subtype=None, sponge_db_version: int = LATEST):
     """
     :param dataset_ID: ID of the dataset to find

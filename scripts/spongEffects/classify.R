@@ -179,6 +179,7 @@ message(Sys.time(), " - found ", length(common_modules), " common modules")
 # message(Sys.time(), " - train modules: ", paste(trained.model$Model$coefnames, collapse = ", "))
 # message(Sys.time(), " - test modules: ", paste(rownames(test.modules.uploaded), collapse = ", "))
 test.modules.uploaded.pancan <- test.modules.uploaded[common_modules, ]
+message(Sys.time(), " Sponge.modules :", length(Sponge.modules))
 
 # fill missing modules if needed
 missing_modules <- setdiff(trained.model$Model$coefnames, rownames(test.modules.uploaded))

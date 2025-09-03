@@ -39,14 +39,7 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
         query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
     data = db.session.execute(query).scalars().all()
 
-    if len(data) == 0:
-        return jsonify({
-            "detail": "No dataset found!",
-            "status": 200,
-            "title": "No Content",
-            "type": "about:blank",
-            "data": []
-        }), 200
+    # no error response here, just return empty list
         
     return data
 

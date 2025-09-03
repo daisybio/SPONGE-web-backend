@@ -4,12 +4,14 @@ from gseapy.plot import GSEAPlot
 import base64
 import io 
 import matplotlib.pyplot as plt
-from app.config import LATEST
+from app.config import LATEST, cache
 from app.controllers.dataset import _dataset_query
 from app.controllers.comparison import _comparison_query
 
 plt.switch_backend('agg')    
 
+
+@cache.cached(query_string=True)
 def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int = None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /gseaSets
@@ -71,8 +73,7 @@ def gsea_sets(dataset_ID_1: int = None, disease_name_1=None, dataset_ID_2: int =
         }), 200
 
 
-
-
+@cache.cached(query_string=True)
 def gsea_terms(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /gseaTerms
@@ -135,6 +136,7 @@ def gsea_terms(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_
         }), 200
 
 
+@cache.cached(query_string=True)
 def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, gene_set=None, term=None, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /gseaResults
@@ -212,6 +214,7 @@ def gsea_results(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_nam
         }), 200
 
 
+@cache.cached(query_string=True)
 def gsea_plot(dataset_ID_1: int = None, dataset_ID_2: int = None, disease_name_1=None, disease_name_2=None, disease_subtype_1=None, disease_subtype_2=None, condition_1=None, condition_2=None, term=None, gene_set=None, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /gseaPlot

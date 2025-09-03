@@ -3,10 +3,11 @@ from flask import jsonify
 import numpy as np
 from sklearn import manifold
 import pandas as pd
-from app.config import LATEST
+from app.config import LATEST, cache
 from app.controllers.dataset import _dataset_query
 
 
+@cache.cached(query_string=True)
 def get_network_results(dataset_ID: int = None, disease_name="Breast invasive carcinoma",
                         level="gene", sponge_db_version=LATEST):
     """

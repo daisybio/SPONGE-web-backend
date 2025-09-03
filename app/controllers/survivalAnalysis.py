@@ -1,8 +1,10 @@
 from flask import jsonify
 import app.models as models
-from app.config import LATEST, db
+from app.config import LATEST, db, cache
 from app.controllers.dataset import _dataset_query
 
+
+@cache.cached(query_string=True)
 def get_patient_information(dataset_ID: int = None, disease_name=None, disease_subtype=None, sample_ID: list=None):
     """
     API call /survivalAnalysis/sampleInformation
@@ -57,6 +59,7 @@ def get_patient_information(dataset_ID: int = None, disease_name=None, disease_s
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_survival_rate(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, ensg_number = None, gene_symbol = None, sample_ID = None):
     """
     API call /survivalAnalysis/getRates
@@ -161,6 +164,7 @@ def get_survival_rate(dataset_ID: int = None, disease_name: str = None, disease_
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, ensg_number = None, gene_symbol = None):
     """
     API call /survivalAnalysis/getPValues

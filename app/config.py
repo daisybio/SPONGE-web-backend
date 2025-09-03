@@ -8,6 +8,7 @@ from starlette.middleware.cors import CORSMiddleware
 import logging
 import sys
 from flask import request
+from flask_caching import Cache
 
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -53,6 +54,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['DEBUG'] = True
 app.config['TESTING'] = True
 app.config['UPLOAD_FOLDER'] = UPLOAD_DIR
+# Configure Flask-Caching with redis
+app.config['CACHE_TYPE'] = 'RedisCache'
+app.config['CACHE_REDIS_URL'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+app.config['CACHE_DEFAULT_TIMEOUT'] = 60 * 60 * 24 * 30  # 30 days default
+
+cache = Cache(app)
+cache.init_app(app)
+
+from app.config import cache
+from flask import jsonify
+
+@connex_app.route("/test-cache")
+def test_cache():
+    cache.set("hello", "world", timeout=60)
+    value = cache.get("hello")
+    return jsonify({"cached_value": value})
 
 @connex_app.app.before_request
 def log_request():

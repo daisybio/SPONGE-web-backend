@@ -5,9 +5,10 @@ from sqlalchemy import desc, and_
 from sqlalchemy.sql import text
 from app.controllers.dataset import _dataset_query
 import app.models as models
-from app.config import LATEST, db
+from app.config import LATEST, db, cache
 
 
+@cache.cached(query_string=True)
 def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=None, transcript_type=None, pValue=0.05,
                          pValueDirection="<",
                          mscor=None,
@@ -168,7 +169,7 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
         }), 200
 
 
-
+@cache.cached(query_string=True)
 def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_number=None, pValue=0.05,
                               pValueDirection="<", limit=100,
                               offset=0):
@@ -259,6 +260,7 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
         }), 200
 
 
+@cache.cached(query_string=True)
 def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=None, enst_number=None,
                                          transcript_type=None,
                                          minBetweenness=None, minNodeDegree=None, minEigenvector=None,
@@ -381,6 +383,7 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
         }), 200
 
 
+@cache.cached(query_string=True)
 def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, pValue=0.05,
                           pValueDirection="<", mscor=None, mscorDirection="<", correlation=None,
                           correlationDirection="<",
@@ -532,6 +535,7 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
         }), 200
 
 
+@cache.cached(query_string=True)
 def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, occurences=None,
                    sorting=None, descending=None,
                    limit=100, offset=0):
@@ -642,6 +646,7 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
         }), 200
 
 
+@cache.cached(query_string=True)
 def test_transcript_interaction(dataset_ID: int = None, enst_number=None, sponge_db_version: int = LATEST):
     """
         :param enst_number: ensg number of the gene of interest
@@ -694,6 +699,8 @@ def test_transcript_interaction(dataset_ID: int = None, enst_number=None, sponge
     schema = models.checkTranscriptInteractionProCancer(many=True)
     return schema.dump(result)
 
+
+@cache.cached(query_string=True)
 def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=None, enst_number=None, between=False):
     """
     This function responds to a request for /sponge/miRNAInteraction/findceRNATranscripts
@@ -764,6 +771,7 @@ def read_mirna_for_specific_interaction(dataset_ID: int = None, disease_name=Non
         }), 200
 
 
+@cache.cached(query_string=True)
 def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=None, minCountAll=None,
                         minCountSign=None):
     """
@@ -842,6 +850,7 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_transcript_network(dataset_ID: int = None, disease_name=None,
                             minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
                             maxPValue=0.05, minMscor=None, minCorrelation=None,

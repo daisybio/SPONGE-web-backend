@@ -1,7 +1,7 @@
 from flask import jsonify
 from sqlalchemy import and_
 import app.models as models
-from app.config import LATEST, db
+from app.config import LATEST, db, cache
 from typing import List
 import re
 
@@ -44,6 +44,7 @@ def _dataset_query(query = None, sponge_db_version = LATEST, **kwargs):
     return data
 
 
+@cache.cached(query_string=True)
 def get_diseases(disease_ID: int = None, disease_name: str = None, disease_subtype: str = None, versions: List[int] = None):
     """
     This function responds to a request for /sponge/diseases
@@ -87,6 +88,7 @@ def get_diseases(disease_ID: int = None, disease_name: str = None, disease_subty
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_datasets(dataset_ID: int = None, disease_name: str = None, disease_subtype: str = None, data_origin=None, sponge_db_version: int = LATEST):
     """
         This function responds to a request for /sponge/datasets?data_origin={data_origin}&sponge_db_version={version}
@@ -116,36 +118,8 @@ def get_datasets(dataset_ID: int = None, disease_name: str = None, disease_subty
             "data": []
         }), 200
 
-# def read(disease_name=None, sponge_db_version: int = LATEST):
-#     """
-#        This function responds to a request for /sponge/dataset/?disease_name={disease_name}&version={version}
-#        with one matching entry to the specified disease_name
 
-#        :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)
-#        :param sponge_db_version:       version of the database
-#        :return:            dataset matching ID
-#        """
-
-#     if disease_name is None:
-#         # Create the list of people from our data
-#         query = models.Dataset.query 
-#     else:
-#         # Get the dataset requested
-#         query = models.Dataset.query \
-#             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
-    
-#     # filter for db version
-#     data = query.filter(models.Dataset.sponge_db_version == sponge_db_version) \
-#             .all()
-
-#     # Did we find a dataset?
-#     if len(data) > 0:
-#         # Serialize the data for the response
-#         return models.DatasetSchema(many=True).dump(data)
-#     else:
-#         abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
-
-
+@cache.cached(query_string=True)
 def read_spongeRunInformation(dataset_ID: int = None, disease_name: str = None, sponge_db_version: int = LATEST):
     """
     This function responds to a request for /sponge/dataset/spongeRunInformation/?disease_name={disease_name}&sponge_db_version={sponge_db_version}
@@ -171,7 +145,8 @@ def read_spongeRunInformation(dataset_ID: int = None, disease_name: str = None, 
             "type": "about:blank",
             "data": []
         }), 200
-    
+
+
 def _extract_tss_code(sample_id):
     """
     Extracts the Tissue Source Site (TSS) code from a TCGA sample ID.
@@ -186,6 +161,7 @@ def _extract_tss_code(sample_id):
     return match.group(1) if match else None
 
 
+@cache.cached(timeout=60*60*24, query_string=True)
 def get_disease_from_sample(sample_ID: str = None):
     """
     Get the disease name from a sample ID. This handles the api route /sponge/get_disease_from_sample?sample_ID={sample_ID}

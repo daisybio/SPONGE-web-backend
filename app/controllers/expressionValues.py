@@ -4,12 +4,14 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 import pandas as pd
 from app.controllers.dataset import _dataset_query
 import app.models as models
-from app.config import LATEST, db
+from app.config import LATEST, db, cache
 import numpy as np
 from scipy.cluster.vq import kmeans
 
 np.random.seed(0)
 
+
+# @cache.cached(query_string=True) I would like to cache that but can't cache streams
 def get_gene_expr(dataset_ID: int = None, disease_name=None, disease_subtype: str = None, ensg_number=None, gene_symbol=None, cluster: bool = False, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """˜
     Handles API call /exprValue/getceRNA to get gene expression values
@@ -172,11 +174,9 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, disease_subtype: st
             "type": "about:blank",
             "data": []
         }), 200
-        
-    
 
 
-
+@cache.cached(query_string=True)
 def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, cluster: bool = False, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     Handles API call /exprValue/getTranscriptExpr to return transcript expressions
@@ -334,6 +334,7 @@ def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, 
         }), 200
 
 
+@cache.cached(query_string=True)
 def get_mirna_expr(dataset_ID: int = None, disease_name=None, mimat_number=None, hs_number=None, sponge_db_version: int = LATEST):
     """
     Handles API call /exprValue/getmiRNA to get miRNA expression values

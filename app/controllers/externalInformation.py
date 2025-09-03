@@ -5,10 +5,11 @@ from flask import Response
 from sqlalchemy.sql import text
 from sqlalchemy import case, func, select, join
 from sqlalchemy.orm import aliased
-from app.config import LATEST, db
+from app.config import LATEST, db, cache
 from app.controllers.dataset import _dataset_query
 
 
+@cache.cached(query_string=True)
 def getAutocomplete(searchString):
     """
     Funtion to retrieve the autocomplete possibilities for the webside (API route /stringSearch)
@@ -77,6 +78,8 @@ def getAutocomplete(searchString):
                 "data": []
             }), 200
         
+
+@cache.cached(query_string=True)
 def getAutocompleteTranscripts(searchString):
         
     """
@@ -115,6 +118,7 @@ def getAutocompleteTranscripts(searchString):
         }), 200
 
 
+@cache.cached(query_string=True)
 def getGeneInformation(ensg_number=None, gene_symbol=None):
     """
     :param ensg_number:
@@ -173,6 +177,7 @@ def getGeneInformation(ensg_number=None, gene_symbol=None):
             }), 200
 
 
+@cache.cached(query_string=True)
 def getTranscriptInformation(enst_number):
     """
     :param enst_number:
@@ -204,6 +209,7 @@ def getTranscriptInformation(enst_number):
         }), 200
 
 
+@cache.cached(query_string=True)
 def getOverallCount(sponge_db_version: int = LATEST, level: str = "gene"):
     """
     Function return current statistic about database - amount of shared miRNA, significant and insignificant
@@ -311,6 +317,7 @@ def getOverallCount(sponge_db_version: int = LATEST, level: str = "gene"):
     return schema.dump(count)
 
 
+@cache.cached(query_string=True)
 def getGeneOntology(gene_symbol):
     """
     :param gene_symbol: Gene symbol of the genes of interest
@@ -357,6 +364,7 @@ def getGeneOntology(gene_symbol):
         }), 200
 
 
+@cache.cached(query_string=True)
 def getHallmark(gene_symbol):
     """
     :param gene_symbol: Gene symbol of the genes of interest
@@ -401,6 +409,8 @@ def getHallmark(gene_symbol):
             "data": []
         }), 200
 
+
+@cache.cached(query_string=True)
 def getWikipathway(gene_symbol):
     """
     :param gene_symbol: Gene symbol of the genes of interest
@@ -447,6 +457,7 @@ def getWikipathway(gene_symbol):
         }), 200
 
 
+@cache.cached(query_string=True)
 def getTranscriptGene(enst_number):
     """
     This function handles the route /getTranscriptGene and returns the gene id(s) for the given transcript id(s).
@@ -489,6 +500,7 @@ def getTranscriptGene(enst_number):
         }), 200
 
 
+@cache.cached(query_string=True)
 def getGeneTranscripts(ensg_number):
     """
     This function handles the route /getGeneTranscripts and returns the transcript id(s) for the given gene id(s).

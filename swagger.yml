@@ -1463,6 +1463,16 @@ paths:
           required: false
           schema:
             type: string
+        - name: ensemblID
+          in: query
+          description: A comma-separated list of ensg number(s) of the gene(s) of interest(e.g. ENSG00000259090, ENSG00000217289, ENSG00000152284, ENSG00000185033)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
         - name: minBetweenness
           in: query
           description: Threshold of the betweenness.
@@ -1585,6 +1595,16 @@ paths:
           required: false
           schema:
             type: string
+        - name: ensemblID
+          in: query
+          description: A comma-separated list of enst number(s) of the transcript(s) of interest(e.g. ENST00000259090, ENST00000217289, ENST00000152284, ENST00000185033)
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
         - name: minBetweenness
           in: query
           description: Threshold of the betweenness.
@@ -4748,6 +4768,56 @@ paths:
                       gene_symbol:
                         type: string
                         description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+  /spongEffects/getSpongEffectsGeneModuleScores:
+    get: 
+      operationId: spongEffects.get_gene_module_enrichment_score
+      tags:
+      - spongEffects
+      summary: Get enrichment scores of all modules for a given gene.
+      description: Get enrichment scores of all modules for a given module (spongEffects_gene_module_ID).
+      parameters:
+      - $ref: '#/components/parameters/VersionParam'
+      - name: spongEffects_gene_module_ID
+        in: query
+        description: Internal database ID of the spongEffects gene module.
+        required: true
+        schema:
+          type: array
+          items:
+            type: integer
+      - name: cluster
+        in: query
+        description: Whether to cluster rows and columns 
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: Successfully extracted enrichment scores of all modules for a given gene
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spongEffects_gene_module_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects gene module.
+                  sample_ID:
+                    type: string
+                    description: Sample ID of the specific sample.
+                  enrichment_score:
+                    type: number
+                    description: Enrichment score of the specific module in the specific sample.
+                  gene:
+                    type: object
+                    description: Information about the gene.
+                    properties:
+                      ensg_number:
+                        type: string
+                        description: Ensg number of the gene.
+                      gene_symbol:
+                        type: string
+                        description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
   /spongEffects/getSpongEffectsTranscriptModules:
     get:
       operationId: spongEffects.get_transcript_modules
@@ -4957,6 +5027,58 @@ paths:
                           gene_symbol:
                             type: string
                             description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
+  /spongEffects/getSpongEffectsTranscriptModuleScores:
+    get: 
+      operationId: spongEffects.get_transcript_module_enrichment_score
+      tags:
+      - spongEffects
+      summary: Get enrichment scores of all modules for a given transcript.
+      description: Get enrichment scores of all modules for a given module (spongEffects_transcript_module_ID).
+      parameters:
+      - $ref: '#/components/parameters/VersionParam'
+      - name: spongEffects_transcript_module_ID
+        in: query
+        description: Internal database ID of the spongEffects transcript module.
+        required: true
+        schema:
+          type: array
+          items:
+            type: integer
+      - name: cluster
+        in: query
+        description: Whether to cluster rows and columns 
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          description: Successfully extracted enrichment scores of all modules for a given transcript
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spongEffects_transcript_module_ID:
+                    type: integer
+                    description: Internal database ID of the spongEffects transcript module.
+                  sample_ID:
+                    type: string
+                    description: Sample ID of the specific sample.
+                  enrichment_score:
+                    type: number
+                  transcript:
+                    type: string
+                    description: Ensembl transcript ID
+                  gene:
+                    type: object
+                    description: Information about the gene.
+                    properties:
+                      ensg_number:
+                        type: string
+                        description: Ensg number of the gene.
+                      gene_symbol:
+                        type: string
+                        description: From official gene nomenclature commitees such as HGNC (for human). Source - Ensmble - only provided if available.
   /spongEffects/predictCancerType:
     post:
       operationId: spongEffects.upload_file

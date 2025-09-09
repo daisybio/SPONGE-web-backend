@@ -1024,6 +1024,7 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
 
 @cache.cached(query_string=True)
 def get_gene_network(dataset_ID: int = None, disease_name=None,
+                     ensemblID=None,
                       minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
                       maxPValue=0.05, minMscor=None, minCorrelation=None,
                       edgeSorting: str = None, nodeSorting: list[str] = None,
@@ -1034,6 +1035,7 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     Optimized function for fetching ceRNA network nodes and edges with applied filters and sorting. Handles route /ceRNAInteraction/getGeneNetwork
     :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
+    :param ensemblID: ENSG number of the genes of interest
     :param minBetweenness: betweenness cutoff (>)
     :param minNodeDegree: degree cutoff (>)
     :param minEigenvector: eigenvector cutoff (>)
@@ -1050,6 +1052,11 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     :return: all ceRNAInteractions in the dataset of interest that satisfy the given filters
 
     """
+    # gene query: 
+    gene_query = db.select(models.Gene.gene_ID)
+    if ensemblID is not None: 
+        gene_query = gene_query.filter(models.Gene.ensg_number.in_(ensemblID))
+
     # Step 1: Filter for SpongeRun IDs
     run_query = db.select(models.SpongeRun.sponge_run_ID).filter(
         models.SpongeRun.sponge_db_version == sponge_db_version
@@ -1067,6 +1074,16 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     edge_query = db.select(models.GeneInteraction).filter(
         models.GeneInteraction.sponge_run_ID.in_(run_query)
     )
+
+    # apply gene filter: if given, filter for edges where at least one gene matches
+    if ensemblID:
+        edge_query = edge_query.filter(
+            sa.or_(
+                models.GeneInteraction.gene_ID1.in_(gene_query),
+                models.GeneInteraction.gene_ID2.in_(gene_query)
+            )
+        )
+
     if maxPValue:
         edge_query = edge_query.filter(
             models.GeneInteraction.p_value <= maxPValue
@@ -1079,7 +1096,11 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     # Filter nodes by edges that pass the p-value filter & sponge run
     node_query = db.select(models.networkAnalysis).filter(
         models.networkAnalysis.sponge_run_ID.in_(run_query),
-        models.networkAnalysis.gene_ID.in_(gene_ids_in_edges)    )
+        models.networkAnalysis.gene_ID.in_(gene_ids_in_edges)
+    )
+
+    if ensemblID: 
+        node_query = node_query.filter(models.networkAnalysis.gene_ID.in_(gene_query))
 
     # Apply node-specific filters
     if minBetweenness:

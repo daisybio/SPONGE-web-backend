@@ -5,6 +5,9 @@ import string
 import subprocess
 import tempfile
 from flask import request, jsonify
+import pandas as pd
+from scipy.cluster.hierarchy import linkage, dendrogram
+from sklearn import cluster
 import app.config as config
 from app.controllers.externalInformation import get_genes, get_transcripts
 import app.models as models
@@ -329,6 +332,60 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
 
 
 @cache.cached(query_string=True)
+def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int], cluster: bool = False, sponge_db_version: int = LATEST): 
+    """
+    API request for /spongEffects/getSpongEffectsGeneModuleScores
+    :param spongEffects_gene_module_ID: Gene module ID as string
+    :return: enrichment scores of all modules for a given gene
+    """
+    query = models.EnrichmentScoreGene.query \
+        .filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID)) \
+        .all()
+
+    if len(query) == 0:
+        return jsonify({
+        "detail": f'No spongEffects gene module scores found for module ID: {spongEffects_gene_module_ID}',
+        "status": 200,
+        "title": "No Content",
+        "type": "about:blank",
+        "data": []
+    }), 200
+    
+    # cluster the  scores
+    if cluster: 
+        data = pd.DataFrame([{
+                "gene_ID": r.spongEffects_gene_module.gene.gene_symbol if r.spongEffects_gene_module.gene.gene_symbol else r.spongEffects_gene_module.gene.ensg_number,
+                "sample_ID": r.sample_ID,
+                "score_value": r.score_value,
+            }for r in query])
+        score_matrix = data.pivot(index="gene_ID", columns="sample_ID", values="score_value").fillna(0)
+        try:
+            row_linkage = linkage(score_matrix, method='ward', optimal_ordering=False)
+            col_linkage = linkage(score_matrix.T, method='ward', optimal_ordering=False)
+        except Exception as e:
+                return jsonify({
+                    "detail": str(e),
+                    "status": 400,
+                    "title": "Bad Request",
+                    "type": "about:blank"
+                }), 400
+        row_order = dendrogram(row_linkage, labels=score_matrix.index, no_plot=True).get('leaves')
+        col_order = dendrogram(col_linkage, labels=score_matrix.columns, no_plot=True).get('leaves')
+        score_matrix = score_matrix.iloc[row_order, col_order]
+        result = score_matrix.reset_index().melt(id_vars='gene_ID', var_name='sample_ID', value_name='score_value')
+        result = [{
+                "gene": {"gene_symbol": row['gene_ID'], "ensg_number": None},  # or fetch ensg_number if needed
+                "sample_ID": row['sample_ID'],
+                "score_value": row['score_value']
+            } for _, row in result.iterrows()]
+
+        return jsonify(result)
+    else:
+        return models.EnrichmentScoreGeneSchema(many=True).dump(query)
+
+    
+
+@cache.cached(query_string=True)
 def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, limit: int = None, offset: int = None, 
                            m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
                            sponge_db_version: int = LATEST):
@@ -437,6 +494,68 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
             "type": "about:blank",
             "data": []
         }), 200
+
+
+@cache.cached(query_string=True)
+def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: list[int], cluster: bool = False, sponge_db_version: int = LATEST): 
+    """
+    API request for /spongEffects/getSpongEffectsTranscriptModuleScores
+    :param spongEffects_transcript_module_ID: Transcript module ID as string
+    :param cluster: Whether to cluster the output (default: False)
+    :param sponge_db_version: currently not used
+    :return: enrichment scores of all modules for a given transcript
+    """
+    query = models.EnrichmentScoreTranscript.query \
+        .filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID)) \
+        .all()
+    if len(query) == 0:
+        return jsonify({
+            "detail": f'No spongEffects transcript module scores found for module ID: {spongEffects_transcript_module_ID}',
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
+    if cluster:
+        import pandas as pd
+        from scipy.cluster.hierarchy import linkage, dendrogram
+
+        data = pd.DataFrame([
+            {
+                "transcript_ID": (
+                    r.spongEffects_transcript_module.transcript.enst_number
+                    if r.spongEffects_transcript_module and r.spongEffects_transcript_module.transcript
+                    else None
+                ),
+                "sample_ID": r.sample_ID,
+                "score_value": r.score_value,
+            }
+            for r in query
+        ])
+        # Remove rows with missing transcript_ID
+        data = data.dropna(subset=["transcript_ID"])
+        if data.empty:
+            return jsonify([])
+
+        score_matrix = data.pivot(index="transcript_ID", columns="sample_ID", values="score_value").fillna(0)
+        row_linkage = linkage(score_matrix, method='ward', optimal_ordering=False)
+        col_linkage = linkage(score_matrix.T, method='ward', optimal_ordering=False)
+        row_order = dendrogram(row_linkage, labels=score_matrix.index, no_plot=True).get('leaves')
+        col_order = dendrogram(col_linkage, labels=score_matrix.columns, no_plot=True).get('leaves')
+        score_matrix = score_matrix.iloc[row_order, col_order]
+        result = score_matrix.reset_index().melt(id_vars='transcript_ID', var_name='sample_ID', value_name='score_value')
+        result = [
+            {
+                "transcript": {"enst_number": row['transcript_ID']},
+                "sample_ID": row['sample_ID'],
+                "score_value": row['score_value']
+            }
+            for _, row in result.iterrows()
+        ]
+        return jsonify(result)
+    else:
+        return models.EnrichmentScoreTranscriptSchema(many=True).dump(query)
 
 
 def generate_random_filename(length=12, extension=None):

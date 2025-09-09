@@ -1010,24 +1010,46 @@ class TranscriptInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
     transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
     transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
 
-class GeneEnrichmentScoreSchema(ma.SQLAlchemyAutoSchema):
+class EnrichmentScoreGeneSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = EnrichmentScoreGene
         sqla_session = db.session
-        fields = ["spongEffects_run", "gene", "score_value", "sample_ID"]
+        fields = ["spongEffects_gene_module_ID", "score_value", "sample_ID", "gene"]
 
-    spongeEffects_run = ma.Nested(lambda: SpongEffectsRun(only=("spongEffects_run_ID", "sponge_run_ID")))
-    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gene = fields.Method("get_gene")
+
+    def get_gene(self, obj):
+        gene = getattr(obj.spongEffects_gene_module, "gene", None)
+        if gene:
+            return {
+                "gene_symbol": gene.gene_symbol,
+                "ensg_number": gene.ensg_number
+            }
+        return None
 
 
-class TranscriptEnrichmentScoreSchema(ma.SQLAlchemyAutoSchema):
+class EnrichmentScoreTranscriptSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = EnrichmentScoreTranscript
         sqla_session = db.session
-        fields = ["spongEffects_run", "transcript", "score_value", "sample_ID"]
+        fields = ["spongEffects_transcript_module_ID", "score_value", "sample_ID", "transcript", "gene"]
+        
+    transcript = fields.Method("get_transcript")
+    gene = fields.Method("get_gene")
 
-    spongeEffects_run = ma.Nested(lambda: SpongEffectsRun(only=("spongEffects_run_ID", "sponge_run_ID")))
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    def get_transcript(self, obj):
+        transcript = getattr(getattr(obj.spongEffects_transcript_module, "transcript", None), "enst_number", None)
+        return transcript
+
+    def get_gene(self, obj):
+        transcript = getattr(obj.spongEffects_transcript_module, "transcript", None)
+        gene = getattr(transcript, "gene", None)
+        if gene:
+            return {
+                "gene_symbol": gene.gene_symbol,
+                "ensg_number": gene.ensg_number
+            }
+        return None
 
 
 class TranscriptCountSchema(ma.SQLAlchemyAutoSchema):

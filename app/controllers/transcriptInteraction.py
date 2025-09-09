@@ -852,6 +852,7 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
 
 @cache.cached(query_string=True)
 def get_transcript_network(dataset_ID: int = None, disease_name=None,
+                           ensemblID: list[str] = None,
                             minBetweenness:float = None, minNodeDegree:float = None, minEigenvector:float = None,
                             maxPValue=0.05, minMscor=None, minCorrelation=None,
                             edgeSorting: str = None, nodeSorting: list[str] = None,
@@ -862,6 +863,7 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     Optimized function for fetching ceRNA network nodes and edges with applied filters and sorting. Handles route /ceRNAInteraction/getTranscriptNetwork
     :param dataset_ID: dataset_ID of interest
     :param disease_name: disease_name of interest
+    :param ensemblID: list of ENST ids of interest
     :param minBetweenness: betweenness cutoff (>)
     :param minNodeDegree: degree cutoff (>)
     :param minEigenvector: eigenvector cutoff (>)
@@ -878,6 +880,12 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     :return: all ceRNAInteractions in the dataset of interest that satisfy the given filters
      
     """
+    transcript_query = db.select(models.Transcript.transcript_ID)
+    
+    if ensemblID: 
+        transcript_query = transcript_query.filter(
+            models.Transcript.enst_number.in_(ensemblID)
+        )
 
     # Step 1: Filter for SpongeRun IDs
     run_query = db.select(models.SpongeRun.sponge_run_ID).filter(
@@ -896,6 +904,16 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     edge_query = db.select(models.TranscriptInteraction).filter(
         models.TranscriptInteraction.sponge_run_ID.in_(run_query),
     )
+
+    # filter for transcripts: only consider edges where at least one transcript is in the provided list
+    if ensemblID:
+        edge_query = edge_query.filter(
+            sa.or_(
+                models.TranscriptInteraction.transcript_ID_1.in_(transcript_query),
+                models.TranscriptInteraction.transcript_ID_2.in_(transcript_query)
+            )
+        )
+
     if maxPValue: 
         edge_query = edge_query.filter(
             models.TranscriptInteraction.p_value <= maxPValue
@@ -910,6 +928,11 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
         models.networkAnalysisTranscript.sponge_run_ID.in_(run_query),
         models.networkAnalysisTranscript.transcript_ID.in_(tr_ids_in_edges)
     )
+
+    if ensemblID: 
+        node_query = node_query.filter(
+            models.networkAnalysisTranscript.transcript_ID.in_(transcript_query)
+        )
 
     # Apply node-specific filters
     if minBetweenness:

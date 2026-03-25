@@ -5117,6 +5117,9 @@ paths:
                 method:
                   type: string
                   description: Method to use for spongEffects enrichment (GSVA, ssGSEA, or OE)
+                model:
+                  type: string
+                  description: Use the model or a specific cancer type, e.g. 'breast_invasive_carcinoma' instead of first predicting types with the pancancer model.
       responses:
         "200":
           description: "File uploaded and processed successfully"

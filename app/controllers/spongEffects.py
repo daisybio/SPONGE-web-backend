@@ -584,6 +584,9 @@ class Params:
     max_size: float
     min_expr: float
     method: str
+    model: str
+    log: bool
+    subtypes: bool
 
     def __init__(self, params):
         self.mscor = params["mscor"]
@@ -592,18 +595,32 @@ class Params:
         self.max_size = params["max_size"]
         self.min_expr = params["min_expr"]
         self.method = params["method"]
+        self.model = params["model"]
+        self.log = str(params.get("log")).lower() == "true"
+        self.subtypes = str(params.get("subtypes")).lower() == "true"
+        invalid_keys = [k for k in params.keys() if k not in ["mscor", "fdr", "min_size", "max_size", "min_expr", "method", "model", "log", "subtypes"]]
+        if invalid_keys:
+            raise ValueError(f"Invalid parameters: {invalid_keys}")
 
     def get_cmd_options(self):
         cmd: list = []
         for name, value in vars(self).items():
-            cmd.append(f'--{name}')
+            # check for wrong params
+                    
+            if value == "None" or value is None:
+                continue
+            if type(value) != bool or (type(value) == bool and value is True):
+                cmd.append(f'--{name}')
             if name == "method":
-                value = value.lower()
-            cmd.append(value)
+                value = str(value).lower()
+            if type(value) != bool:    
+                cmd.append(str(value))
         return cmd
 
 
-def run_spongEffects(file_path, out_path, params: Params = None, log: bool = False, subtype_level: bool = False):
+def run_spongEffects(file_path, out_path, params: Params = None, 
+# log: bool = False, subtype_level: bool = False
+):
     """
     Predict cancer type for an uploaded gene/transcript expression
     :param file_path: path to uploaded expression file
@@ -618,13 +635,13 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
         "Rscript", config.SPONGEFFECTS_PREDICT_SCRIPT,
         "--expr", file_path,
         "--model_path", config.MODEL_PATH,
-        "--output", out_path,
-        "--local"
+        "--output", out_path
+        # "--local"
     ]
-    if subtype_level:
-        cmd.append("--subtypes")
-    if log:
-        cmd.append("--log")
+    # if subtype_level:
+    #     cmd.append("--subtypes")
+    # if log:
+    #     cmd.append("--log")
     if params and isinstance(params, Params):
         cmd.extend(params.get_cmd_options())
     try:
@@ -653,10 +670,10 @@ def upload_file():
     # save uploaded file
     uploaded_file = request.files['file']
     # save prediction level
-    predict_subtypes: bool = request.form.get('subtypes') == "true"
+    # predict_subtypes: bool = request.form.get('subtypes') == "true"
     # save given parameters
     run_parameters: Params = Params(request.form)
-    apply_log_scale: bool = request.form.get('log') == "true"
+    # apply_log_scale: bool = request.form.get('log') == "true"
     if uploaded_file.filename == '':
         return jsonify({
             "detail": "File upload failed",
@@ -676,7 +693,8 @@ def upload_file():
     tmp_out_file = tempfile.NamedTemporaryFile(prefix="prediction_", suffix=".json")
     # run spongEffects
     return jsonify(run_spongEffects(tmp_file.name, os.path.join(config.UPLOAD_DIR, tmp_out_file.name), run_parameters,
-                                    log=apply_log_scale, subtype_level=predict_subtypes))
+                                    # log=apply_log_scale, subtype_level=predict_subtypes
+                                    ))
 
 
 @cache.cached(query_string=True)

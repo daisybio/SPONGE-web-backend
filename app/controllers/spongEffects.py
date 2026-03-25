@@ -248,7 +248,7 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     query = db.select(models.SpongEffectsGeneModule) \
         .where(models.SpongEffectsGeneModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
         .where(models.SpongEffectsGeneModule.gene_ID.in_(gene_IDs)) \
-        .order_by(models.SpongEffectsGeneModule.mean_accuracy_decrease.desc(), models.SpongEffectsGeneModule.mean_accuracy_decrease.desc())
+        .order_by(models.SpongEffectsGeneModule.mean_accuracy_decrease.desc(), models.SpongEffectsGeneModule.mean_gini_decrease.desc())
 
     if spongEffects_gene_module_ID is not None:
         query = query.where(models.SpongEffectsGeneModule.spongEffects_gene_module_ID == spongEffects_gene_module_ID)
@@ -423,10 +423,10 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     query = db.select(models.SpongEffectsTranscriptModule) \
         .where(models.SpongEffectsTranscriptModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
         .where(models.SpongEffectsTranscriptModule.transcript_ID.in_(transcript_IDs)) \
-        .order_by(models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc(), models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc())
+        .order_by(models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc(), models.SpongEffectsTranscriptModule.mean_gini_decrease.desc())
 
     if spongEffects_transcript_module_ID is not None:
-        modules_query = modules_query.where(models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID == spongEffects_transcript_module_ID)
+        query = modules_query.where(models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID == spongEffects_transcript_module_ID)
 
     if limit is not None:
         query = query.limit(limit)
@@ -675,7 +675,7 @@ def upload_file():
     # create random output path
     tmp_out_file = tempfile.NamedTemporaryFile(prefix="prediction_", suffix=".json")
     # run spongEffects
-    return jsonify(run_spongEffects(tmp_file.name, tmp_out_file.name, run_parameters,
+    return jsonify(run_spongEffects(tmp_file.name, os.path.join(config.UPLOAD_DIR, tmp_out_file.name), run_parameters,
                                     log=apply_log_scale, subtype_level=predict_subtypes))
 
 

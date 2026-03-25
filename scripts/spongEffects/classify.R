@@ -17,6 +17,9 @@ parser <- add_argument(parser, "--output", help = "Output filename", default = "
 parser <- add_argument(parser, "--log", help = "Log given expression", flag = T)
 parser <- add_argument(parser, "--pseudo_count", help = "Pseudo count", default = 1e-3)
 parser <- add_argument(parser, "--subtypes", help = "Predict on subtype level", flag = T)
+parser <- add_argument(parser, "--model", help = "Model to use: One specific cancer type.
+If None (old behaviour): first pancancer is used to predict the type for each sample, 
+then for each sample the predicted type model is used. (if subtype=True)", default = "None")
 ########################
 ##  PARAMETER TUNING  ##
 ########################
@@ -32,6 +35,17 @@ parser <- add_argument(parser, "--enrichment_cores", help = "Number of cores to 
 parser <- add_argument(parser, "--local", help = "No parallel background", flag = T)
 # parse arguments
 argv_predict <- parse_args(parser, argv = args.effects)
+
+# dev: 
+argv_predict$model_path <- "/Users/lena/Projects/SPONGE/SPONGEdb_v2/models.RDS"
+argv_predict$expr <- "/Users/lena/Projects/SPONGE/SPONGE-web-backend/uploads/GSE123845_exp_tpm_matrix_processed.csv"
+
+# setup logging to file
+log_file <- sub("\\.json$", ".log", argv_predict$output)
+log_con <- file(log_file, open = "wt")
+sink(log_con, type = "output")
+sink(log_con, type = "message")
+
 #---------------------------GLOBAL VARIABLES------------------------------------
 SUBTYPE_PROJECTS <- c("breast invasive carcinoma", "cervical & endocervical cancer",
                       "esophageal carcinoma", "head & neck squamous cell carcinoma",
@@ -151,6 +165,7 @@ if (!argv_predict$local) {
   message(Sys.time(), " - running on single core")
 }
 message(Sys.time(), " - enriching type modules (test)")
+
 test.modules.uploaded <-  enrichment_modules(Expr.matrix = test_expr,
                                              modules = Sponge.modules,
                                              bin.size = argv_predict$bin_size,
@@ -202,13 +217,67 @@ predictions <- data.frame(sampleID=samples, typePrediction=type_predictions, sub
 if (argv_predict$subtypes) {
   type_splits <- split(predictions, as.vector(predictions$typePrediction))
 
+  message(Sys.time(), " - predicting subtypes for each type prediction")
+  message('type_splits heads: ', head(type_splits))
+  message('type_splits: ', type_splits)
+
+  # for each split, compute the enrichment scores: use all samples for which the type was predicted
+  test.modules.updated.types <- lapply(names(type_splits), function(type) {
+    # match types in model
+    type_renamed <- gsub("&", "and", gsub(" ", "_", type))  
+    x <- type_splits[[type]]
+    if (!type_renamed %in% names(models)) {
+      message('type not in models: ', type)
+      return(NULL)
+    } else {
+      message("running enrichment for type: ", type)
+    }
+
+    type_expression <- test_expr[, x$sampleID, drop = FALSE]
+    message("n samples for type ", type, ": ", dim(type_expression)[2])
+
+    type_modules <- models[[type_renamed]]$modules
+    message("n modules for type ", type, ": ", length(type_modules))
+
+    tryCatch({
+      test.modules.updated <- enrichment_modules(
+        Expr.matrix = type_expression,
+        modules = type_modules,
+        bin.size = argv_predict$bin_size,
+        min.size = argv_predict$min_size,
+        max.size = argv_predict$max_size,
+        min.expr = argv_predict$min_expr,
+        method = argv_predict$method,
+        cores = argv_predict$enrichment_cores
+      )
+      # do hierarchical clustering on enrichment scores on genes and samples
+      row_order <- hclust(dist(test.modules.updated, method = "euclidean"), method = "ward.D2")$order
+      col_order <- hclust(dist(t(test.modules.updated), method = "euclidean"), method = "ward.D2")$order
+      test.modules.updated <- test.modules.updated[row_order, col_order]
+      message("returning enrichment scores for type: ", type, " with n modules: ", dim(test.modules.updated)[1])
+      return(test.modules.updated)  
+    }, error = function(e) {
+      message("Error enriching type ", type, ": ", e$message)
+      return(NULL)
+    })
+  })
+  names(test.modules.updated.types) <- names(type_splits)
+
   # predict subtypes for samples with matching type classification
-  predictions <- do.call(rbind, lapply(type_splits,
-                                       predict_subtype,
-                                       models, test.modules.uploaded, 2))
+  predictions <- do.call(rbind, lapply(names(type_splits), function(type) {
+    df <- type_splits[[type]]
+    type_clean <- gsub("&", "and", gsub(" ", "_", type))
+    predict_subtype(
+      df = df,
+      all_models = models,
+      test_modules = test.modules.updated.types[[type]],
+      threshold = 2
+    )
+  }))
 }
 # clean up resources
 if (!argv_predict$local) {
+  message(Sys.time(), " - Cleaning up resources")
   stopCluster(cl)
 }
 # determine runtime
@@ -225,7 +294,7 @@ if (argv_predict$subtypes) {
 
 # build supplementary information
 meta <- data.frame(runtime=runTime, level=level, n_samples=nrow(predictions),
-                   type_predict=dominant_type, subtype_predict=dominant_subtype, script_version="0.1.1")
+                   type_predict=dominant_type, subtype_predict=dominant_subtype, script_version="0.1.2") # see changelog at the bottom 
 
 # return as JSON for API processing
 scores_df <- as.data.frame(test.modules.uploaded)
@@ -236,7 +305,40 @@ scores_list <- list(
     as.numeric(scores_df[i, ])
   })
 )
+# append type-specific scores
+if (argv_predict$subtypes) {
+  type_scores <- lapply(names(type_splits), function(type) {
+    df_type <- as.data.frame(test.modules.updated.types[[type]])
+    
+    list(
+      samples = colnames(df_type),
+      genes = rownames(df_type),  # actually modules
+      values = lapply(seq_len(nrow(df_type)), function(i) {
+        as.numeric(df_type[i, ])
+      })
+    )
+  })
+  
+  names(type_scores) <- names(type_splits)
+  scores_list$type_scores <- type_scores
+}
+
 responseObj <- list(meta = meta, data = predictions, scores = scores_list)
+
 message(Sys.time(), " - FINISHED EXECUTION")
 message("Writing output file to ", argv_predict$output)
 write_json(responseObj, path = argv_predict$output)
+
+################################################################################
+##                                 Changelog                                  ##
+################################################################################
+
+# 0.1.2 (Lena)
+# - recompute enrichment scores for each type instead of reusing 
+#   pancancer-enrichment scores for type prediction
+# - log messages are written to a file
+
+# 0.1.1 (Lena)
+# returning also enrichment scores 
+
+# earlier: Leon?

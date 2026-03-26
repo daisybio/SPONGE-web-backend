@@ -305,9 +305,10 @@ if (is.null(argv_predict$model) || argv_predict$model == "None") {
   dominant_type <- names(type_predictions_table)[max(type_predictions_table) == type_predictions_table]
 } else {
   #---------------------------ONLY SPECIFIED MODEL----------------------------------
-  # if model type is already know:
-  # - still do enrichment on pancancer
+  # if model type is already known:
+  # - still do enrichment on pancancer (above, before if)
   # - don't do prediction on pancander
+  # if additionally subtype is true
   # - do both enrichment and subtype prediction only on specified type
 
   model_name <- argv_predict$model
@@ -320,7 +321,7 @@ if (is.null(argv_predict$model) || argv_predict$model == "None") {
 
   # do enrichment only on specified type
   message(Sys.time(), " - enriching type modules (test)")
-  test.modules.uploaded <- enrichment_modules(
+  test.modules.uploaded.type <- enrichment_modules(
     Expr.matrix = test_expr,
     modules = modules,
     bin.size = argv_predict$bin_size,
@@ -332,9 +333,9 @@ if (is.null(argv_predict$model) || argv_predict$model == "None") {
   )
 
   # do hierarchical clustering on enrichment scores on genes and samples
-  row_order <- hclust(dist(test.modules.uploaded, method = "euclidean"), method = "ward.D2")$order
-  col_order <- hclust(dist(t(test.modules.uploaded), method = "euclidean"), method = "ward.D2")$order
-  test.modules.uploaded <- test.modules.uploaded[row_order, col_order]
+  row_order <- hclust(dist(test.modules.uploaded.type, method = "euclidean"), method = "ward.D2")$order
+  col_order <- hclust(dist(t(test.modules.uploaded.type), method = "euclidean"), method = "ward.D2")$order
+  test.modules.uploaded.type <- test.modules.uploaded.type[row_order, col_order]
 
   # do subtype prediction only on specified type
   if (argv_predict$subtypes) {
@@ -389,10 +390,10 @@ scores_list <- list(
 if (argv_predict$subtypes) {
   if (!is.null(argv_predict$model) && argv_predict$model != "None") {
     type_scores <- list(
-      samples = colnames(test.modules.uploaded),
-      genes = rownames(test.modules.uploaded),
-      values = lapply(seq_len(nrow(test.modules.uploaded)), function(i) {
-        as.numeric(test.modules.uploaded[i, ])
+      samples = colnames(test.modules.uploaded.type),
+      genes = rownames(test.modules.uploaded.type),
+      values = lapply(seq_len(nrow(test.modules.uploaded.type)), function(i) {
+        as.numeric(test.modules.uploaded.type[i, ])
       })
     )
     type_scores <- setNames(list(type_scores), argv_predict$model)

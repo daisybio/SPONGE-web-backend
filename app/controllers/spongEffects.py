@@ -635,8 +635,8 @@ def run_spongEffects(file_path, out_path, params: Params = None,
         "Rscript", config.SPONGEFFECTS_PREDICT_SCRIPT,
         "--expr", file_path,
         "--model_path", config.MODEL_PATH,
-        "--output", out_path
-        # "--local"
+        "--output", out_path,
+        "--local"
     ]
     # if subtype_level:
     #     cmd.append("--subtypes")

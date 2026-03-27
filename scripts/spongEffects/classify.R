@@ -194,7 +194,7 @@ test.modules.uploaded <- enrichment_modules(
 # write.table(test.modules.uploaded, file = "test_modules.tsv", sep = "\t", quote = F)
 message(Sys.time(), " - finished enriching type modules (pancancer)")
 
-if (is.null(argv_predict$model) || argv_predict$model == "None") {
+if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$model == "pancancer" || argv_predict$model == "Pancancer") {
   #--------------------------PREDICT CANCER TYPE----------------------------------
   #---------------------------LOAD MODEL------------------------------------------
   message(Sys.time(), " - Loading pancan model")

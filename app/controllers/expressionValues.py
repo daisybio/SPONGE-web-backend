@@ -176,7 +176,7 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, disease_subtype: st
         }), 200
 
 
-@cache.cached(query_string=True)
+# @cache.cached(query_string=True) # I would like to cache that but can't cache streams
 def get_transcript_expression(dataset_ID: int = None, disease_name: str = None, enst_number: str = None, ensg_number: str = None, gene_symbol: str = None, cluster: bool = False, limit: int = None, offset: int = None, sponge_db_version: int = LATEST):
     """
     Handles API call /exprValue/getTranscriptExpr to return transcript expressions

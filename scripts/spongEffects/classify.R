@@ -73,17 +73,26 @@ predict_subtype <- function(type, sample_list, all_models, test_modules, thresho
   if (type_project_style %in% SUBTYPE_PROJECTS && length(sample_list) >= threshold) {
     # get sub samples
     # test_modules <- test_modules[,df$sampleID]
-    message(Sys.time(), " - predicting subtypes for ", type)
+    message(Sys.time(), " - predicting subtypes for type: ", type)
+    message(Sys.time(), " - number of samples for subtype prediction: ", length(sample_list))
 
     # match types in model
     type <- gsub("&", "and", gsub(" ", "_", type))
+    message(Sys.time(), " - using model key: ", type)
 
     # get specific model
+    if (!type %in% names(all_models)) {
+      message(Sys.time(), " - WARNING: model for ", type, " not found in all_models")
+      subtypePrediction <- NA
+      return(subtypePrediction)
+    }
     model <- all_models[[type]]$model$Model
 
     # get common modules
     common_modules <- intersect(model$coefnames, rownames(test_modules))
-    message(Sys.time(), " - found ", length(common_modules), " common modules", common_modules)
+    message(Sys.time(), " - modules in model: ", length(model$coefnames))
+    message(Sys.time(), " - modules in test: ", length(rownames(test_modules)))
+    message(Sys.time(), " - found ", length(common_modules), " common modules")
     if (length(common_modules) > 0) {
       test_modules <- test_modules[common_modules, , drop = F]
     } else {
@@ -143,7 +152,10 @@ startTime <- Sys.time()
 message(startTime, " - STARTING EXECUTION:")
 #---------------------------READ UPLOADED EXPRESSION----------------------------
 test_expr <- read_expr(argv_predict$expr)
+message(Sys.time(), " - expression matrix loaded with ", nrow(test_expr), " rows and ", ncol(test_expr), " columns")
+
 if (argv_predict$log) {
+  message(Sys.time(), " - applying log2 transformation (pseudo-count: ", argv_predict$pseudo_count, ")")
   test_expr <- log2(test_expr + argv_predict$pseudo_count)
 }
 
@@ -162,14 +174,20 @@ message(Sys.time(), " - using ", level, " level")
 # uploaded expression samples
 samples <- colnames(test_expr)
 #---------------------------LOAD MODElS-----------------------------------------
-message(Sys.time(), " - Loading spongEffects models")
-models <- readRDS(argv_predict$model_path)
+message(Sys.time(), " - Loading spongEffects models from: ", argv_predict$model_path)
+models_raw <- readRDS(argv_predict$model_path)
+message(Sys.time(), " - available levels in RDS: ", paste(names(models_raw), collapse = ", "))
+
 # select level
-models <- models[[level]]
+if (!level %in% names(models_raw)) {
+  stop("Level '", level, "' not found in models RDS")
+}
+models <- models_raw[[level]]
+message(Sys.time(), " - number of projects in ", level, " level: ", length(names(models)))
 
 #---------------------------REGISTER PARALLEL-----------------------------------
 if (!argv_predict$local) {
-  message("registering back end with ", argv_predict$enrichment_cores, " cores\n")
+  message(Sys.time(), " - registering back end with ", argv_predict$enrichment_cores, " cores")
   cl <- makeCluster(argv_predict$enrichment_cores)
   registerDoParallel(cl)
 } else {
@@ -180,6 +198,9 @@ if (!argv_predict$local) {
 
 message(Sys.time(), " - enriching type modules (pancancer)")
 Sponge.modules <- models$expression_across_types$modules
+message(Sys.time(), " - number of modules to enrich: ", length(Sponge.modules))
+message(Sys.time(), " - enrichment parameters: method=", argv_predict$method, ", bin_size=", argv_predict$bin_size, ", min_size=", argv_predict$min_size, ", max_size=", argv_predict$max_size)
+
 test.modules.uploaded <- enrichment_modules(
   Expr.matrix = test_expr,
   modules = Sponge.modules,
@@ -418,7 +439,9 @@ responseObj <- list(meta = meta, data = predictions, scores = scores_list, type_
 
 message(Sys.time(), " - FINISHED EXECUTION")
 message("Writing output file to ", argv_predict$output)
+message("Metadata summary: runtime=", meta$runtime, "s, level=", meta$level, ", n_samples=", meta$n_samples)
 write_json(responseObj, path = argv_predict$output)
+write_json(responseObj, path = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/uploads/prediction_brain.json")
 
 ################################################################################
 ##                                 Changelog                                  ##

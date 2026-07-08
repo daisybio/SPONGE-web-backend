@@ -898,3 +898,61 @@ def get_spongeffects_runs(dataset_ID: str = None, disease_name: str = None, incl
             "type": "about:blank",
             "data": []
         }), 200
+
+
+def get_umap_projection():
+    """
+    API request for /spongEffects/getUmapProjection
+    Calculate UMAP coordinates for any given scores and level.
+    """
+    req_data = request.get_json()
+    if not req_data or 'level' not in req_data or 'scores' not in req_data:
+        return jsonify({'error': 'Missing required fields level and/or scores'}), 400
+        
+    level = req_data['level']
+    scores = req_data['scores']
+    
+    try:
+        umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
+        model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
+        coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
+        
+        if not os.path.exists(model_path) or not os.path.exists(coords_path):
+            return jsonify({'error': 'UMAP models not trained yet on the backend'}), 500
+            
+        import joblib
+        import numpy as np
+        
+        model_info = joblib.load(model_path)
+        
+        # Extract and format user scores
+        data_matrix = np.array(scores['values']).T
+        user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
+        
+        # Reindex columns to align with training features
+        user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
+        
+        # Scale and transform
+        scaled_data = model_info['scaler'].transform(user_df)
+        user_embedding = model_info['reducer'].transform(scaled_data)
+        
+        # Format user coordinates
+        user_umap = {}
+        for idx, sample in enumerate(scores['samples']):
+            user_umap[sample] = {
+                'x': float(user_embedding[idx, 0]),
+                'y': float(user_embedding[idx, 1]),
+            }
+            
+        # Load precalculated TCGA coordinates
+        with open(coords_path, 'r') as f:
+            tcga_umap = json.load(f)
+            
+        return jsonify({
+            'user_umap': user_umap,
+            'tcga_umap': tcga_umap
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in get_umap_projection: {e}\n{traceback.format_exc()}")
+        return jsonify({'error': f"Internal error during UMAP projection: {str(e)}"}), 500

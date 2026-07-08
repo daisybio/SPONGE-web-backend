@@ -5160,6 +5160,37 @@ paths:
                         description: Predicted subtype
         "400":
           description: "File upload or processing failed"
+  /spongEffects/getUmapProjection:
+    post:
+      operationId: spongEffects.get_umap_projection
+      summary: Get UMAP projection coordinates for custom enrichment scores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - level
+                - scores
+              properties:
+                level:
+                  type: string
+                  enum: [gene, transcript]
+                scores:
+                  type: object
+      responses:
+        "200":
+          description: Successfully retrieved UMAP coordinates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_umap:
+                    type: object
+                  tcga_umap:
+                    type: object
   /comparison:
     get:
       operationId: comparison.get_comparison

@@ -793,6 +793,50 @@ def upload_file():
     tmp_out_file = tempfile.NamedTemporaryFile(prefix="prediction_", suffix=".json")
     # run spongEffects
     response, status_code = run_spongEffects(tmp_file.name, os.path.join(config.UPLOAD_DIR, tmp_out_file.name), run_parameters)
+    
+    if status_code == 200 and isinstance(response, dict) and 'scores' in response:
+        try:
+            level = response.get('meta', {}).get('level', 'gene')
+            umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
+            model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
+            coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
+            
+            if os.path.exists(model_path) and os.path.exists(coords_path):
+                import joblib
+                import numpy as np
+                # Load UMAP model info
+                model_info = joblib.load(model_path)
+                
+                # Extract and format user scores
+                scores = response['scores']
+                # values: list of lists, shape (n_features, n_samples)
+                data_matrix = np.array(scores['values']).T # shape (n_samples, n_features)
+                user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
+                
+                # Reindex columns to align with training features
+                user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
+                
+                # Scale and transform
+                scaled_data = model_info['scaler'].transform(user_df)
+                user_embedding = model_info['reducer'].transform(scaled_data)
+                
+                # Format user coordinates
+                user_umap = {}
+                for idx, sample in enumerate(scores['samples']):
+                    user_umap[sample] = {
+                        'x': float(user_embedding[idx, 0]),
+                        'y': float(user_embedding[idx, 1]),
+                    }
+                response['user_umap'] = user_umap
+                
+                # Load precalculated TCGA coordinates
+                with open(coords_path, 'r') as f:
+                    tcga_umap = json.load(f)
+                response['tcga_umap'] = tcga_umap
+                
+        except Exception as e:
+            logger.error(f"Error calculating UMAP projection for user samples: {e}\n{traceback.format_exc()}")
+            
     return jsonify(response), status_code
 
 

@@ -737,8 +737,8 @@ class GeneInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
         fields = ["correlation", "mscor", "p_value", "sponge_run", "gene1", "gene2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    gene1 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
-    gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gene1 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
+    gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
 
 class miRNASchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -1007,8 +1007,8 @@ class TranscriptInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
         fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript_1", "transcript_2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
-    transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene", "transcript_type")))
+    transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene", "transcript_type")))
 
 class EnrichmentScoreGeneSchema(ma.SQLAlchemyAutoSchema):
     class Meta:

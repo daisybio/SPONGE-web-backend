@@ -797,7 +797,7 @@ class networkAnalysisSchema(ma.SQLAlchemyAutoSchema):
         fields = ["betweenness", "eigenvector", "gene", "node_degree", "sponge_run"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
 
 # chris: Change
 class networkAnalysisSchemaTranscript(ma.SQLAlchemyAutoSchema):
@@ -807,7 +807,7 @@ class networkAnalysisSchemaTranscript(ma.SQLAlchemyAutoSchema):
         fields = ["betweenness", "eigenvector", "transcript", "node_degree", "sponge_run"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene", "transcript_type")))
 
 
 class geneExpressionSchema(ma.SQLAlchemyAutoSchema):

@@ -19,6 +19,10 @@ connex_app = FlaskApp(__name__, specification_dir=basedir)
 # Get the underlying Flask app instance
 app = connex_app.app
 
+# Prevent trailing-slash redirects (301) which browsers follow as GET,
+# turning POST requests into GET and causing 405 Method Not Allowed
+app.url_map.strict_slashes = False
+
 # CORS(connex_app)
 connex_app.add_middleware(
     CORSMiddleware,
@@ -75,14 +79,14 @@ def test_cache():
 def log_request():
     logger.info(f"Incoming request: {request.method} {request.url}")
     logger.info(f"Headers: {dict(request.headers)}")
-    if (request.method == 'POST'):
-        if (request.content_type.startswith('multipart/form-data')):
-            body = {'args': request.args.to_dict(), 
-                    'form': request.form.to_dict(), 
-                    'files': {k: f'{v.read(1000)}...{v.seek(0)}' for k, v in request.files.items()}
-                    }
-    else:        
-        body = request.get_data(as_text=True)
+    body = ''
+    if request.method == 'POST':
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            body = str({'args': request.args.to_dict(),
+                    'form': request.form.to_dict(),
+                    'files': list(request.files.keys())})
+        else:
+            body = request.get_data(as_text=True)
     logger.info(f"Body: {body[:1000] if len(body) > 1000 else body}")
 
 @app.after_request

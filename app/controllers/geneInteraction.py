@@ -271,7 +271,6 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_nu
             "type": "about:blank"
         }), 400
 
-
     # save all needed queries to get correct results
     queries = [sa.and_(models.GeneInteraction.gene_ID1.in_(gene_IDs), models.GeneInteraction.gene_ID2.in_(gene_IDs))]
 

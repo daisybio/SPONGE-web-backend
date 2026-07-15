@@ -408,8 +408,12 @@ scores_list <- list(
   })
 )
 # append type-specific scores
+# NOTE: this condition must mirror the branch condition used above (line ~218) to decide
+# between "predict pancancer + per-type enrichment" vs. "enrich only the specified type" -
+# otherwise a model of "pancancer"/"None" would incorrectly try to use
+# test.modules.uploaded.type, which is only computed in the specified-model branch.
 if (argv_predict$subtypes) {
-  if (!is.null(argv_predict$model) && argv_predict$model != "None") {
+  if (!(is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$model == "pancancer" || argv_predict$model == "Pancancer")) {
     type_scores <- list(
       samples = colnames(test.modules.uploaded.type),
       genes = rownames(test.modules.uploaded.type),
@@ -435,13 +439,49 @@ if (argv_predict$subtypes) {
   type_scores <- NULL
 }
 
-responseObj <- list(meta = meta, data = predictions, scores = scores_list, type_scores = type_scores)
+# Build module members dictionary only for relevant scopes
+module_members <- list()
+module_members[["pancancer"]] <- models$expression_across_types$modules
+module_members[["expression_across_types"]] <- models$expression_across_types$modules
+
+relevant_types <- c()
+if (!(is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$model == "pancancer" || argv_predict$model == "Pancancer")) {
+  # Specified model
+  relevant_types <- c(relevant_types, argv_predict$model)
+}
+if (!is.null(predictions) && "typePrediction" %in% colnames(predictions)) {
+  # Predicted models
+  pred_types <- unique(predictions$typePrediction)
+  pred_types <- pred_types[!is.na(pred_types)]
+  relevant_types <- c(relevant_types, pred_types)
+}
+
+relevant_types <- unique(relevant_types)
+for (type in relevant_types) {
+  # Clean type to match models keys (underscores, "and")
+  type_clean <- gsub("&", "and", gsub(" ", "_", type))
+  if (type_clean %in% names(models)) {
+    mods <- models[[type_clean]]$modules
+    
+    # Store under clean name
+    module_members[[type_clean]] <- mods
+    
+    # Store under display name (with spaces and ampersands)
+    display_name <- gsub("and", "&", gsub("_", " ", type_clean))
+    module_members[[display_name]] <- mods
+    
+    # Store under display name (with spaces and "and")
+    display_name_and <- gsub("_", " ", type_clean)
+    module_members[[display_name_and]] <- mods
+  }
+}
+
+responseObj <- list(meta = meta, data = predictions, scores = scores_list, type_scores = type_scores, module_members = module_members)
 
 message(Sys.time(), " - FINISHED EXECUTION")
 message("Writing output file to ", argv_predict$output)
 message("Metadata summary: runtime=", meta$runtime, "s, level=", meta$level, ", n_samples=", meta$n_samples)
 write_json(responseObj, path = argv_predict$output)
-write_json(responseObj, path = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/uploads/prediction_brain.json")
 
 ################################################################################
 ##                                 Changelog                                  ##

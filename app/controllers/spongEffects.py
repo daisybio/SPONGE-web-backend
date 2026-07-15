@@ -365,12 +365,37 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
 
 
 @cache.cached(query_string=True)
-def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int], cluster: bool = False, sponge_db_version: int = LATEST): 
+def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int], cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
     """
     API request for /spongEffects/getSpongEffectsGeneModuleScores
     :param spongEffects_gene_module_ID: Gene module ID as string
     :return: enrichment scores of all modules for a given gene
     """
+    if average:
+        avg_query = db.session.query(
+            models.EnrichmentScoreGene.spongEffects_gene_module_ID,
+            db.func.avg(models.EnrichmentScoreGene.score_value).label('avg_score')
+        ).filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID)) \
+         .group_by(models.EnrichmentScoreGene.spongEffects_gene_module_ID).all()
+
+        modules = models.SpongEffectsGeneModule.query.filter(
+            models.SpongEffectsGeneModule.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID)
+        ).all()
+        module_map = {m.spongEffects_gene_module_ID: m for m in modules}
+
+        result = []
+        for r in avg_query:
+            m = module_map.get(r.spongEffects_gene_module_ID)
+            result.append({
+                "spongEffects_gene_module_ID": r.spongEffects_gene_module_ID,
+                "score_value": r.avg_score,
+                "gene": {
+                    "ensg_number": m.gene.ensg_number if m and m.gene else None,
+                    "gene_symbol": m.gene.gene_symbol if m and m.gene else None
+                }
+            })
+        return jsonify(result)
+
     query = models.EnrichmentScoreGene.query \
         .filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID)) \
         .all()
@@ -545,7 +570,7 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
 
 
 @cache.cached(query_string=True)
-def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: list[int], cluster: bool = False, sponge_db_version: int = LATEST): 
+def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: list[int], cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
     """
     API request for /spongEffects/getSpongEffectsTranscriptModuleScores
     :param spongEffects_transcript_module_ID: Transcript module ID as string
@@ -553,6 +578,33 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: li
     :param sponge_db_version: currently not used
     :return: enrichment scores of all modules for a given transcript
     """
+    if average:
+        avg_query = db.session.query(
+            models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID,
+            db.func.avg(models.EnrichmentScoreTranscript.score_value).label('avg_score')
+        ).filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID)) \
+         .group_by(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID).all()
+
+        modules = models.SpongEffectsTranscriptModule.query.filter(
+            models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID)
+        ).all()
+        module_map = {m.spongEffects_transcript_module_ID: m for m in modules}
+
+        result = []
+        for r in avg_query:
+            m = module_map.get(r.spongEffects_transcript_module_ID)
+            result.append({
+                "spongEffects_transcript_module_ID": r.spongEffects_transcript_module_ID,
+                "score_value": r.avg_score,
+                "transcript": {
+                    "enst_number": m.transcript.enst_number if m and m.transcript else None,
+                    "gene": {
+                        "gene_symbol": m.transcript.gene.gene_symbol if m and m.transcript and m.transcript.gene else None
+                    }
+                }
+            })
+        return jsonify(result)
+
     query = models.EnrichmentScoreTranscript.query \
         .filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID)) \
         .all()

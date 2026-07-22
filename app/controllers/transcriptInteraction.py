@@ -923,39 +923,142 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     edges = db.session.execute(edge_query).scalars().all()
     tr_ids_in_edges = set([edge.transcript_ID_1 for edge in edges] + [edge.transcript_ID_2 for edge in edges])
 
-    # Filter nodes by edges that pass the p-value filter
-    node_query = db.select(models.networkAnalysisTranscript).filter(
-        models.networkAnalysisTranscript.sponge_run_ID.in_(run_query),
-        models.networkAnalysisTranscript.transcript_ID.in_(tr_ids_in_edges)
-    )
+    # Node selection only needs the network_analysis table when the caller asks to sort nodes
+    # or filter them by a centrality metric. When neither is requested we keep EVERY transcript
+    # that appears in the (already filtered) edges, so transcripts lacking a network_analysis
+    # row are not silently dropped from the network.
+    node_metric_filter = minBetweenness is not None or minNodeDegree is not None or minEigenvector is not None
+    use_network_analysis = bool(nodeSorting) or node_metric_filter
 
-    if ensemblID: 
-        node_query = node_query.filter(
-            models.networkAnalysisTranscript.transcript_ID.in_(transcript_query)
-        )
+    if use_network_analysis:
+        candidate_ids = set(tr_ids_in_edges)
+        if ensemblID:
+            candidate_ids &= set(db.session.execute(transcript_query).scalars().all())
+        candidate_ids = sorted(candidate_ids)
 
-    # Apply node-specific filters
-    if minBetweenness:
-        node_query = node_query.filter(models.networkAnalysisTranscript.betweenness >= minBetweenness)
-    if minNodeDegree:
-        node_query = node_query.filter(models.networkAnalysisTranscript.node_degree >= minNodeDegree)
-    if minEigenvector:
-        node_query = node_query.filter(models.networkAnalysisTranscript.eigenvector >= minEigenvector)
+        na_rows = db.session.execute(
+            db.select(models.networkAnalysisTranscript).filter(
+                models.networkAnalysisTranscript.sponge_run_ID.in_(run_query),
+                models.networkAnalysisTranscript.transcript_ID.in_(candidate_ids)
+            )
+        ).scalars().all()
+        na_by_tr = {row.transcript_ID: row for row in na_rows}
 
-    # Sorting nodes: if more than one sorting key, rank by each key individually and sort by the mean of the ranks
-    if nodeSorting:
-        if any([key not in ['betweenness', 'node_degree', 'eigenvector'] for key in nodeSorting]):
-            raise ValueError("Invalid node sorting key. Choose from 'betweenness', 'node_degree', 'eigenvector'")
-        rank_columns = [db.func.rank().over(order_by=getattr(models.networkAnalysisTranscript, col).desc()).label(f"{col}_rank") for col in nodeSorting]
-        mean_rank = sum(rank_columns) / len(rank_columns)
-        node_query = node_query.order_by(mean_rank)
+        representative_run = None
+        if len(candidate_ids) > len(na_rows):
+            representative_run = db.session.execute(
+                db.select(models.SpongeRun).filter(models.SpongeRun.sponge_run_ID.in_(run_query)).limit(1)
+            ).scalars().first()
 
-    # node pagination
-    node_query = node_query.offset(offsetNodes).limit(maxNodes)    
-    
-    # filter edges based on filtered nodes
-    nodes = db.session.execute(node_query).scalars().all()
-    node_tr_ids = set([node.transcript_ID for node in nodes])
+        transcript_objs = {}
+        missing_ids = [tid for tid in candidate_ids if tid not in na_by_tr]
+        if missing_ids:
+            objs = db.session.execute(
+                db.select(models.Transcript).filter(models.Transcript.transcript_ID.in_(missing_ids))
+            ).scalars().all()
+            transcript_objs = {t.transcript_ID: t for t in objs}
+
+        all_nodes = []
+        for tid in candidate_ids:
+            if tid in na_by_tr:
+                all_nodes.append(na_by_tr[tid])
+            elif tid in transcript_objs:
+                synthetic = models.networkAnalysisTranscript()
+                synthetic.transcript_ID = tid
+                synthetic.transcript = transcript_objs[tid]
+                synthetic.sponge_run = representative_run
+                synthetic.betweenness = None
+                synthetic.eigenvector = None
+                synthetic.node_degree = None
+                all_nodes.append(synthetic)
+
+        # Apply node-specific filters
+        filtered_nodes = []
+        for node in all_nodes:
+            bet = node.betweenness if node.betweenness is not None else 0.0
+            deg = node.node_degree if node.node_degree is not None else 0
+            eig = node.eigenvector if node.eigenvector is not None else 0.0
+
+            if minBetweenness is not None and bet < minBetweenness:
+                continue
+            if minNodeDegree is not None and deg < minNodeDegree:
+                continue
+            if minEigenvector is not None and eig < minEigenvector:
+                continue
+            filtered_nodes.append(node)
+
+        # Sorting nodes: rank by each key individually and sort by the mean of the ranks
+        if nodeSorting:
+            node_ranks = {node.transcript_ID: [] for node in filtered_nodes}
+            for col in nodeSorting:
+                if col not in ['betweenness', 'node_degree', 'eigenvector']:
+                    raise ValueError("Invalid node sorting key. Choose from 'betweenness', 'node_degree', 'eigenvector'")
+
+                def get_val(n, column_name=col):
+                    val = getattr(n, column_name)
+                    return val if val is not None else 0.0
+
+                sorted_for_col = sorted(filtered_nodes, key=get_val, reverse=True)
+
+                prev_val = None
+                current_rank = 0
+                for idx, node in enumerate(sorted_for_col):
+                    val = get_val(node)
+                    if val != prev_val:
+                        current_rank = idx + 1
+                        prev_val = val
+                    node_ranks[node.transcript_ID].append(current_rank)
+
+            def get_avg_rank(n):
+                ranks = node_ranks[n.transcript_ID]
+                return sum(ranks) / len(ranks) if ranks else 0
+
+            filtered_nodes.sort(key=get_avg_rank)
+
+        # node pagination
+        start = offsetNodes or 0
+        node_results = filtered_nodes[start:start + maxNodes] if maxNodes is not None else filtered_nodes[start:]
+    else:
+        # No sorting / no node-metric filter: derive nodes straight from the edge transcripts
+        # without gating on the network_analysis table, so no node is lost.
+        candidate_ids = set(tr_ids_in_edges)
+        if ensemblID:
+            candidate_ids &= set(db.session.execute(transcript_query).scalars().all())
+        candidate_ids = sorted(candidate_ids)
+        start = offsetNodes or 0
+        candidate_ids = candidate_ids[start:start + maxNodes] if maxNodes is not None else candidate_ids[start:]
+
+        # Attach network_analysis metrics where a row exists; synthesize metric-less nodes for
+        # the transcripts that have none, so the response shape is preserved.
+        na_rows = db.session.execute(
+            db.select(models.networkAnalysisTranscript).filter(
+                models.networkAnalysisTranscript.sponge_run_ID.in_(run_query),
+                models.networkAnalysisTranscript.transcript_ID.in_(candidate_ids)
+            )
+        ).scalars().all()
+        na_by_tr = {row.transcript_ID: row for row in na_rows}
+        node_results = list(na_rows)
+
+        missing_ids = [tid for tid in candidate_ids if tid not in na_by_tr]
+        if missing_ids:
+            representative_run = db.session.execute(
+                db.select(models.SpongeRun).filter(models.SpongeRun.sponge_run_ID.in_(run_query)).limit(1)
+            ).scalars().first()
+            transcript_objs = db.session.execute(
+                db.select(models.Transcript).filter(models.Transcript.transcript_ID.in_(missing_ids))
+            ).scalars().all()
+            for transcript_obj in transcript_objs:
+                synthetic = models.networkAnalysisTranscript()
+                synthetic.transcript_ID = transcript_obj.transcript_ID
+                synthetic.transcript = transcript_obj
+                synthetic.sponge_run = representative_run
+                synthetic.betweenness = None
+                synthetic.eigenvector = None
+                synthetic.node_degree = None
+                node_results.append(synthetic)
+
+    # filter edges based on the selected nodes
+    node_tr_ids = set([node.transcript_ID for node in node_results])
     edge_query = edge_query.filter(
         and_(
             models.TranscriptInteraction.transcript_ID_1.in_(node_tr_ids),
@@ -982,11 +1085,10 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     # edge pagination
     edge_query = edge_query.offset(offsetEdges).limit(maxEdges)
 
-    # Execute queries
-    node_results = db.session.execute(node_query).scalars().all()
+    # Execute edge query (node_results already computed above)
     edge_results = db.session.execute(edge_query).scalars().all()
 
-    # Return results 
+    # Return results
     return jsonify({
         "edges": models.TranscriptInteractionDatasetLongSchema(many=True).dump(edge_results),
         "nodes": models.networkAnalysisSchemaTranscript(many=True).dump(node_results)

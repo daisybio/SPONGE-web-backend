@@ -737,8 +737,8 @@ class GeneInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
         fields = ["correlation", "mscor", "p_value", "sponge_run", "gene1", "gene2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    gene1 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
-    gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gene1 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
+    gene2 = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
 
 class miRNASchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -797,7 +797,7 @@ class networkAnalysisSchema(ma.SQLAlchemyAutoSchema):
         fields = ["betweenness", "eigenvector", "gene", "node_degree", "sponge_run"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
 
 # chris: Change
 class networkAnalysisSchemaTranscript(ma.SQLAlchemyAutoSchema):
@@ -807,7 +807,7 @@ class networkAnalysisSchemaTranscript(ma.SQLAlchemyAutoSchema):
         fields = ["betweenness", "eigenvector", "transcript", "node_degree", "sponge_run"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene", "transcript_type")))
 
 
 class geneExpressionSchema(ma.SQLAlchemyAutoSchema):
@@ -948,7 +948,7 @@ class TranscriptSchema(ma.SQLAlchemyAutoSchema):
         sqla_session = db.session
         fields = ["gene", "enst_number", "transcript_type", "start_pos", "end_pos", "canonical_transcript"]
 
-    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
 
 class SpongEffectsRunSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -1007,8 +1007,8 @@ class TranscriptInteractionDatasetShortSchema(ma.SQLAlchemyAutoSchema):
         fields = ["correlation", "mscor", "p_value", "sponge_run", "transcript_1", "transcript_2"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
-    transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript_1 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene", "transcript_type")))
+    transcript_2 = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene", "transcript_type")))
 
 class EnrichmentScoreGeneSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -1123,7 +1123,7 @@ class SpongEffectsGeneModuleSchema(ma.SQLAlchemyAutoSchema):
                   'mean_gini_decrease',
                   'mean_accuracy_decrease']
         
-    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
 
 
 class SpongEffectsGeneModuleMembersSchema(ma.SQLAlchemyAutoSchema):
@@ -1135,7 +1135,7 @@ class SpongEffectsGeneModuleMembersSchema(ma.SQLAlchemyAutoSchema):
                   'spongEffects_gene_module_ID', 
                   'gene']
         
-    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
 
 
 class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):
@@ -1148,7 +1148,7 @@ class SpongEffectsTranscriptModuleSchema(ma.SQLAlchemyAutoSchema):
                   'mean_gini_decrease',
                   'mean_accuracy_decrease']
         
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "transcript_type", "gene")))
 
 
 class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
@@ -1160,8 +1160,8 @@ class SpongEffectsTranscriptModuleMembersSchema(ma.SQLAlchemyAutoSchema):
                   'spongEffects_transcript_module_ID',
                    'transcript']
         
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
-    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol")))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "transcript_type", "gene")))
+    gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
 
 
 class DESchema(ma.SQLAlchemyAutoSchema):

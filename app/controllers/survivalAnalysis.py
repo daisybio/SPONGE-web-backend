@@ -19,28 +19,19 @@ def get_patient_information(dataset_ID: int = None, disease_name=None, disease_s
 
     query = db.select(models.PatientInformation)
 
-    if dataset_ID is not None:
-        dataset = _dataset_query(sponge_db_version='any', dataset_ID=dataset_ID)
-        if type(dataset) == list and len(dataset) > 0:
-            dataset_IDs = [i.dataset_ID for i in dataset]
-            query = query.where(models.PatientInformation.dataset_ID.in_(dataset_IDs))
-        else:
-            return jsonify({
-                "detail": "No dataset with given disease_name found",
-                "status": 400,
-                "title": "Bad Request",
-                "type": "about:blank"
-            }), 400
-        
-    if disease_name is not None or disease_subtype is not None:
-        disease = db.select(models.Disease)
-        if disease_name is not None:
-            disease = disease.where(models.Disease.disease_name == disease_name)
-        if disease_subtype is not None:
-            disease = disease.where(models.Disease.disease_subtype == disease_subtype)
-        diseases = db.session.execute(disease).scalars().all()
-        disease_IDs = [i.disease_ID for i in diseases]
-        query = query.where(models.PatientInformation.disease_ID.in_(disease_IDs))
+    dataset = _dataset_query(disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID, sponge_db_version=1)
+
+    if len(dataset) > 0 and getattr(dataset[0], 'dataset_ID', None) is not None:
+        dataset_IDs = [i.dataset_ID for i in dataset]
+        query = query.where(models.PatientInformation.dataset_ID.in_(dataset_IDs))
+    else:
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
 
     if (sample_ID is not None):
         query = query.where(models.PatientInformation.sample_ID.in_(sample_ID))
@@ -218,7 +209,7 @@ def get_survival_pValue(dataset_ID: int = None, disease_name: str = None, diseas
         }), 400
 
     # filter for database version
-    dataset = _dataset_query(disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID)
+    dataset = _dataset_query(disease_name=disease_name, disease_subtype=disease_subtype, dataset_ID=dataset_ID, sponge_db_version=1)
 
     if len(dataset) > 0 and getattr(dataset[0], 'dataset_ID', None) is not None:
         dataset_IDs = [i.dataset_ID for i in dataset]

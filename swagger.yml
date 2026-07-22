@@ -4603,6 +4603,12 @@ paths:
       description: Extract module hub elements for a given disease, center gene, and level
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: spongEffects_gene_module_ID
+        in: query
+        description: Internal database ID of the spongEffects gene module.
+        required: false
+        schema:
+          type: integer
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
@@ -4702,6 +4708,12 @@ paths:
       description: Get connected nodes of specified ceRNA hub(s)
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: spongEffects_gene_module_ID
+        in: query
+        description: Internal database ID of the spongEffects gene module.
+        required: false
+        schema:
+          type: integer
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
@@ -4780,7 +4792,7 @@ paths:
       - name: spongEffects_gene_module_ID
         in: query
         description: Internal database ID of the spongEffects gene module.
-        required: true
+        required: false
         schema:
           type: array
           items:
@@ -4788,6 +4800,12 @@ paths:
       - name: cluster
         in: query
         description: Whether to cluster rows and columns 
+        required: false
+        schema:
+          type: boolean
+      - name: average
+        in: query
+        description: Whether to average scores across samples
         required: false
         schema:
           type: boolean
@@ -5039,7 +5057,7 @@ paths:
       - name: spongEffects_transcript_module_ID
         in: query
         description: Internal database ID of the spongEffects transcript module.
-        required: true
+        required: false
         schema:
           type: array
           items:
@@ -5047,6 +5065,12 @@ paths:
       - name: cluster
         in: query
         description: Whether to cluster rows and columns 
+        required: false
+        schema:
+          type: boolean
+      - name: average
+        in: query
+        description: Whether to average scores across samples
         required: false
         schema:
           type: boolean
@@ -5117,6 +5141,9 @@ paths:
                 method:
                   type: string
                   description: Method to use for spongEffects enrichment (GSVA, ssGSEA, or OE)
+                model:
+                  type: string
+                  description: Use the model or a specific cancer type, e.g. 'breast_invasive_carcinoma' instead of first predicting types with the pancancer model.
       responses:
         "200":
           description: "File uploaded and processed successfully"
@@ -5157,6 +5184,37 @@ paths:
                         description: Predicted subtype
         "400":
           description: "File upload or processing failed"
+  /spongEffects/getUmapProjection:
+    post:
+      operationId: spongEffects.get_umap_projection
+      summary: Get UMAP projection coordinates for custom enrichment scores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - level
+                - scores
+              properties:
+                level:
+                  type: string
+                  enum: [gene, transcript]
+                scores:
+                  type: object
+      responses:
+        "200":
+          description: Successfully retrieved UMAP coordinates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_umap:
+                    type: object
+                  tcga_umap:
+                    type: object
   /comparison:
     get:
       operationId: comparison.get_comparison

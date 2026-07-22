@@ -55,12 +55,7 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     sponge_run_IDs = db.session.execute(query).scalars().all()
 
     if len(sponge_run_IDs) == 0:
-        return jsonify({
-            "detail": f"No sponge run found for disease_name: {disease_name} and dataset_ID: {dataset_ID}",
-            "status": 400,
-            "title": "Bad Request",
-            "type": "about:blank"
-        }), 400
+        return []
 
     # Build the query to get spong_effects_run_ID
     query = db.select(models.SpongEffectsRun).where(models.SpongEffectsRun.sponge_run_ID.in_(sponge_run_IDs))
@@ -108,6 +103,15 @@ def get_run_performance(dataset_ID: int = None, disease_name: str = None, level:
         "modules_cutoff": modules_cutoff
     }
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, spongEffects_params, sponge_db_version)
+    if not spongEffects_run_IDs:
+        return jsonify({
+            "detail": 'No spongEffects model performance found for name: {disease_name}'.format(disease_name=disease_name),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
     query = models.SpongEffectsRunPerformance.query \
         .join(models.SpongEffectsRun, models.SpongEffectsRun.spongEffects_run_ID == models.SpongEffectsRunPerformance.spongEffects_run_ID) \
         .filter(models.SpongEffectsRun.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
@@ -146,6 +150,15 @@ def get_run_class_performance(dataset_ID: int = None, disease_name: str = None, 
         "modules_cutoff": modules_cutoff
     }
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, spongEffects_params, sponge_db_version)
+    if not spongEffects_run_IDs:
+        return jsonify({
+            "detail": f'No spongEffects run class performance found for name: {disease_name}',
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
     query = models.SpongEffectsRunClassPerformance.query \
         .join(models.SpongEffectsRunPerformance,
               models.SpongEffectsRunPerformance.spongEffects_run_performance_ID == models.SpongEffectsRunClassPerformance.spongEffects_run_performance_ID) \
@@ -196,7 +209,16 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
         "modules_cutoff": modules_cutoff
     }
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, level, spongEffects_params, sponge_db_version)
-        # extract density data for spongEffects run
+    if not spongEffects_run_IDs:
+        return jsonify({
+            "detail": 'No spongEffects class enrichment score distribution data found for given parameters',
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
+
+    # extract density data for spongEffects run
     query = models.SpongEffectsEnrichmentClassDensity.query \
         .filter(models.SpongEffectsEnrichmentClassDensity.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
         .all()
@@ -239,16 +261,19 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
         "modules_cutoff": modules_cutoff
     }
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'gene', spongEffects_params, sponge_db_version)
-    
-    # get the gene ids
-    gene_data = get_genes(gene_ID, ensg_number, gene_symbol)
-    gene_IDs = [gene.gene_ID for gene in gene_data]
+    if not spongEffects_run_IDs:
+        return []
     
     # get the modules
     query = db.select(models.SpongEffectsGeneModule) \
         .where(models.SpongEffectsGeneModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
-        .where(models.SpongEffectsGeneModule.gene_ID.in_(gene_IDs)) \
-        .order_by(models.SpongEffectsGeneModule.mean_accuracy_decrease.desc(), models.SpongEffectsGeneModule.mean_accuracy_decrease.desc())
+        .order_by(models.SpongEffectsGeneModule.mean_accuracy_decrease.desc(), models.SpongEffectsGeneModule.mean_gini_decrease.desc())
+
+    # Only filter by gene if at least one gene identifier is provided
+    if gene_ID is not None or ensg_number is not None or gene_symbol is not None:
+        gene_data = get_genes(gene_ID, ensg_number, gene_symbol)
+        gene_IDs = [gene.gene_ID for gene in gene_data]
+        query = query.where(models.SpongEffectsGeneModule.gene_ID.in_(gene_IDs))
 
     if spongEffects_gene_module_ID is not None:
         query = query.where(models.SpongEffectsGeneModule.spongEffects_gene_module_ID == spongEffects_gene_module_ID)
@@ -282,7 +307,15 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
     :return: spongEffects gene module members for given disease and gene identifier
     """
     # get the modules using get_gene_modules
-    modules = get_gene_modules(spongEffects_gene_module_ID, dataset_ID, disease_name, gene_ID, ensg_number, gene_symbol, sponge_db_version)
+    modules = get_gene_modules(
+        spongEffects_gene_module_ID=spongEffects_gene_module_ID,
+        dataset_ID=dataset_ID,
+        disease_name=disease_name,
+        gene_ID=gene_ID,
+        ensg_number=ensg_number,
+        gene_symbol=gene_symbol,
+        sponge_db_version=sponge_db_version
+    )
     module_IDs = [module['spongEffects_gene_module_ID'] for module in modules]
     if len(module_IDs) == 0:
         return jsonify({
@@ -332,12 +365,40 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
 
 
 @cache.cached(query_string=True)
-def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int], cluster: bool = False, sponge_db_version: int = LATEST): 
+def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int] = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
     """
     API request for /spongEffects/getSpongEffectsGeneModuleScores
     :param spongEffects_gene_module_ID: Gene module ID as string
     :return: enrichment scores of all modules for a given gene
     """
+    if average:
+        avg_query = db.session.query(
+            models.EnrichmentScoreGene.spongEffects_gene_module_ID,
+            db.func.avg(models.EnrichmentScoreGene.score_value).label('avg_score')
+        )
+        if spongEffects_gene_module_ID:
+            avg_query = avg_query.filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID))
+        avg_query = avg_query.group_by(models.EnrichmentScoreGene.spongEffects_gene_module_ID).all()
+
+        modules_query = models.SpongEffectsGeneModule.query
+        if spongEffects_gene_module_ID:
+            modules_query = modules_query.filter(models.SpongEffectsGeneModule.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID))
+        modules = modules_query.all()
+        module_map = {m.spongEffects_gene_module_ID: m for m in modules}
+
+        result = []
+        for r in avg_query:
+            m = module_map.get(r.spongEffects_gene_module_ID)
+            result.append({
+                "spongEffects_gene_module_ID": r.spongEffects_gene_module_ID,
+                "score_value": r.avg_score,
+                "gene": {
+                    "ensg_number": m.gene.ensg_number if m and m.gene else None,
+                    "gene_symbol": m.gene.gene_symbol if m and m.gene else None
+                }
+            })
+        return jsonify(result)
+
     query = models.EnrichmentScoreGene.query \
         .filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID)) \
         .all()
@@ -415,18 +476,23 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
         "modules_cutoff": modules_cutoff
     }
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'transcript', spongEffects_params, sponge_db_version)
+    if not spongEffects_run_IDs:
+        return []
     
-    # get the transcripts
-    transcript_data = get_transcripts(gene_ID, ensg_number, gene_symbol, transcript_ID, enst_number)
-    transcript_IDs = [transcript.transcript_ID for transcript in transcript_data]
-
+    # get the modules
     query = db.select(models.SpongEffectsTranscriptModule) \
         .where(models.SpongEffectsTranscriptModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
-        .where(models.SpongEffectsTranscriptModule.transcript_ID.in_(transcript_IDs)) \
-        .order_by(models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc(), models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc())
+        .order_by(models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc(), models.SpongEffectsTranscriptModule.mean_gini_decrease.desc())
+
+    # Only filter by transcript if any transcript/gene identifier is provided
+    if (gene_ID is not None or ensg_number is not None or gene_symbol is not None or 
+            transcript_ID is not None or enst_number is not None):
+        transcript_data = get_transcripts(gene_ID, ensg_number, gene_symbol, transcript_ID, enst_number)
+        transcript_IDs = [transcript.transcript_ID for transcript in transcript_data]
+        query = query.where(models.SpongEffectsTranscriptModule.transcript_ID.in_(transcript_IDs))
 
     if spongEffects_transcript_module_ID is not None:
-        modules_query = modules_query.where(models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID == spongEffects_transcript_module_ID)
+        query = query.where(models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID == spongEffects_transcript_module_ID)
 
     if limit is not None:
         query = query.limit(limit)
@@ -461,7 +527,17 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
     limit = request.args.get('limit', default=100, type=int)
 
     # get the modules using get_transcript_modules
-    modules = get_transcript_modules(spongEffects_transcript_module_ID, dataset_ID, disease_name, gene_ID, ensg_number, gene_symbol, transcript_ID, enst_number, sponge_db_version)
+    modules = get_transcript_modules(
+        spongEffects_transcript_module_ID=spongEffects_transcript_module_ID,
+        dataset_ID=dataset_ID,
+        disease_name=disease_name,
+        gene_ID=gene_ID,
+        ensg_number=ensg_number,
+        gene_symbol=gene_symbol,
+        transcript_ID=transcript_ID,
+        enst_number=enst_number,
+        sponge_db_version=sponge_db_version
+    )
     module_IDs = [module['spongEffects_transcript_module_ID'] for module in modules]
 
     if len(module_IDs) == 0:
@@ -497,7 +573,7 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
 
 
 @cache.cached(query_string=True)
-def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: list[int], cluster: bool = False, sponge_db_version: int = LATEST): 
+def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: list[int] = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
     """
     API request for /spongEffects/getSpongEffectsTranscriptModuleScores
     :param spongEffects_transcript_module_ID: Transcript module ID as string
@@ -505,6 +581,36 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: li
     :param sponge_db_version: currently not used
     :return: enrichment scores of all modules for a given transcript
     """
+    if average:
+        avg_query = db.session.query(
+            models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID,
+            db.func.avg(models.EnrichmentScoreTranscript.score_value).label('avg_score')
+        )
+        if spongEffects_transcript_module_ID:
+            avg_query = avg_query.filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID))
+        avg_query = avg_query.group_by(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID).all()
+
+        modules_query = models.SpongEffectsTranscriptModule.query
+        if spongEffects_transcript_module_ID:
+            modules_query = modules_query.filter(models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID))
+        modules = modules_query.all()
+        module_map = {m.spongEffects_transcript_module_ID: m for m in modules}
+
+        result = []
+        for r in avg_query:
+            m = module_map.get(r.spongEffects_transcript_module_ID)
+            result.append({
+                "spongEffects_transcript_module_ID": r.spongEffects_transcript_module_ID,
+                "score_value": r.avg_score,
+                "transcript": {
+                    "enst_number": m.transcript.enst_number if m and m.transcript else None,
+                    "gene": {
+                        "gene_symbol": m.transcript.gene.gene_symbol if m and m.transcript and m.transcript.gene else None
+                    }
+                }
+            })
+        return jsonify(result)
+
     query = models.EnrichmentScoreTranscript.query \
         .filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID)) \
         .all()
@@ -584,6 +690,9 @@ class Params:
     max_size: float
     min_expr: float
     method: str
+    model: str
+    log: bool
+    subtypes: bool
 
     def __init__(self, params):
         self.mscor = params["mscor"]
@@ -592,18 +701,32 @@ class Params:
         self.max_size = params["max_size"]
         self.min_expr = params["min_expr"]
         self.method = params["method"]
+        self.model = params["model"]
+        self.log = str(params.get("log")).lower() == "true"
+        self.subtypes = str(params.get("subtypes")).lower() == "true"
+        invalid_keys = [k for k in params.keys() if k not in ["mscor", "fdr", "min_size", "max_size", "min_expr", "method", "model", "log", "subtypes"]]
+        if invalid_keys:
+            raise ValueError(f"Invalid parameters: {invalid_keys}")
 
     def get_cmd_options(self):
         cmd: list = []
         for name, value in vars(self).items():
-            cmd.append(f'--{name}')
+            # check for wrong params
+                    
+            if value == "None" or value is None:
+                continue
+            if type(value) != bool or (type(value) == bool and value is True):
+                cmd.append(f'--{name}')
             if name == "method":
-                value = value.lower()
-            cmd.append(value)
+                value = str(value).lower()
+            if type(value) != bool:    
+                cmd.append(str(value))
         return cmd
 
 
-def run_spongEffects(file_path, out_path, params: Params = None, log: bool = False, subtype_level: bool = False):
+def run_spongEffects(file_path, out_path, params: Params = None, 
+# log: bool = False, subtype_level: bool = False
+):
     """
     Predict cancer type for an uploaded gene/transcript expression
     :param file_path: path to uploaded expression file
@@ -621,28 +744,80 @@ def run_spongEffects(file_path, out_path, params: Params = None, log: bool = Fal
         "--output", out_path,
         "--local"
     ]
-    if subtype_level:
-        cmd.append("--subtypes")
-    if log:
-        cmd.append("--log")
+    # if subtype_level:
+    #     cmd.append("--subtypes")
+    # if log:
+    #     cmd.append("--log")
     if params and isinstance(params, Params):
         cmd.extend(params.get_cmd_options())
     try:
         # execute command
         logger.info(f"Running spongEffects with command: {' '.join(cmd)}")
         process = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
         # get prediction output
-        stderr = process.stderr
-        logger.info(stderr)
+        # stderr = process.stderr
+        # logger.info(f"Rscript stderr:\n{stderr}")
+
+        if not os.path.exists(out_path):
+             return {
+                "detail": f"Output file not found at {out_path}. R Script output: {stderr}",
+                "status": 500,
+                "title": "Execution Error",
+                "type": "about:blank"
+            }, 500
+
         with open(out_path, 'r') as json_file:
-            return json.load(json_file)
+            return json.load(json_file), 200
+
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error running spongEffects: {e}, traceback: {traceback.print_exception(type(e), e, e.__traceback__)})")
-        logger.error("Rscript output: " + e.stderr)
+        # construct log path for error reading
+        log_path = os.path.join(config.UPLOAD_DIR, os.path.basename(out_path).replace(".json", ".log"))
+        log_content = ""
+        if os.path.exists(log_path):
+            try:
+                with open(log_path, 'r') as f:
+                    log_lines = f.readlines()
+                    # find "Error in"
+                    error_line_index = None
+                    for i, line in enumerate(log_lines):
+                        if "Error in" in line:
+                            error_line_index = i
+                            break
+                    
+                    if error_line_index is not None:
+                        # find where error ends (usually at warning messages or end of file)
+                        error_end_index = len(log_lines)
+                        for i in range(error_line_index, len(log_lines)):
+                            if log_lines[i].startswith("In addition: Warning messages:"):
+                                error_end_index = i
+                                break
+                        log_content = "\n--- Specific R Error ---\n" + "".join(log_lines[error_line_index:error_end_index])
+                    else:
+                        # just get last 15 lines if no specific error found
+                        log_content = "\n--- Log Tail ---\n" + "".join(log_lines[-15:])
+            except Exception as read_err:
+                logger.error(f"Could not read log file: {read_err}")
+
+        error_msg = f"{e.stderr}\n{e.stdout}".strip()
+        if not error_msg or len(error_msg) < 5:
+            error_msg = str(e)
+            
+        logger.error(f"Error running spongEffects: {e}")
+        logger.error(f"Rscript combined output: {error_msg}")
+        
         return {
-            "detail": f"{e}",
+            "detail": f"R Script error:\n{error_msg}{log_content}",
             "status": 500,
-            "title": "Error",
+            "title": "Execution Error",
+            "type": "about:blank"
+        }, 500
+    except Exception as e:
+        logger.error(f"Unexpected error in run_spongEffects: {e}\n{traceback.format_exc()}")
+        return {
+            "detail": f"Unexpected error: {str(e)}",
+            "status": 500,
+            "title": "System Error",
             "type": "about:blank"
         }, 500
 
@@ -653,10 +828,10 @@ def upload_file():
     # save uploaded file
     uploaded_file = request.files['file']
     # save prediction level
-    predict_subtypes: bool = request.form.get('subtypes') == "true"
+    # predict_subtypes: bool = request.form.get('subtypes') == "true"
     # save given parameters
     run_parameters: Params = Params(request.form)
-    apply_log_scale: bool = request.form.get('log') == "true"
+    # apply_log_scale: bool = request.form.get('log') == "true"
     if uploaded_file.filename == '':
         return jsonify({
             "detail": "File upload failed",
@@ -675,8 +850,54 @@ def upload_file():
     # create random output path
     tmp_out_file = tempfile.NamedTemporaryFile(prefix="prediction_", suffix=".json")
     # run spongEffects
-    return jsonify(run_spongEffects(tmp_file.name, tmp_out_file.name, run_parameters,
-                                    log=apply_log_scale, subtype_level=predict_subtypes))
+    response, status_code = run_spongEffects(tmp_file.name, os.path.join(config.UPLOAD_DIR, tmp_out_file.name), run_parameters)
+    
+    if status_code == 200 and isinstance(response, dict) and 'scores' in response:
+        try:
+            meta_list = response.get('meta', [])
+            level = meta_list[0].get('level', 'gene') if isinstance(meta_list, list) and len(meta_list) > 0 else 'gene'
+            umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
+            model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
+            coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
+            
+            if os.path.exists(model_path) and os.path.exists(coords_path):
+                import joblib
+                import numpy as np
+                # Load UMAP model info
+                model_info = joblib.load(model_path)
+                
+                # Extract and format user scores if present
+                scores = response.get('scores')
+                user_umap = {}
+                if scores and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
+                    # values: list of lists, shape (n_features, n_samples)
+                    data_matrix = np.array(scores['values']).T # shape (n_samples, n_features)
+                    user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
+                    
+                    # Reindex columns to align with training features
+                    user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
+                    
+                    # Scale and transform
+                    scaled_data = model_info['scaler'].transform(user_df)
+                    user_embedding = model_info['reducer'].transform(scaled_data)
+                    
+                    # Format user coordinates
+                    for idx, sample in enumerate(scores['samples']):
+                        user_umap[sample] = {
+                            'x': float(user_embedding[idx, 0]),
+                            'y': float(user_embedding[idx, 1]),
+                        }
+                response['user_umap'] = user_umap
+                
+                # Load precalculated TCGA coordinates
+                with open(coords_path, 'r') as f:
+                    tcga_umap = json.load(f)
+                response['tcga_umap'] = tcga_umap
+                
+        except Exception as e:
+            logger.error(f"Error calculating UMAP projection for user samples: {e}\n{traceback.format_exc()}")
+            
+    return jsonify(response), status_code
 
 
 @cache.cached(query_string=True)
@@ -737,3 +958,62 @@ def get_spongeffects_runs(dataset_ID: str = None, disease_name: str = None, incl
             "type": "about:blank",
             "data": []
         }), 200
+
+
+def get_umap_projection():
+    """
+    API request for /spongEffects/getUmapProjection
+    Calculate UMAP coordinates for any given scores and level.
+    """
+    req_data = request.get_json()
+    if not req_data or 'level' not in req_data or 'scores' not in req_data:
+        return jsonify({'error': 'Missing required fields level and/or scores'}), 400
+        
+    level = req_data['level']
+    scores = req_data['scores']
+    
+    try:
+        umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
+        model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
+        coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
+        
+        if not os.path.exists(model_path) or not os.path.exists(coords_path):
+            return jsonify({'error': 'UMAP models not trained yet on the backend'}), 500
+            
+        import joblib
+        import numpy as np
+        
+        model_info = joblib.load(model_path)
+        
+        # Extract and format user scores if present
+        user_umap = {}
+        if scores and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
+            data_matrix = np.array(scores['values']).T
+            user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
+            
+            # Reindex columns to align with training features
+            user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
+            
+            # Scale and transform
+            scaled_data = model_info['scaler'].transform(user_df)
+            user_embedding = model_info['reducer'].transform(scaled_data)
+            
+            # Format user coordinates
+            for idx, sample in enumerate(scores['samples']):
+                user_umap[sample] = {
+                    'x': float(user_embedding[idx, 0]),
+                    'y': float(user_embedding[idx, 1]),
+                }
+            
+        # Load precalculated TCGA coordinates
+        with open(coords_path, 'r') as f:
+            tcga_umap = json.load(f)
+            
+        return jsonify({
+            'user_umap': user_umap,
+            'tcga_umap': tcga_umap
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in get_umap_projection: {e}\n{traceback.format_exc()}")
+        return jsonify({'error': f"Internal error during UMAP projection: {str(e)}"}), 500

@@ -365,7 +365,7 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
 
 
 @cache.cached(query_string=True)
-def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int], cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
+def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int] = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
     """
     API request for /spongEffects/getSpongEffectsGeneModuleScores
     :param spongEffects_gene_module_ID: Gene module ID as string
@@ -375,12 +375,15 @@ def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int], clu
         avg_query = db.session.query(
             models.EnrichmentScoreGene.spongEffects_gene_module_ID,
             db.func.avg(models.EnrichmentScoreGene.score_value).label('avg_score')
-        ).filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID)) \
-         .group_by(models.EnrichmentScoreGene.spongEffects_gene_module_ID).all()
+        )
+        if spongEffects_gene_module_ID:
+            avg_query = avg_query.filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID))
+        avg_query = avg_query.group_by(models.EnrichmentScoreGene.spongEffects_gene_module_ID).all()
 
-        modules = models.SpongEffectsGeneModule.query.filter(
-            models.SpongEffectsGeneModule.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID)
-        ).all()
+        modules_query = models.SpongEffectsGeneModule.query
+        if spongEffects_gene_module_ID:
+            modules_query = modules_query.filter(models.SpongEffectsGeneModule.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID))
+        modules = modules_query.all()
         module_map = {m.spongEffects_gene_module_ID: m for m in modules}
 
         result = []
@@ -570,7 +573,7 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
 
 
 @cache.cached(query_string=True)
-def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: list[int], cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
+def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: list[int] = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
     """
     API request for /spongEffects/getSpongEffectsTranscriptModuleScores
     :param spongEffects_transcript_module_ID: Transcript module ID as string
@@ -582,12 +585,15 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: li
         avg_query = db.session.query(
             models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID,
             db.func.avg(models.EnrichmentScoreTranscript.score_value).label('avg_score')
-        ).filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID)) \
-         .group_by(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID).all()
+        )
+        if spongEffects_transcript_module_ID:
+            avg_query = avg_query.filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID))
+        avg_query = avg_query.group_by(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID).all()
 
-        modules = models.SpongEffectsTranscriptModule.query.filter(
-            models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID)
-        ).all()
+        modules_query = models.SpongEffectsTranscriptModule.query
+        if spongEffects_transcript_module_ID:
+            modules_query = modules_query.filter(models.SpongEffectsTranscriptModule.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID))
+        modules = modules_query.all()
         module_map = {m.spongEffects_transcript_module_ID: m for m in modules}
 
         result = []
@@ -848,7 +854,8 @@ def upload_file():
     
     if status_code == 200 and isinstance(response, dict) and 'scores' in response:
         try:
-            level = response.get('meta', {}).get('level', 'gene')
+            meta_list = response.get('meta', [])
+            level = meta_list[0].get('level', 'gene') if isinstance(meta_list, list) and len(meta_list) > 0 else 'gene'
             umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
             model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
             coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
@@ -859,26 +866,27 @@ def upload_file():
                 # Load UMAP model info
                 model_info = joblib.load(model_path)
                 
-                # Extract and format user scores
-                scores = response['scores']
-                # values: list of lists, shape (n_features, n_samples)
-                data_matrix = np.array(scores['values']).T # shape (n_samples, n_features)
-                user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
-                
-                # Reindex columns to align with training features
-                user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
-                
-                # Scale and transform
-                scaled_data = model_info['scaler'].transform(user_df)
-                user_embedding = model_info['reducer'].transform(scaled_data)
-                
-                # Format user coordinates
+                # Extract and format user scores if present
+                scores = response.get('scores')
                 user_umap = {}
-                for idx, sample in enumerate(scores['samples']):
-                    user_umap[sample] = {
-                        'x': float(user_embedding[idx, 0]),
-                        'y': float(user_embedding[idx, 1]),
-                    }
+                if scores and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
+                    # values: list of lists, shape (n_features, n_samples)
+                    data_matrix = np.array(scores['values']).T # shape (n_samples, n_features)
+                    user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
+                    
+                    # Reindex columns to align with training features
+                    user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
+                    
+                    # Scale and transform
+                    scaled_data = model_info['scaler'].transform(user_df)
+                    user_embedding = model_info['reducer'].transform(scaled_data)
+                    
+                    # Format user coordinates
+                    for idx, sample in enumerate(scores['samples']):
+                        user_umap[sample] = {
+                            'x': float(user_embedding[idx, 0]),
+                            'y': float(user_embedding[idx, 1]),
+                        }
                 response['user_umap'] = user_umap
                 
                 # Load precalculated TCGA coordinates
@@ -977,24 +985,25 @@ def get_umap_projection():
         
         model_info = joblib.load(model_path)
         
-        # Extract and format user scores
-        data_matrix = np.array(scores['values']).T
-        user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
-        
-        # Reindex columns to align with training features
-        user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
-        
-        # Scale and transform
-        scaled_data = model_info['scaler'].transform(user_df)
-        user_embedding = model_info['reducer'].transform(scaled_data)
-        
-        # Format user coordinates
+        # Extract and format user scores if present
         user_umap = {}
-        for idx, sample in enumerate(scores['samples']):
-            user_umap[sample] = {
-                'x': float(user_embedding[idx, 0]),
-                'y': float(user_embedding[idx, 1]),
-            }
+        if scores and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
+            data_matrix = np.array(scores['values']).T
+            user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
+            
+            # Reindex columns to align with training features
+            user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
+            
+            # Scale and transform
+            scaled_data = model_info['scaler'].transform(user_df)
+            user_embedding = model_info['reducer'].transform(scaled_data)
+            
+            # Format user coordinates
+            for idx, sample in enumerate(scores['samples']):
+                user_umap[sample] = {
+                    'x': float(user_embedding[idx, 0]),
+                    'y': float(user_embedding[idx, 1]),
+                }
             
         # Load precalculated TCGA coordinates
         with open(coords_path, 'r') as f:

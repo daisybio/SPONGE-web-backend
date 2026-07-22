@@ -4603,6 +4603,12 @@ paths:
       description: Extract module hub elements for a given disease, center gene, and level
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: spongEffects_gene_module_ID
+        in: query
+        description: Internal database ID of the spongEffects gene module.
+        required: false
+        schema:
+          type: integer
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
@@ -4702,6 +4708,12 @@ paths:
       description: Get connected nodes of specified ceRNA hub(s)
       parameters:
       - $ref: '#/components/parameters/VersionParam'
+      - name: spongEffects_gene_module_ID
+        in: query
+        description: Internal database ID of the spongEffects gene module.
+        required: false
+        schema:
+          type: integer
       - name: dataset_ID
         in: query
         description: Internal database ID of the cancer type/dataset.
@@ -4780,7 +4792,7 @@ paths:
       - name: spongEffects_gene_module_ID
         in: query
         description: Internal database ID of the spongEffects gene module.
-        required: true
+        required: false
         schema:
           type: array
           items:
@@ -4788,6 +4800,12 @@ paths:
       - name: cluster
         in: query
         description: Whether to cluster rows and columns 
+        required: false
+        schema:
+          type: boolean
+      - name: average
+        in: query
+        description: Whether to average scores across samples
         required: false
         schema:
           type: boolean
@@ -5039,7 +5057,7 @@ paths:
       - name: spongEffects_transcript_module_ID
         in: query
         description: Internal database ID of the spongEffects transcript module.
-        required: true
+        required: false
         schema:
           type: array
           items:
@@ -5047,6 +5065,12 @@ paths:
       - name: cluster
         in: query
         description: Whether to cluster rows and columns 
+        required: false
+        schema:
+          type: boolean
+      - name: average
+        in: query
+        description: Whether to average scores across samples
         required: false
         schema:
           type: boolean

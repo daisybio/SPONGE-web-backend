@@ -25,46 +25,23 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     :param level: One of gene/transcript
     :param spongEffects_params: Select only runs with given parameters
     :param sponge_db_version: Database version (defaults to most recent version)
-    :return: spongEffects_run_ID for given disease name and level
+    :return: spongEffects_run_ID for given disease name and level, ordered by best model performance (accuracy desc)
     """
-     # old
-    # query = db.session.execute(
-    #     "SELECT sEr.spongEffects_run_ID from spongEffects_run_performance"
-    #     " JOIN spongEffects_run sEr on spongEffects_run_performance.spongEffects_run_ID = sEr.spongEffects_run_ID"
-    #     " JOIN sponge_run sr on sEr.sponge_run_ID = sr.sponge_run_ID"
-    #     " JOIN dataset d on sr.dataset_ID = d.dataset_ID"
-    #     f" WHERE d.disease_name LIKE '%{disease_name}%'"
-    #     f" AND d.sponge_db_version = {sponge_db_version}"
-    #     f" AND level = '{level}'"
-    #     " AND split_type = 'train'"
-    #     " ORDER BY accuracy_upper DESC"
-    #     " LIMIT 1;"
-    # ).fetchall()
-
-    query = db.select(models.SpongeRun.sponge_run_ID).join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID)
-
-    # Filter for sponge_db_version
-    query = query.where(models.Dataset.sponge_db_version == sponge_db_version)
+    query = (
+        db.select(models.SpongEffectsRun.spongEffects_run_ID)
+        .join(models.SpongeRun, models.SpongEffectsRun.sponge_run_ID == models.SpongeRun.sponge_run_ID)
+        .join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID)
+        .outerjoin(models.SpongEffectsRunPerformance, models.SpongEffectsRunPerformance.spongEffects_run_ID == models.SpongEffectsRun.spongEffects_run_ID)
+        .where(models.Dataset.sponge_db_version == sponge_db_version)
+    )
 
     if dataset_ID is not None:
         query = query.where(models.SpongeRun.dataset_ID == dataset_ID)
     if disease_name is not None:
         query = query.where(models.Dataset.disease_name.like(f"%{disease_name}%"))
-
-    # Execute the query and fetch the sponge_run_ID
-    sponge_run_IDs = db.session.execute(query).scalars().all()
-
-    if len(sponge_run_IDs) == 0:
-        return []
-
-    # Build the query to get spong_effects_run_ID
-    query = db.select(models.SpongEffectsRun).where(models.SpongEffectsRun.sponge_run_ID.in_(sponge_run_IDs))
-
-    # filter for level 
     if level is not None:
         query = query.where(models.SpongEffectsRun.level == level)
 
-    # filter for spongEffects_params
     if spongEffects_params is not None:
         for key, value in spongEffects_params.items():
             if value is None:
@@ -72,13 +49,16 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
             if hasattr(models.SpongEffectsRun, key):
                 query = query.where(getattr(models.SpongEffectsRun, key) == value)
             else:
-                return ValueError("Invalid parameter: {key}")
+                return ValueError(f"Invalid parameter: {key}")
 
-    # Execute the query and fetch the result
-    spong_effects_run_IDs = db.session.execute(query).scalars().all()
+    query = query.order_by(models.SpongEffectsRunPerformance.accuracy.desc())
 
-    spong_effects_run_IDs = [spong_effects_run_ID.spongEffects_run_ID for spong_effects_run_ID in spong_effects_run_IDs]
-    
+    raw_ids = db.session.execute(query).scalars().all()
+    spong_effects_run_IDs = []
+    for rid in raw_ids:
+        if rid not in spong_effects_run_IDs:
+            spong_effects_run_IDs.append(rid)
+
     return spong_effects_run_IDs
 
 
@@ -234,9 +214,10 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
         }), 200
 
 
-@cache.cached(query_string=True)
+@cache.memoize()
 def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None, 
                      m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
+                     get_best: bool = True,
                      sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsGeneModules
@@ -251,6 +232,7 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     :param m_scor_threshold: Minimum m_scor threshold
     :param p_adj_threshold: Minimum p_adj threshold
     :param modules_cutoff: Minimum number of modules
+    :param get_best: If true, limits selection to the top-accuracy best model run
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects gene modules for given disease
     """
@@ -263,6 +245,8 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'gene', spongEffects_params, sponge_db_version)
     if not spongEffects_run_IDs:
         return []
+    if get_best:
+        spongEffects_run_IDs = spongEffects_run_IDs[:1]
     
     # get the modules
     query = db.select(models.SpongEffectsGeneModule) \
@@ -365,16 +349,25 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
 
 
 @cache.cached(query_string=True)
-def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int] = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
+def get_gene_module_enrichment_score(spongEffects_gene_module_ID = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
     """
     API request for /spongEffects/getSpongEffectsGeneModuleScores
-    :param spongEffects_gene_module_ID: Gene module ID as string
+    :param spongEffects_gene_module_ID: Gene module ID as int, list or comma-separated string
     :return: enrichment scores of all modules for a given gene
     """
+    if spongEffects_gene_module_ID is not None:
+        if isinstance(spongEffects_gene_module_ID, str):
+            spongEffects_gene_module_ID = [int(x.strip()) for x in spongEffects_gene_module_ID.split(',') if x.strip().lstrip('-').isdigit()]
+        elif isinstance(spongEffects_gene_module_ID, int):
+            spongEffects_gene_module_ID = [spongEffects_gene_module_ID]
+        elif isinstance(spongEffects_gene_module_ID, (list, tuple)):
+            spongEffects_gene_module_ID = [int(x) for x in spongEffects_gene_module_ID if str(x).lstrip('-').isdigit()]
+
     if average:
         avg_query = db.session.query(
             models.EnrichmentScoreGene.spongEffects_gene_module_ID,
-            db.func.avg(models.EnrichmentScoreGene.score_value).label('avg_score')
+            db.func.avg(models.EnrichmentScoreGene.score_value).label('avg_score'),
+            db.func.variance(models.EnrichmentScoreGene.score_value).label('var_score')
         )
         if spongEffects_gene_module_ID:
             avg_query = avg_query.filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID))
@@ -392,6 +385,7 @@ def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int] = No
             result.append({
                 "spongEffects_gene_module_ID": r.spongEffects_gene_module_ID,
                 "score_value": r.avg_score,
+                "variance_score": float(r.var_score) if getattr(r, 'var_score', None) is not None else 0.0,
                 "gene": {
                     "ensg_number": m.gene.ensg_number if m and m.gene else None,
                     "gene_symbol": m.gene.gene_symbol if m and m.gene else None
@@ -399,9 +393,10 @@ def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int] = No
             })
         return jsonify(result)
 
-    query = models.EnrichmentScoreGene.query \
-        .filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID)) \
-        .all()
+    query = models.EnrichmentScoreGene.query
+    if spongEffects_gene_module_ID:
+        query = query.filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID))
+    query = query.all()
 
     if len(query) == 0:
         return jsonify({
@@ -446,9 +441,10 @@ def get_gene_module_enrichment_score(spongEffects_gene_module_ID: list[int] = No
 
     
 
-@cache.cached(query_string=True)
+@cache.memoize()
 def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, limit: int = None, offset: int = None, 
                            m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
+                           get_best: bool = True,
                            sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsTranscriptModules
@@ -465,6 +461,7 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     :param m_scor_threshold: Minimum m_scor threshold
     :param p_adj_threshold: Minimum p_adj threshold
     :param modules_cutoff: Minimum number of modules
+    :param get_best: If true, limits selection to the top-accuracy best model run
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: module hub elements for a given disease and level
     """
@@ -478,6 +475,8 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'transcript', spongEffects_params, sponge_db_version)
     if not spongEffects_run_IDs:
         return []
+    if get_best:
+        spongEffects_run_IDs = spongEffects_run_IDs[:1]
     
     # get the modules
     query = db.select(models.SpongEffectsTranscriptModule) \
@@ -573,18 +572,27 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
 
 
 @cache.cached(query_string=True)
-def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: list[int] = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
+def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
     """
     API request for /spongEffects/getSpongEffectsTranscriptModuleScores
-    :param spongEffects_transcript_module_ID: Transcript module ID as string
+    :param spongEffects_transcript_module_ID: Transcript module ID as int, list or comma-separated string
     :param cluster: Whether to cluster the output (default: False)
     :param sponge_db_version: currently not used
     :return: enrichment scores of all modules for a given transcript
     """
+    if spongEffects_transcript_module_ID is not None:
+        if isinstance(spongEffects_transcript_module_ID, str):
+            spongEffects_transcript_module_ID = [int(x.strip()) for x in spongEffects_transcript_module_ID.split(',') if x.strip().lstrip('-').isdigit()]
+        elif isinstance(spongEffects_transcript_module_ID, int):
+            spongEffects_transcript_module_ID = [spongEffects_transcript_module_ID]
+        elif isinstance(spongEffects_transcript_module_ID, (list, tuple)):
+            spongEffects_transcript_module_ID = [int(x) for x in spongEffects_transcript_module_ID if str(x).lstrip('-').isdigit()]
+
     if average:
         avg_query = db.session.query(
             models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID,
-            db.func.avg(models.EnrichmentScoreTranscript.score_value).label('avg_score')
+            db.func.avg(models.EnrichmentScoreTranscript.score_value).label('avg_score'),
+            db.func.variance(models.EnrichmentScoreTranscript.score_value).label('var_score')
         )
         if spongEffects_transcript_module_ID:
             avg_query = avg_query.filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID))
@@ -602,6 +610,7 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: li
             result.append({
                 "spongEffects_transcript_module_ID": r.spongEffects_transcript_module_ID,
                 "score_value": r.avg_score,
+                "variance_score": float(r.var_score) if getattr(r, 'var_score', None) is not None else 0.0,
                 "transcript": {
                     "enst_number": m.transcript.enst_number if m and m.transcript else None,
                     "gene": {
@@ -611,9 +620,10 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID: li
             })
         return jsonify(result)
 
-    query = models.EnrichmentScoreTranscript.query \
-        .filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID)) \
-        .all()
+    query = models.EnrichmentScoreTranscript.query
+    if spongEffects_transcript_module_ID:
+        query = query.filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID))
+    query = query.all()
     if len(query) == 0:
         return jsonify({
             "detail": f'No spongEffects transcript module scores found for module ID: {spongEffects_transcript_module_ID}',

@@ -1,6 +1,7 @@
 from flask import abort
 import sqlalchemy as sa
 import os
+import math
 from flask import jsonify
 from sqlalchemy import desc, engine_from_config, literal_column, or_, and_
 from sqlalchemy.sql import text
@@ -1055,6 +1056,8 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     # gene query: 
     gene_query = db.select(models.Gene.gene_ID)
     if ensemblID is not None: 
+        if isinstance(ensemblID, str):
+            ensemblID = [x.strip() for x in ensemblID.split(',') if x.strip()]
         gene_query = gene_query.filter(models.Gene.ensg_number.in_(ensemblID))
 
     # Step 1: Filter for SpongeRun IDs
@@ -1084,10 +1087,13 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
             )
         )
 
-    if maxPValue:
-        edge_query = edge_query.filter(
-            models.GeneInteraction.p_value <= maxPValue
-        )
+    if maxPValue is not None:
+        try:
+            val = float(maxPValue)
+            if not math.isnan(val):
+                edge_query = edge_query.filter(models.GeneInteraction.p_value <= val)
+        except (ValueError, TypeError):
+            pass
 
     # Get prefiltered edges
     edges = db.session.execute(edge_query).scalars().all()
@@ -1101,9 +1107,10 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     use_network_analysis = bool(nodeSorting) or node_metric_filter
 
     if use_network_analysis:
-        candidate_ids = set(gene_ids_in_edges)
         if ensemblID:
-            candidate_ids &= set(db.session.execute(gene_query).scalars().all())
+            candidate_ids = set(db.session.execute(gene_query).scalars().all())
+        else:
+            candidate_ids = set(gene_ids_in_edges)
         candidate_ids = sorted(candidate_ids)
 
         na_rows = db.session.execute(
@@ -1191,9 +1198,10 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     else:
         # No sorting / no node-metric filter: derive nodes straight from the edge genes without
         # gating on the network_analysis table, so no node is lost.
-        candidate_ids = set(gene_ids_in_edges)
         if ensemblID:
-            candidate_ids &= set(db.session.execute(gene_query).scalars().all())
+            candidate_ids = set(db.session.execute(gene_query).scalars().all())
+        else:
+            candidate_ids = set(gene_ids_in_edges)
         candidate_ids = sorted(candidate_ids)
         start = offsetNodes or 0
         candidate_ids = candidate_ids[start:start + maxNodes] if maxNodes is not None else candidate_ids[start:]
@@ -1249,7 +1257,7 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
         edge_query = edge_query.order_by(models.GeneInteraction.mscor.desc())
     elif edgeSorting == "correlation":
         edge_query = edge_query.order_by(models.GeneInteraction.correlation.desc())
-    else: 
+    elif edgeSorting is not None:
         raise ValueError("Invalid edge sorting key. Choose one of 'pValue', 'mscor', 'correlation'")
     
     # edge pagination 

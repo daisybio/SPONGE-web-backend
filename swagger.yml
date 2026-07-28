@@ -4669,6 +4669,13 @@ paths:
         required: false
         schema:
           type: number
+      - name: get_best
+        in: query
+        description: If true, limits selection to the top-accuracy best model run.
+        required: false
+        schema:
+          type: boolean
+          default: true
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -4923,6 +4930,13 @@ paths:
         required: false
         schema:
           type: number
+      - name: get_best
+        in: query
+        description: If true, limits selection to the top-accuracy best model run.
+        required: false
+        schema:
+          type: boolean
+          default: true
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease

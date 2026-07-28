@@ -142,6 +142,7 @@ class networkAnalysis(db.Model):
     eigenvector = db.Column(db.Float)
     betweenness = db.Column(db.Float)
     node_degree = db.Column(db.Float)
+    has_inverse = db.Column(db.Boolean, nullable=True, default=False)
 
 # chris: Change
 class networkAnalysisTranscript(db.Model):
@@ -157,6 +158,7 @@ class networkAnalysisTranscript(db.Model):
     eigenvector = db.Column(db.Float)
     betweenness = db.Column(db.Float)
     node_degree = db.Column(db.Float)
+    has_inverse = db.Column(db.Boolean, nullable=True, default=False)
 
 
 class GeneExpressionValues(db.Model):
@@ -794,7 +796,7 @@ class networkAnalysisSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = networkAnalysis
         sqla_session = db.session
-        fields = ["betweenness", "eigenvector", "gene", "node_degree", "sponge_run"]
+        fields = ["betweenness", "eigenvector", "gene", "node_degree", "sponge_run", "has_inverse"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
     gene = ma.Nested(lambda: GeneSchema(only=("ensg_number", "gene_symbol", "gene_type")))
@@ -804,7 +806,7 @@ class networkAnalysisSchemaTranscript(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = networkAnalysisTranscript
         sqla_session = db.session
-        fields = ["betweenness", "eigenvector", "transcript", "node_degree", "sponge_run"]
+        fields = ["betweenness", "eigenvector", "transcript", "node_degree", "sponge_run", "has_inverse"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
     transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene", "transcript_type")))

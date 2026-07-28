@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 import os
+import math
 from flask import jsonify
 from sqlalchemy import desc, and_
 from sqlalchemy.sql import text
@@ -883,6 +884,8 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     transcript_query = db.select(models.Transcript.transcript_ID)
     
     if ensemblID: 
+        if isinstance(ensemblID, str):
+            ensemblID = [x.strip() for x in ensemblID.split(',') if x.strip()]
         transcript_query = transcript_query.filter(
             models.Transcript.enst_number.in_(ensemblID)
         )
@@ -914,10 +917,13 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
             )
         )
 
-    if maxPValue: 
-        edge_query = edge_query.filter(
-            models.TranscriptInteraction.p_value <= maxPValue
-        )
+    if maxPValue is not None:
+        try:
+            val = float(maxPValue)
+            if not math.isnan(val):
+                edge_query = edge_query.filter(models.TranscriptInteraction.p_value <= val)
+        except (ValueError, TypeError):
+            pass
     
     # Get prefiltered edges 
     edges = db.session.execute(edge_query).scalars().all()
@@ -931,9 +937,10 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     use_network_analysis = bool(nodeSorting) or node_metric_filter
 
     if use_network_analysis:
-        candidate_ids = set(tr_ids_in_edges)
         if ensemblID:
-            candidate_ids &= set(db.session.execute(transcript_query).scalars().all())
+            candidate_ids = set(db.session.execute(transcript_query).scalars().all())
+        else:
+            candidate_ids = set(tr_ids_in_edges)
         candidate_ids = sorted(candidate_ids)
 
         na_rows = db.session.execute(
@@ -1023,7 +1030,9 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
         # without gating on the network_analysis table, so no node is lost.
         candidate_ids = set(tr_ids_in_edges)
         if ensemblID:
-            candidate_ids &= set(db.session.execute(transcript_query).scalars().all())
+            candidate_ids = set(db.session.execute(transcript_query).scalars().all())
+        else:
+            candidate_ids = set(tr_ids_in_edges)
         candidate_ids = sorted(candidate_ids)
         start = offsetNodes or 0
         candidate_ids = candidate_ids[start:start + maxNodes] if maxNodes is not None else candidate_ids[start:]

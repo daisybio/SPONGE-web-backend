@@ -4,6 +4,7 @@ from app.controllers.dataset import _dataset_query
 import app.models as models
 from flask import Response
 from app.config import db, LATEST, cache
+import urllib.request
 
 
 @cache.cached(query_string=True)
@@ -201,4 +202,37 @@ def get_psi_values(dataset_ID: str = None, disease_name: str = None, data_origin
             "type": "about:blank",
             "data": []
         }), 200
+
+
+@cache.cached(query_string=True)
+def check_digger(identifier, level="gene"):
+    """
+    Check if a DIGGER entry exists for the given identifier and level.
+    :param identifier: ENSG or ENST identifier
+    :param level: 'gene' or 'transcript'
+    :return: dict with exists boolean and url
+    """
+    if not identifier:
+        return jsonify({"exists": False, "url": None}), 400
+
+    if level == "transcript":
+        url = f"https://exbio.wzw.tum.de/digger/ID/human/{identifier}"
+    else:
+        url = f"https://exbio.wzw.tum.de/digger/ID/gene/human/{identifier}/"
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            if resp.status == 200:
+                content = resp.read().decode("utf-8", errors="ignore")
+                if "No information for" not in content:
+                    return jsonify({"exists": True, "url": url}), 200
+    except Exception:
+        pass
+
+    return jsonify({"exists": False, "url": url}), 200
+
 

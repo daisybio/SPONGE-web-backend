@@ -977,15 +977,20 @@ def get_umap_projection():
     API request for /spongEffects/getUmapProjection
     Calculate UMAP coordinates for any given scores and level.
     """
-    req_data = request.get_json()
-    if not req_data or 'level' not in req_data or 'scores' not in req_data:
-        return jsonify({'error': 'Missing required fields level and/or scores'}), 400
-        
-    level = req_data['level']
-    scores = req_data['scores']
-    
+    if request.method == 'POST':
+        req_data = request.get_json(silent=True) or {}
+        level = req_data.get('level') or request.args.get('level', default='gene')
+        scores = req_data.get('scores')
+    else:
+        level = request.args.get('level', default='gene')
+        scores = None
+
+    if not level:
+        level = 'gene'
+
     try:
-        umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        umap_dir = os.path.join(base_dir, "umap_data")
         model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
         coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
         
@@ -999,7 +1004,7 @@ def get_umap_projection():
         
         # Extract and format user scores if present
         user_umap = {}
-        if scores and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
+        if scores and isinstance(scores, dict) and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
             data_matrix = np.array(scores['values']).T
             user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
             
@@ -1028,4 +1033,5 @@ def get_umap_projection():
         
     except Exception as e:
         logger.error(f"Error in get_umap_projection: {e}\n{traceback.format_exc()}")
+        return jsonify({"detail": str(e), "status": 500}), 500
         return jsonify({'error': f"Internal error during UMAP projection: {str(e)}"}), 500

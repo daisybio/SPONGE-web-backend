@@ -245,7 +245,8 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'gene', spongEffects_params, sponge_db_version)
     if not spongEffects_run_IDs:
         return []
-    if get_best:
+    has_identifier = (gene_ID is not None or ensg_number is not None or gene_symbol is not None or spongEffects_gene_module_ID is not None)
+    if get_best and not has_identifier:
         spongEffects_run_IDs = spongEffects_run_IDs[:1]
     
     # get the modules
@@ -475,7 +476,8 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'transcript', spongEffects_params, sponge_db_version)
     if not spongEffects_run_IDs:
         return []
-    if get_best:
+    has_identifier = (gene_ID is not None or ensg_number is not None or gene_symbol is not None or transcript_ID is not None or enst_number is not None or spongEffects_transcript_module_ID is not None)
+    if get_best and not has_identifier:
         spongEffects_run_IDs = spongEffects_run_IDs[:1]
     
     # get the modules

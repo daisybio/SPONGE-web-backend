@@ -69,7 +69,7 @@ def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, 
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
     
     if dataset_ID is not None:
-        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
     
     run = run.all()
 
@@ -286,7 +286,7 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_nu
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
     
     if dataset_ID is not None:
-        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
             
     run = run.all()
 
@@ -371,7 +371,7 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
             
     if dataset_ID is not None:
-        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
         
     run = run.all()
 
@@ -529,7 +529,7 @@ def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=No
     run = db.session.execute(text(f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"))
 
     if dataset_ID is not None:
-        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
 
     result = []
     for r in run:
@@ -638,7 +638,7 @@ def read_all_to_one_mirna(dataset_ID: int = None, disease_name=None, mimat_numbe
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
         
     if dataset_ID is not None:
-        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
     
     run = run.all()
 
@@ -782,7 +782,7 @@ def read_all_mirna(dataset_ID: int = None, disease_name=None, mimat_number=None,
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
         
     if dataset_ID is not None:
-        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
         
     run = run.all()
         
@@ -949,7 +949,7 @@ def getGeneCounts(dataset_ID: int = None, disease_name=None, ensg_number=None, g
             .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
         
     if dataset_ID is not None:
-        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
     
     run = run.all()
 

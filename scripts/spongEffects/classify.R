@@ -353,10 +353,15 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
     cores = argv_predict$enrichment_cores
   )
 
-  # do hierarchical clustering on enrichment scores on genes and samples
-  row_order <- hclust(dist(test.modules.uploaded.type, method = "euclidean"), method = "ward.D2")$order
-  col_order <- hclust(dist(t(test.modules.uploaded.type), method = "euclidean"), method = "ward.D2")$order
-  test.modules.uploaded.type <- test.modules.uploaded.type[row_order, col_order]
+  # do hierarchical clustering on enrichment scores on genes and samples (guarded for n >= 2)
+  if (!is.null(test.modules.uploaded.type) && nrow(test.modules.uploaded.type) >= 2) {
+    row_order <- hclust(dist(test.modules.uploaded.type, method = "euclidean"), method = "ward.D2")$order
+    test.modules.uploaded.type <- test.modules.uploaded.type[row_order, , drop = FALSE]
+  }
+  if (!is.null(test.modules.uploaded.type) && ncol(test.modules.uploaded.type) >= 2) {
+    col_order <- hclust(dist(t(test.modules.uploaded.type), method = "euclidean"), method = "ward.D2")$order
+    test.modules.uploaded.type <- test.modules.uploaded.type[, col_order, drop = FALSE]
+  }
 
   # do subtype prediction only on specified type
   if (argv_predict$subtypes) {

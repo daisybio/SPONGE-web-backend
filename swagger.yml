@@ -4,10 +4,8 @@ info:
   version: 2.0.0
   title: SPONGE REST-API documentation
 servers:
-  - url: /sponge-api
-    description: Main (production) server
-  - url: /sponge-api-dev
-    description: Internal staging server for testing
+  - url: /
+    description: SPONGE API server
 components:
   parameters:
     VersionParam:

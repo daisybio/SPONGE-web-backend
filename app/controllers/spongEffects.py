@@ -1034,4 +1034,10 @@ def get_umap_projection():
     except Exception as e:
         logger.error(f"Error in get_umap_projection: {e}\n{traceback.format_exc()}")
         return jsonify({"detail": str(e), "status": 500}), 500
-        return jsonify({'error': f"Internal error during UMAP projection: {str(e)}"}), 500
+
+
+def get_umap_projection_get():
+    """
+    API request for GET /spongEffects/getUmapProjection
+    """
+    return get_umap_projection()

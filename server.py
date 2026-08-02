@@ -18,8 +18,7 @@ base_path = os.getenv("SPONGE_API_BASE_PATH", "/sponge-api")
 connex_app.add_api(
     swagger_file,
     resolver=RelativeResolver('app.controllers'),
-    base_path=base_path,
-    name="sponge_api_blueprint"
+    base_path=base_path
 )
 
 # create a URL route in our application for "/"

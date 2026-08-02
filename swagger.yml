@@ -5198,7 +5198,7 @@ paths:
           description: "File upload or processing failed"
   /spongEffects/getUmapProjection:
     get:
-      operationId: spongEffects.get_umap_projection
+      operationId: spongEffects.get_umap_projection_get
       summary: Get UMAP projection coordinates for TCGA samples by level
       parameters:
         - name: level

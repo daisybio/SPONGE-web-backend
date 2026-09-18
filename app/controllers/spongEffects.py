@@ -713,7 +713,10 @@ class Params:
         self.max_size = params["max_size"]
         self.min_expr = params["min_expr"]
         self.method = params["method"]
-        self.model = params["model"]
+        # FE omits the `model` field when falsy (backend.service.predictCancerType). Use .get so a
+        # missing model cleanly maps to the pancancer/auto branch (classify.R treats "None" as such)
+        # instead of raising KeyError -> generic 500.
+        self.model = params.get("model", "None")
         self.log = str(params.get("log")).lower() == "true"
         self.subtypes = str(params.get("subtypes")).lower() == "true"
         invalid_keys = [k for k in params.keys() if k not in ["mscor", "fdr", "min_size", "max_size", "min_expr", "method", "model", "log", "subtypes"]]
@@ -768,8 +771,8 @@ def run_spongEffects(file_path, out_path, params: Params = None,
         process = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
         # get prediction output
-        # stderr = process.stderr
-        # logger.info(f"Rscript stderr:\n{stderr}")
+        stderr = process.stderr
+        logger.info(f"Rscript stderr:\n{stderr}")
 
         if not os.path.exists(out_path):
              return {
@@ -868,7 +871,8 @@ def upload_file():
         try:
             meta_list = response.get('meta', [])
             level = meta_list[0].get('level', 'gene') if isinstance(meta_list, list) and len(meta_list) > 0 else 'gene'
-            umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            umap_dir = os.path.join(base_dir, "umap_data")
             model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
             coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
             

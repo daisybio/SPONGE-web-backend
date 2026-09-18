@@ -245,7 +245,8 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'gene', spongEffects_params, sponge_db_version)
     if not spongEffects_run_IDs:
         return []
-    if get_best:
+    has_identifier = (gene_ID is not None or ensg_number is not None or gene_symbol is not None or spongEffects_gene_module_ID is not None)
+    if get_best and not has_identifier:
         spongEffects_run_IDs = spongEffects_run_IDs[:1]
     
     # get the modules
@@ -475,7 +476,8 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     spongEffects_run_IDs = get_spongEffects_run_ID(dataset_ID, disease_name, 'transcript', spongEffects_params, sponge_db_version)
     if not spongEffects_run_IDs:
         return []
-    if get_best:
+    has_identifier = (gene_ID is not None or ensg_number is not None or gene_symbol is not None or transcript_ID is not None or enst_number is not None or spongEffects_transcript_module_ID is not None)
+    if get_best and not has_identifier:
         spongEffects_run_IDs = spongEffects_run_IDs[:1]
     
     # get the modules
@@ -711,7 +713,10 @@ class Params:
         self.max_size = params["max_size"]
         self.min_expr = params["min_expr"]
         self.method = params["method"]
-        self.model = params["model"]
+        # FE omits the `model` field when falsy (backend.service.predictCancerType). Use .get so a
+        # missing model cleanly maps to the pancancer/auto branch (classify.R treats "None" as such)
+        # instead of raising KeyError -> generic 500.
+        self.model = params.get("model", "None")
         self.log = str(params.get("log")).lower() == "true"
         self.subtypes = str(params.get("subtypes")).lower() == "true"
         invalid_keys = [k for k in params.keys() if k not in ["mscor", "fdr", "min_size", "max_size", "min_expr", "method", "model", "log", "subtypes"]]
@@ -766,8 +771,8 @@ def run_spongEffects(file_path, out_path, params: Params = None,
         process = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
         # get prediction output
-        # stderr = process.stderr
-        # logger.info(f"Rscript stderr:\n{stderr}")
+        stderr = process.stderr
+        logger.info(f"Rscript stderr:\n{stderr}")
 
         if not os.path.exists(out_path):
              return {
@@ -866,7 +871,8 @@ def upload_file():
         try:
             meta_list = response.get('meta', [])
             level = meta_list[0].get('level', 'gene') if isinstance(meta_list, list) and len(meta_list) > 0 else 'gene'
-            umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            umap_dir = os.path.join(base_dir, "umap_data")
             model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
             coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
             
@@ -975,15 +981,20 @@ def get_umap_projection():
     API request for /spongEffects/getUmapProjection
     Calculate UMAP coordinates for any given scores and level.
     """
-    req_data = request.get_json()
-    if not req_data or 'level' not in req_data or 'scores' not in req_data:
-        return jsonify({'error': 'Missing required fields level and/or scores'}), 400
-        
-    level = req_data['level']
-    scores = req_data['scores']
-    
+    if request.method == 'POST':
+        req_data = request.get_json(silent=True) or {}
+        level = req_data.get('level') or request.args.get('level', default='gene')
+        scores = req_data.get('scores')
+    else:
+        level = request.args.get('level', default='gene')
+        scores = None
+
+    if not level:
+        level = 'gene'
+
     try:
-        umap_dir = "/Users/lena/Projects/SPONGE/SPONGE-web-backend/umap_data"
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        umap_dir = os.path.join(base_dir, "umap_data")
         model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
         coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
         
@@ -997,7 +1008,7 @@ def get_umap_projection():
         
         # Extract and format user scores if present
         user_umap = {}
-        if scores and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
+        if scores and isinstance(scores, dict) and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
             data_matrix = np.array(scores['values']).T
             user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
             
@@ -1026,4 +1037,11 @@ def get_umap_projection():
         
     except Exception as e:
         logger.error(f"Error in get_umap_projection: {e}\n{traceback.format_exc()}")
-        return jsonify({'error': f"Internal error during UMAP projection: {str(e)}"}), 500
+        return jsonify({"detail": str(e), "status": 500}), 500
+
+
+def get_umap_projection_get():
+    """
+    API request for GET /spongEffects/getUmapProjection
+    """
+    return get_umap_projection()

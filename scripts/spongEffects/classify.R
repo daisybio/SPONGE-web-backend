@@ -66,8 +66,8 @@ DELIMS <- c(" ", "\t", ",", ";")
 
 #---------------------------FUNCTIONS-------------------------------------------
 
-predict_subtype <- function(type, sample_list, all_models, test_modules, threshold) {
-  # type <- as.character(unique(df$typePrediction))
+predict_subtype <- function(type, sample_list, all_models, test_modules, threshold) { # nolint: line_length_linter.
+  # type <- as.character(unique(df$typePrediction)) # nolint: commented_code_linter.
   type_project_style <- gsub("and", "&", gsub("_", " ", type))
   type <- gsub("&", "and", gsub(" ", "_", type))
   if (type_project_style %in% SUBTYPE_PROJECTS && length(sample_list) >= threshold) {
@@ -304,7 +304,14 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
       df <- type_splits[[type]]
       type_clean <- gsub("&", "and", gsub(" ", "_", type))
       samples <- df$sampleID
-      modules <- test.modules.updated.types[[type]][, samples, drop = FALSE]
+      # A type whose per-type enrichment failed/returned NULL would make NULL[, samples] throw
+      # ("incorrect number of dimensions") and abort the whole prediction. Skip it (subtype NA).
+      mod_mat <- test.modules.updated.types[[type]]
+      if (is.null(mod_mat)) {
+        df$subtypePrediction <- NA
+        return(df)
+      }
+      modules <- mod_mat[, samples, drop = FALSE]
       subtypePrediction <- predict_subtype(
         type = type_clean,
         sample_list = samples,
@@ -353,10 +360,15 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
     cores = argv_predict$enrichment_cores
   )
 
-  # do hierarchical clustering on enrichment scores on genes and samples
-  row_order <- hclust(dist(test.modules.uploaded.type, method = "euclidean"), method = "ward.D2")$order
-  col_order <- hclust(dist(t(test.modules.uploaded.type), method = "euclidean"), method = "ward.D2")$order
-  test.modules.uploaded.type <- test.modules.uploaded.type[row_order, col_order]
+  # do hierarchical clustering on enrichment scores on genes and samples (guarded for n >= 2)
+  if (!is.null(test.modules.uploaded.type) && nrow(test.modules.uploaded.type) >= 2) {
+    row_order <- hclust(dist(test.modules.uploaded.type, method = "euclidean"), method = "ward.D2")$order
+    test.modules.uploaded.type <- test.modules.uploaded.type[row_order, , drop = FALSE]
+  }
+  if (!is.null(test.modules.uploaded.type) && ncol(test.modules.uploaded.type) >= 2) {
+    col_order <- hclust(dist(t(test.modules.uploaded.type), method = "euclidean"), method = "ward.D2")$order
+    test.modules.uploaded.type <- test.modules.uploaded.type[, col_order, drop = FALSE]
+  }
 
   # do subtype prediction only on specified type
   if (argv_predict$subtypes) {
@@ -392,8 +404,10 @@ runTime <- as.double(difftime(endTime, startTime, units = c("secs")))
 # build supplementary information
 meta <- data.frame(
   runtime = runTime, level = level, n_samples = ncol(test_expr),
-  type_predict = if (is.null(dominant_type)) "NA" else dominant_type,
-  subtype_predict = if (is.null(dominant_subtype)) "NA" else dominant_subtype,
+  # Collapse to a single value: ties return >1 name and an all-NA table returns character(0);
+  # either would make data.frame() build a multi-row/zero-row meta (FE reads meta[0]) or throw.
+  type_predict = if (length(dominant_type) == 0) "NA" else dominant_type[1],
+  subtype_predict = if (length(dominant_subtype) == 0) "NA" else dominant_subtype[1],
   specified_type = argv_predict$model,
   script_version = "0.1.3"
 ) # see changelog at the bottom
@@ -403,7 +417,7 @@ scores_df <- as.data.frame(test.modules.uploaded)
 scores_list <- list(
   samples = colnames(scores_df),
   genes = rownames(scores_df),
-  values = lapply(1:nrow(scores_df), function(i) {
+  values = lapply(seq_len(nrow(scores_df)), function(i) {
     as.numeric(scores_df[i, ])
   })
 )
@@ -462,14 +476,14 @@ for (type in relevant_types) {
   type_clean <- gsub("&", "and", gsub(" ", "_", type))
   if (type_clean %in% names(models)) {
     mods <- models[[type_clean]]$modules
-    
+
     # Store under clean name
     module_members[[type_clean]] <- mods
-    
+
     # Store under display name (with spaces and ampersands)
     display_name <- gsub("and", "&", gsub("_", " ", type_clean))
     module_members[[display_name]] <- mods
-    
+
     # Store under display name (with spaces and "and")
     display_name_and <- gsub("_", " ", type_clean)
     module_members[[display_name_and]] <- mods

@@ -4,10 +4,8 @@ info:
   version: 2.0.0
   title: SPONGE REST-API documentation
 servers:
-  - url: /sponge-api
-    description: Main (production) server
-  - url: /sponge-api-dev
-    description: Internal staging server for testing
+  - url: /
+    description: SPONGE API server
 components:
   parameters:
     VersionParam:
@@ -5199,6 +5197,27 @@ paths:
         "400":
           description: "File upload or processing failed"
   /spongEffects/getUmapProjection:
+    get:
+      operationId: spongEffects.get_umap_projection_get
+      summary: Get UMAP projection coordinates for TCGA samples by level
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [gene, transcript]
+            default: gene
+      responses:
+        "200":
+          description: Successfully retrieved UMAP coordinates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tcga_umap:
+                    type: object
     post:
       operationId: spongEffects.get_umap_projection
       summary: Get UMAP projection coordinates for custom enrichment scores

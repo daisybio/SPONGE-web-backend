@@ -3497,13 +3497,14 @@ paths:
       - $ref: '#/components/parameters/VersionParam'
       - name: level
         in: query
-        description: Level of the statistic that should be returned. If not provided, all levels will be returned.
+        description: Level of the statistic that should be returned. If not provided, defaults to "gene".
         required: false
         schema:
           type: string
           enum:
           - gene
           - transcript
+          default: gene
       responses:
         "200":
           description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
@@ -4225,6 +4226,47 @@ paths:
                     psi_value:
                       type: number
                       description: Psi value of the specific event type.
+  /alternativeSplicing/checkDigger:
+    get:
+      operationId: alternativeSplicing.check_digger
+      tags:
+      - AlternativeSplicing
+      summary: Check whether a DIGGER entry exists for a given gene/transcript identifier.
+      description: Check whether a DIGGER entry exists for a given gene/transcript identifier.
+      parameters:
+      - name: identifier
+        in: query
+        description: ENSG or ENST identifier to look up in DIGGER.
+        required: true
+        schema:
+          type: string
+      - name: level
+        in: query
+        description: Whether the identifier is a gene or a transcript. Defaults to "gene".
+        required: false
+        schema:
+          type: string
+          enum:
+          - gene
+          - transcript
+          default: gene
+      responses:
+        "200":
+          description: Whether a DIGGER entry exists for the given identifier, and its URL if so.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exists:
+                    type: boolean
+                    description: Whether a DIGGER entry was found for the given identifier.
+                  url:
+                    type: string
+                    nullable: true
+                    description: The DIGGER URL for the identifier (present regardless of `exists`, unless no identifier was given).
+        "400":
+          description: No identifier was given.
   /spongEffects/getSpongEffectsRuns:
     get:
       operationId: spongEffects.get_spongeffects_runs

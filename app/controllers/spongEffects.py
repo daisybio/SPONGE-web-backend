@@ -5,6 +5,7 @@ import string
 import subprocess
 import tempfile
 from flask import request, jsonify
+from sqlalchemy import and_
 import pandas as pd
 from scipy.cluster.hierarchy import linkage, dendrogram
 from sklearn import cluster
@@ -15,8 +16,8 @@ from app.config import LATEST, db, logger, cache
 import traceback    
 
 
-@cache.cached(query_string=True)
-def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene", 
+@cache.memoize()
+def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, level: str = "gene",
                             spongEffects_params: dict = None,
                             sponge_db_version: int = LATEST):
     """
@@ -27,11 +28,18 @@ def get_spongEffects_run_ID(dataset_ID: int = None, disease_name: str = None, le
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: spongEffects_run_ID for given disease name and level, ordered by best model performance (accuracy desc)
     """
+    # Only the "modules" model's test-split accuracy defines "best" (matches
+    # otherStuff/consistency_checks/check_best_model_match.py). Without this, the outer join can
+    # rank a run by an inflated train-split (or other model_type's) accuracy row instead.
     query = (
         db.select(models.SpongEffectsRun.spongEffects_run_ID)
         .join(models.SpongeRun, models.SpongEffectsRun.sponge_run_ID == models.SpongeRun.sponge_run_ID)
         .join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID)
-        .outerjoin(models.SpongEffectsRunPerformance, models.SpongEffectsRunPerformance.spongEffects_run_ID == models.SpongEffectsRun.spongEffects_run_ID)
+        .outerjoin(models.SpongEffectsRunPerformance, and_(
+            models.SpongEffectsRunPerformance.spongEffects_run_ID == models.SpongEffectsRun.spongEffects_run_ID,
+            models.SpongEffectsRunPerformance.model_type == 'modules',
+            models.SpongEffectsRunPerformance.split_type == 'test',
+        ))
         .where(models.Dataset.sponge_db_version == sponge_db_version)
     )
 
@@ -349,8 +357,28 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
         }), 200
 
 
+def _cluster_module_scores(records: list, id_field: str) -> pd.DataFrame:
+    """
+    Hierarchically cluster a long-format (id_field, sample_ID, score_value) score table on both
+    axes and return it reordered, in melted long format. Shared by
+    get_gene_module_enrichment_score and get_transcript_module_enrichment_score. Raises on
+    failure (e.g. too few rows/columns to cluster) — callers catch it and turn it into a 400.
+    """
+    data = pd.DataFrame(records)
+    # pivot_table (not pivot): the same center gene/transcript can be the module center of more
+    # than one spongEffects_run, so requested module IDs can yield duplicate (id_field,
+    # sample_ID) rows, which a plain pivot() would raise on. Average duplicates instead.
+    score_matrix = data.pivot_table(index=id_field, columns="sample_ID", values="score_value", aggfunc="mean").fillna(0)
+    row_linkage = linkage(score_matrix, method='ward', optimal_ordering=False)
+    col_linkage = linkage(score_matrix.T, method='ward', optimal_ordering=False)
+    row_order = dendrogram(row_linkage, labels=score_matrix.index, no_plot=True).get('leaves')
+    col_order = dendrogram(col_linkage, labels=score_matrix.columns, no_plot=True).get('leaves')
+    score_matrix = score_matrix.iloc[row_order, col_order]
+    return score_matrix.reset_index().melt(id_vars=id_field, var_name='sample_ID', value_name='score_value')
+
+
 @cache.cached(query_string=True)
-def get_gene_module_enrichment_score(spongEffects_gene_module_ID = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST): 
+def get_gene_module_enrichment_score(spongEffects_gene_module_ID = None, cluster: bool = False, average: bool = False, sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsGeneModuleScores
     :param spongEffects_gene_module_ID: Gene module ID as int, list or comma-separated string
@@ -394,6 +422,17 @@ def get_gene_module_enrichment_score(spongEffects_gene_module_ID = None, cluster
             })
         return jsonify(result)
 
+    # Unlike average=True (a cheap SQL aggregate), this path loads every raw per-sample score row
+    # into memory (~2.3M rows / 462MB across all modules — see critical_project_info.md sec.4) and
+    # then, if cluster=True, runs O(n^2)/O(n^3) scipy clustering over it. Require a module filter.
+    if not spongEffects_gene_module_ID:
+        return jsonify({
+            "detail": "spongEffects_gene_module_ID is required when average=False (omitting it would load the entire enrichment score table)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     query = models.EnrichmentScoreGene.query
     if spongEffects_gene_module_ID:
         query = query.filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID))
@@ -409,32 +448,26 @@ def get_gene_module_enrichment_score(spongEffects_gene_module_ID = None, cluster
     }), 200
     
     # cluster the  scores
-    if cluster: 
-        data = pd.DataFrame([{
+    if cluster:
+        records = [{
                 "gene_ID": r.spongEffects_gene_module.gene.gene_symbol if r.spongEffects_gene_module.gene.gene_symbol else r.spongEffects_gene_module.gene.ensg_number,
                 "sample_ID": r.sample_ID,
                 "score_value": r.score_value,
-            }for r in query])
-        score_matrix = data.pivot(index="gene_ID", columns="sample_ID", values="score_value").fillna(0)
+            } for r in query]
         try:
-            row_linkage = linkage(score_matrix, method='ward', optimal_ordering=False)
-            col_linkage = linkage(score_matrix.T, method='ward', optimal_ordering=False)
+            melted = _cluster_module_scores(records, "gene_ID")
         except Exception as e:
-                return jsonify({
-                    "detail": str(e),
-                    "status": 400,
-                    "title": "Bad Request",
-                    "type": "about:blank"
-                }), 400
-        row_order = dendrogram(row_linkage, labels=score_matrix.index, no_plot=True).get('leaves')
-        col_order = dendrogram(col_linkage, labels=score_matrix.columns, no_plot=True).get('leaves')
-        score_matrix = score_matrix.iloc[row_order, col_order]
-        result = score_matrix.reset_index().melt(id_vars='gene_ID', var_name='sample_ID', value_name='score_value')
+            return jsonify({
+                "detail": str(e),
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
         result = [{
                 "gene": {"gene_symbol": row['gene_ID'], "ensg_number": None},  # or fetch ensg_number if needed
                 "sample_ID": row['sample_ID'],
                 "score_value": row['score_value']
-            } for _, row in result.iterrows()]
+            } for _, row in melted.iterrows()]
 
         return jsonify(result)
     else:
@@ -622,6 +655,17 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID = N
             })
         return jsonify(result)
 
+    # Unlike average=True (a cheap SQL aggregate), this path loads every raw per-sample score row
+    # into memory (see critical_project_info.md sec.4's gene-table analogue) and, if cluster=True,
+    # runs O(n^2)/O(n^3) scipy clustering over it. Require a module filter.
+    if not spongEffects_transcript_module_ID:
+        return jsonify({
+            "detail": "spongEffects_transcript_module_ID is required when average=False (omitting it would load the entire enrichment score table)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     query = models.EnrichmentScoreTranscript.query
     if spongEffects_transcript_module_ID:
         query = query.filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID))
@@ -636,10 +680,7 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID = N
         }), 200
 
     if cluster:
-        import pandas as pd
-        from scipy.cluster.hierarchy import linkage, dendrogram
-
-        data = pd.DataFrame([
+        records = [
             {
                 "transcript_ID": (
                     r.spongEffects_transcript_module.transcript.enst_number
@@ -650,26 +691,28 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID = N
                 "score_value": r.score_value,
             }
             for r in query
-        ])
-        # Remove rows with missing transcript_ID
-        data = data.dropna(subset=["transcript_ID"])
-        if data.empty:
+        ]
+        # Skip rows with missing transcript_ID
+        records = [r for r in records if r["transcript_ID"] is not None]
+        if not records:
             return jsonify([])
 
-        score_matrix = data.pivot(index="transcript_ID", columns="sample_ID", values="score_value").fillna(0)
-        row_linkage = linkage(score_matrix, method='ward', optimal_ordering=False)
-        col_linkage = linkage(score_matrix.T, method='ward', optimal_ordering=False)
-        row_order = dendrogram(row_linkage, labels=score_matrix.index, no_plot=True).get('leaves')
-        col_order = dendrogram(col_linkage, labels=score_matrix.columns, no_plot=True).get('leaves')
-        score_matrix = score_matrix.iloc[row_order, col_order]
-        result = score_matrix.reset_index().melt(id_vars='transcript_ID', var_name='sample_ID', value_name='score_value')
+        try:
+            melted = _cluster_module_scores(records, "transcript_ID")
+        except Exception as e:
+            return jsonify({
+                "detail": str(e),
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
         result = [
             {
                 "transcript": {"enst_number": row['transcript_ID']},
                 "sample_ID": row['sample_ID'],
                 "score_value": row['score_value']
             }
-            for _, row in result.iterrows()
+            for _, row in melted.iterrows()
         ]
         return jsonify(result)
     else:
@@ -726,29 +769,28 @@ class Params:
     def get_cmd_options(self):
         cmd: list = []
         for name, value in vars(self).items():
-            # check for wrong params
-                    
             if value == "None" or value is None:
                 continue
-            if type(value) != bool or (type(value) == bool and value is True):
+            # Non-boolean params are passed as `--name value`; boolean params are flags, only
+            # emitted (as bare `--name`, no value) when True. (Invalid param names are already
+            # rejected in __init__ via invalid_keys, not here.)
+            is_bool = isinstance(value, bool)
+            if not is_bool or value is True:
                 cmd.append(f'--{name}')
             if name == "method":
                 value = str(value).lower()
-            if type(value) != bool:    
+            if not is_bool:
                 cmd.append(str(value))
         return cmd
 
 
-def run_spongEffects(file_path, out_path, params: Params = None, 
-# log: bool = False, subtype_level: bool = False
-):
+def run_spongEffects(file_path, out_path, params: Params = None):
     """
     Predict cancer type for an uploaded gene/transcript expression
     :param file_path: path to uploaded expression file
     :param out_path: output file path
-    :param params: spongEffects run parameters
-    :param log: Flag for R code
-    :param subtype_level: Flag to predict subtypes
+    :param params: spongEffects run parameters (the `log`/`subtypes` flags, among others, are
+        passed via params.get_cmd_options() rather than as separate function arguments)
     :return: JSON object with type prediction for each sample
     """
     # build command
@@ -759,10 +801,6 @@ def run_spongEffects(file_path, out_path, params: Params = None,
         "--output", out_path,
         "--local"
     ]
-    # if subtype_level:
-    #     cmd.append("--subtypes")
-    # if log:
-    #     cmd.append("--log")
     if params and isinstance(params, Params):
         cmd.extend(params.get_cmd_options())
     try:
@@ -837,16 +875,52 @@ def run_spongEffects(file_path, out_path, params: Params = None,
         }, 500
 
 
+# In-process cache for the UMAP artifacts, shared by upload_file()'s post-processing and
+# get_umap_projection(). Both previously joblib.load()'d the ~20-27MB model file and re-parsed the
+# TCGA coordinates JSON on every single request. Keyed by level, invalidated by file mtime so a
+# retrained model on disk is picked up without needing a server restart.
+_umap_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "umap_data")
+_umap_model_cache: dict = {}
+_umap_coords_cache: dict = {}
+
+
+def _load_umap_model(level: str):
+    """Return (model_info, model_path) for the given level, loading from disk only on first use
+    or when the file's mtime has changed since it was cached. model_info is None if the file
+    doesn't exist."""
+    model_path = os.path.join(_umap_dir, f"umap_{level}_model.joblib")
+    if not os.path.exists(model_path):
+        return None, model_path
+    mtime = os.path.getmtime(model_path)
+    cached = _umap_model_cache.get(level)
+    if cached is None or cached[1] != mtime:
+        import joblib
+        _umap_model_cache[level] = (joblib.load(model_path), mtime)
+    return _umap_model_cache[level][0], model_path
+
+
+def _load_umap_coords(level: str):
+    """Return (tcga_umap, coords_path) for the given level, loading from disk only on first use
+    or when the file's mtime has changed since it was cached. tcga_umap is None if the file
+    doesn't exist."""
+    coords_path = os.path.join(_umap_dir, f"umap_{level}_tcga_coords.json")
+    if not os.path.exists(coords_path):
+        return None, coords_path
+    mtime = os.path.getmtime(coords_path)
+    cached = _umap_coords_cache.get(level)
+    if cached is None or cached[1] != mtime:
+        with open(coords_path, 'r') as f:
+            _umap_coords_cache[level] = (json.load(f), mtime)
+    return _umap_coords_cache[level][0], coords_path
+
+
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     # save uploaded file
     uploaded_file = request.files['file']
-    # save prediction level
-    # predict_subtypes: bool = request.form.get('subtypes') == "true"
-    # save given parameters
+    # save given parameters (includes the `subtypes`/`log` flags, passed to R via Params.get_cmd_options)
     run_parameters: Params = Params(request.form)
-    # apply_log_scale: bool = request.form.get('log') == "true"
     if uploaded_file.filename == '':
         return jsonify({
             "detail": "File upload failed",
@@ -871,17 +945,11 @@ def upload_file():
         try:
             meta_list = response.get('meta', [])
             level = meta_list[0].get('level', 'gene') if isinstance(meta_list, list) and len(meta_list) > 0 else 'gene'
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            umap_dir = os.path.join(base_dir, "umap_data")
-            model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
-            coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
-            
-            if os.path.exists(model_path) and os.path.exists(coords_path):
-                import joblib
+            model_info, _ = _load_umap_model(level)
+            tcga_umap, _ = _load_umap_coords(level)
+
+            if model_info is not None and tcga_umap is not None:
                 import numpy as np
-                # Load UMAP model info
-                model_info = joblib.load(model_path)
-                
                 # Extract and format user scores if present
                 scores = response.get('scores')
                 user_umap = {}
@@ -904,10 +972,6 @@ def upload_file():
                             'y': float(user_embedding[idx, 1]),
                         }
                 response['user_umap'] = user_umap
-                
-                # Load precalculated TCGA coordinates
-                with open(coords_path, 'r') as f:
-                    tcga_umap = json.load(f)
                 response['tcga_umap'] = tcga_umap
                 
         except Exception as e:
@@ -993,19 +1057,14 @@ def get_umap_projection():
         level = 'gene'
 
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        umap_dir = os.path.join(base_dir, "umap_data")
-        model_path = os.path.join(umap_dir, f"umap_{level}_model.joblib")
-        coords_path = os.path.join(umap_dir, f"umap_{level}_tcga_coords.json")
-        
-        if not os.path.exists(model_path) or not os.path.exists(coords_path):
+        model_info, _ = _load_umap_model(level)
+        tcga_umap, _ = _load_umap_coords(level)
+
+        if model_info is None or tcga_umap is None:
             return jsonify({'error': 'UMAP models not trained yet on the backend'}), 500
-            
-        import joblib
+
         import numpy as np
-        
-        model_info = joblib.load(model_path)
-        
+
         # Extract and format user scores if present
         user_umap = {}
         if scores and isinstance(scores, dict) and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
@@ -1025,11 +1084,7 @@ def get_umap_projection():
                     'x': float(user_embedding[idx, 0]),
                     'y': float(user_embedding[idx, 1]),
                 }
-            
-        # Load precalculated TCGA coordinates
-        with open(coords_path, 'r') as f:
-            tcga_umap = json.load(f)
-            
+
         return jsonify({
             'user_umap': user_umap,
             'tcga_umap': tcga_umap

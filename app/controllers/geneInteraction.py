@@ -526,10 +526,10 @@ def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=No
         }), 400
 
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
-    run = db.session.execute(text(f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"))
-
+    run_sql = f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"
     if dataset_ID is not None:
-        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
+        run_sql += f" and sponge_run.dataset_ID = {int(dataset_ID)}"
+    run = db.session.execute(text(run_sql))
 
     result = []
     for r in run:
@@ -1245,10 +1245,20 @@ def get_gene_network(dataset_ID: int = None, disease_name=None,
     )
 
     # Apply edge-specific filters
-    if minMscor:
-        edge_query = edge_query.filter(models.GeneInteraction.mscor >= minMscor)
-    if minCorrelation:
-        edge_query = edge_query.filter(models.GeneInteraction.correlation >= minCorrelation)
+    if minMscor is not None:
+        try:
+            val = float(minMscor)
+            if not math.isnan(val):
+                edge_query = edge_query.filter(models.GeneInteraction.mscor >= val)
+        except (ValueError, TypeError):
+            pass
+    if minCorrelation is not None:
+        try:
+            val = float(minCorrelation)
+            if not math.isnan(val):
+                edge_query = edge_query.filter(models.GeneInteraction.correlation >= val)
+        except (ValueError, TypeError):
+            pass
 
     # Sorting edges
     if edgeSorting == "pValue":

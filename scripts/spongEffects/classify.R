@@ -62,9 +62,46 @@ SUBTYPE_PROJECTS <- c(
 
 SAMPLES_THRESHOLD <- 2
 
+# minimum fraction of a model's features (coefnames) that must be present in the enriched test
+# matrix; below this the missing features would be mostly noise-filled, so no label is returned
+COVERAGE_THRESHOLD <- 0.5
+
 DELIMS <- c(" ", "\t", ",", ";")
 
+# per-model feature coverage, filled by record_coverage() and reported in meta
+module_coverage <- list()
+
 #---------------------------FUNCTIONS-------------------------------------------
+
+# Log and record how many of a model's features the test matrix provides.
+# Returns TRUE if coverage is sufficient to trust the model's prediction.
+record_coverage <- function(model_key, coefnames, test_modules) {
+  matched <- length(intersect(coefnames, rownames(test_modules)))
+  expected <- length(coefnames)
+  fraction <- if (expected > 0) matched / expected else 0
+  message(Sys.time(), " - module coverage for ", model_key, ": ", matched, "/", expected, " (", round(fraction, 3), ")")
+  module_coverage[[model_key]] <<- data.frame(
+    model = model_key, modules_matched = matched, modules_expected = expected,
+    coverage = round(fraction, 4), low_coverage = fraction < COVERAGE_THRESHOLD
+  )
+  if (fraction < COVERAGE_THRESHOLD) {
+    message(Sys.time(), " - WARNING: coverage for ", model_key, " below ", COVERAGE_THRESHOLD, ", not returning a prediction")
+  }
+  fraction >= COVERAGE_THRESHOLD
+}
+
+# enrichment_modules() returns NULL when nothing could be scored and a printed string for an
+# unknown method; stop here so the cause reaches the API error instead of a later NA comparison.
+check_enrichment <- function(enriched, module_set) {
+  if (!(is.data.frame(enriched) || is.matrix(enriched)) || nrow(enriched) == 0) {
+    stop(
+      "Enrichment with method '", argv_predict$method, "' returned no module scores for module set '", module_set,
+      "' (method must be one of OE, gsva, ssgsea; check min_size=", argv_predict$min_size, ", max_size=", argv_predict$max_size,
+      ", min_expr=", argv_predict$min_expr, " against the module sizes and the uploaded IDs)"
+    )
+  }
+  enriched
+}
 
 predict_subtype <- function(type, sample_list, all_models, test_modules, threshold) { # nolint: line_length_linter.
   # type <- as.character(unique(df$typePrediction)) # nolint: commented_code_linter.
@@ -93,15 +130,13 @@ predict_subtype <- function(type, sample_list, all_models, test_modules, thresho
     message(Sys.time(), " - modules in model: ", length(model$coefnames))
     message(Sys.time(), " - modules in test: ", length(rownames(test_modules)))
     message(Sys.time(), " - found ", length(common_modules), " common modules")
-    if (length(common_modules) > 0) {
-      test_modules <- test_modules[common_modules, , drop = F]
-    } else {
-      test_modules <- test_modules[0, , drop = F]
+    if (!record_coverage(type, model$coefnames, test_modules)) {
       subtypePrediction <- NA
       return(subtypePrediction)
     }
+    test_modules <- test_modules[common_modules, , drop = F]
 
-    # fill missing modules if needed
+    # fill missing modules if needed (coverage is >= COVERAGE_THRESHOLD here)
     missing_modules <- setdiff(model$coefnames, rownames(test_modules))
     message(Sys.time(), " - found ", length(missing_modules), " missing modules")
     if (length(missing_modules) > 0) {
@@ -210,7 +245,7 @@ test.modules.uploaded <- enrichment_modules(
   min.expr = argv_predict$min_expr,
   method = argv_predict$method,
   cores = argv_predict$enrichment_cores
-)
+) %>% check_enrichment("pancancer")
 
 # write.table(test.modules.uploaded, file = "test_modules.tsv", sep = "\t", quote = F)
 message(Sys.time(), " - finished enriching type modules (pancancer)")
@@ -226,7 +261,8 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
   message(Sys.time(), " - found ", length(common_modules), " common modules")
   # message(Sys.time(), " - train modules: ", paste(trained.model$Model$coefnames, collapse = ", "))
   # message(Sys.time(), " - test modules: ", paste(rownames(test.modules.uploaded), collapse = ", "))
-  test.modules.uploaded.pancan <- test.modules.uploaded[common_modules, ]
+  pancan_sufficient <- record_coverage("pancancer", trained.model$Model$coefnames, test.modules.uploaded)
+  test.modules.uploaded.pancan <- test.modules.uploaded[common_modules, , drop = FALSE]
   message(Sys.time(), " Sponge.modules :", length(Sponge.modules))
 
   # fill missing modules if needed
@@ -242,12 +278,17 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
   Input.test.pancan <- t(test.modules.uploaded.pancan) %>% scale(center = T, scale = T)
   # predict
   type_predictions <- predict(trained.model$Model, Input.test.pancan)
+  if (!pancan_sufficient) {
+    type_predictions <- NA
+  }
   # build table with results
   predictions <- data.frame(sampleID = samples, typePrediction = type_predictions, subtypePrediction = NA)
+  type_splits <- list()
 
 
   #-----------------PREDICT SUB-TYPES FOR TYPE PREDICTIONS------------------------
-  if (argv_predict$subtypes) {
+  # without a type prediction there is nothing to split on (split() would drop every sample)
+  if (argv_predict$subtypes && pancan_sufficient) {
     type_splits <- split(predictions, as.vector(predictions$typePrediction))
 
     message(Sys.time(), " - predicting subtypes for each type prediction")
@@ -283,7 +324,7 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
             min.expr = argv_predict$min_expr,
             method = argv_predict$method,
             cores = argv_predict$enrichment_cores
-          )
+          ) %>% check_enrichment(type_renamed)
           # do hierarchical clustering on enrichment scores on genes and samples
           row_order <- hclust(dist(test.modules.updated, method = "euclidean"), method = "ward.D2")$order
           col_order <- hclust(dist(t(test.modules.updated), method = "euclidean"), method = "ward.D2")$order
@@ -308,6 +349,10 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
       # ("incorrect number of dimensions") and abort the whole prediction. Skip it (subtype NA).
       mod_mat <- test.modules.updated.types[[type]]
       if (is.null(mod_mat)) {
+        # below SAMPLES_THRESHOLD no subtype is predicted anyway, so don't report it as low coverage
+        if (type_clean %in% names(models) && length(samples) >= SAMPLES_THRESHOLD) {
+          record_coverage(type_clean, models[[type_clean]]$model$Model$coefnames, NULL)
+        }
         df$subtypePrediction <- NA
         return(df)
       }
@@ -342,6 +387,9 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
   model_name <- argv_predict$model
   model_name <- gsub("&", "and", gsub(" ", "_", model_name))
   message(Sys.time(), " - selecting model: ", model_name)
+  if (!model_name %in% names(models)) {
+    stop("Unknown model '", argv_predict$model, "' for ", level, " level; available: ", paste(names(models), collapse = ", "))
+  }
   model <- models[[model_name]]$model$Model
   modules <- models[[model_name]]$modules
   samples <- colnames(test_expr)
@@ -358,7 +406,7 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
     min.expr = argv_predict$min_expr,
     method = argv_predict$method,
     cores = argv_predict$enrichment_cores
-  )
+  ) %>% check_enrichment(model_name)
 
   # do hierarchical clustering on enrichment scores on genes and samples (guarded for n >= 2)
   if (!is.null(test.modules.uploaded.type) && nrow(test.modules.uploaded.type) >= 2) {
@@ -373,11 +421,15 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
   # do subtype prediction only on specified type
   if (argv_predict$subtypes) {
     message(Sys.time(), " - predicting subtype")
+    # must be the type-specific enrichment: the type model's coefnames are type module names,
+    # which barely overlap with the pancancer modules in test.modules.uploaded.
+    # Re-subset to `samples`: the columns were reordered by clustering above, and the returned
+    # vector is assigned positionally to `predictions` (built in colnames(test_expr) order).
     subtypePrediction <- predict_subtype(
       type = model_name,
       sample_list = samples,
       all_models = models,
-      test_modules = test.modules.uploaded,
+      test_modules = test.modules.uploaded.type[, samples, drop = FALSE],
       threshold = SAMPLES_THRESHOLD
     )
     predictions$subtypePrediction <- subtypePrediction
@@ -409,8 +461,18 @@ meta <- data.frame(
   type_predict = if (length(dominant_type) == 0) "NA" else dominant_type[1],
   subtype_predict = if (length(dominant_subtype) == 0) "NA" else dominant_subtype[1],
   specified_type = argv_predict$model,
-  script_version = "0.1.3"
+  script_version = "0.1.4"
 ) # see changelog at the bottom
+
+# feature coverage: scalar fields for the model behind the headline prediction (the specified
+# type's subtype model, else the pancancer type model), plus one entry per model used
+specified_model <- !(is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$model == "pancancer" || argv_predict$model == "Pancancer")
+primary_model <- if (specified_model) gsub("&", "and", gsub(" ", "_", argv_predict$model)) else "pancancer"
+primary_coverage <- module_coverage[[primary_model]]
+meta$modules_matched <- if (is.null(primary_coverage)) NA else primary_coverage$modules_matched
+meta$modules_expected <- if (is.null(primary_coverage)) NA else primary_coverage$modules_expected
+meta$low_coverage <- if (is.null(primary_coverage)) NA else primary_coverage$low_coverage
+meta$module_coverage <- list(if (length(module_coverage) > 0) do.call(rbind, unname(module_coverage)) else list())
 
 # return as JSON for API processing
 scores_df <- as.data.frame(test.modules.uploaded)
@@ -501,6 +563,16 @@ write_json(responseObj, path = argv_predict$output)
 ##                                 Changelog                                  ##
 ################################################################################
 
+
+# 0.1.4
+# - subtype prediction for a specified --model now uses the type-specific enrichment
+#   (test.modules.uploaded.type, re-subset to upload sample order) instead of the pancancer
+#   one, which shared almost no features with the type model and made it predict on noise
+# - fail fast when enrichment_modules() returns no scores (e.g. unknown method spelling)
+# - per-model feature coverage logged and returned in meta (modules_matched,
+#   modules_expected, low_coverage, module_coverage); predictions with coverage below
+#   COVERAGE_THRESHOLD are returned as NA
+# - unknown --model stops with the list of available models
 
 # 0.1.3 (Lena)
 # - added parameter --model to select a specific model: If this is set,

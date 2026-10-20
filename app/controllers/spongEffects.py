@@ -223,9 +223,10 @@ def get_enrichment_score_class_distributions(dataset_ID: int = None, disease_nam
 
 
 @cache.memoize()
-def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None, 
-                     m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
+def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, limit: int = None, offset: int = None,
+                     m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None,
                      get_best: bool = True,
+                     sort_by: str = None, min_mean_accuracy_decrease: float = None, min_mean_gini_decrease: float = None,
                      sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsGeneModules
@@ -241,6 +242,9 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     :param p_adj_threshold: Minimum p_adj threshold
     :param modules_cutoff: Minimum number of modules
     :param get_best: If true, limits selection to the top-accuracy best model run
+    :param sort_by: Module ranking field: 'meanAccuracyDecrease' (default) or 'meanGiniDecrease'
+    :param min_mean_accuracy_decrease: Only return modules with mean_accuracy_decrease >= this value
+    :param min_mean_gini_decrease: Only return modules with mean_gini_decrease >= this value
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: Best spongEffects gene modules for given disease
     """
@@ -256,11 +260,23 @@ def get_gene_modules(spongEffects_gene_module_ID: int = None, dataset_ID: int = 
     has_identifier = (gene_ID is not None or ensg_number is not None or gene_symbol is not None or spongEffects_gene_module_ID is not None)
     if get_best and not has_identifier:
         spongEffects_run_IDs = spongEffects_run_IDs[:1]
-    
+
+    # Ranking field is caller-selectable; the other mean-decrease column is always the tiebreaker.
+    primary, secondary = (
+        (models.SpongEffectsGeneModule.mean_gini_decrease, models.SpongEffectsGeneModule.mean_accuracy_decrease)
+        if sort_by == 'meanGiniDecrease' else
+        (models.SpongEffectsGeneModule.mean_accuracy_decrease, models.SpongEffectsGeneModule.mean_gini_decrease)
+    )
+
     # get the modules
     query = db.select(models.SpongEffectsGeneModule) \
         .where(models.SpongEffectsGeneModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
-        .order_by(models.SpongEffectsGeneModule.mean_accuracy_decrease.desc(), models.SpongEffectsGeneModule.mean_gini_decrease.desc())
+        .order_by(primary.desc(), secondary.desc())
+
+    if min_mean_accuracy_decrease is not None:
+        query = query.where(models.SpongEffectsGeneModule.mean_accuracy_decrease >= min_mean_accuracy_decrease)
+    if min_mean_gini_decrease is not None:
+        query = query.where(models.SpongEffectsGeneModule.mean_gini_decrease >= min_mean_gini_decrease)
 
     # Only filter by gene if at least one gene identifier is provided
     if gene_ID is not None or ensg_number is not None or gene_symbol is not None:
@@ -319,8 +335,10 @@ def get_gene_module_members(spongEffects_gene_module_ID: int = None, dataset_ID:
         }), 400
 
     # get the members
+    # deterministic order so limit/offset pages are stable and disjoint
     query = db.select(models.SpongEffectsGeneModuleMembers) \
-        .where(models.SpongEffectsGeneModuleMembers.spongEffects_gene_module_ID.in_(module_IDs))
+        .where(models.SpongEffectsGeneModuleMembers.spongEffects_gene_module_ID.in_(module_IDs)) \
+        .order_by(models.SpongEffectsGeneModuleMembers.spongEffects_gene_module_members_ID)
 
     # # get the members directly by joins (this is slower):
     # query = db.select(models.SpongEffectsGeneModuleMembers) \
@@ -476,9 +494,10 @@ def get_gene_module_enrichment_score(spongEffects_gene_module_ID = None, cluster
     
 
 @cache.memoize()
-def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, limit: int = None, offset: int = None, 
-                           m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None, 
+def get_transcript_modules(spongEffects_transcript_module_ID: int = None, dataset_ID: int = None, disease_name: str = None, gene_ID: str = None, ensg_number: str = None, gene_symbol: str = None, transcript_ID: int = None, enst_number: int = None, limit: int = None, offset: int = None,
+                           m_scor_threshold: float = None, p_adj_threshold: float = None, modules_cutoff = None,
                            get_best: bool = True,
+                           sort_by: str = None, min_mean_accuracy_decrease: float = None, min_mean_gini_decrease: float = None,
                            sponge_db_version: int = LATEST):
     """
     API request for /spongEffects/getSpongEffectsTranscriptModules
@@ -496,6 +515,9 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     :param p_adj_threshold: Minimum p_adj threshold
     :param modules_cutoff: Minimum number of modules
     :param get_best: If true, limits selection to the top-accuracy best model run
+    :param sort_by: Module ranking field: 'meanAccuracyDecrease' (default) or 'meanGiniDecrease'
+    :param min_mean_accuracy_decrease: Only return modules with mean_accuracy_decrease >= this value
+    :param min_mean_gini_decrease: Only return modules with mean_gini_decrease >= this value
     :param sponge_db_version: Database version (defaults to most recent version)
     :return: module hub elements for a given disease and level
     """
@@ -512,14 +534,26 @@ def get_transcript_modules(spongEffects_transcript_module_ID: int = None, datase
     has_identifier = (gene_ID is not None or ensg_number is not None or gene_symbol is not None or transcript_ID is not None or enst_number is not None or spongEffects_transcript_module_ID is not None)
     if get_best and not has_identifier:
         spongEffects_run_IDs = spongEffects_run_IDs[:1]
-    
+
+    # Ranking field is caller-selectable; the other mean-decrease column is always the tiebreaker.
+    primary, secondary = (
+        (models.SpongEffectsTranscriptModule.mean_gini_decrease, models.SpongEffectsTranscriptModule.mean_accuracy_decrease)
+        if sort_by == 'meanGiniDecrease' else
+        (models.SpongEffectsTranscriptModule.mean_accuracy_decrease, models.SpongEffectsTranscriptModule.mean_gini_decrease)
+    )
+
     # get the modules
     query = db.select(models.SpongEffectsTranscriptModule) \
         .where(models.SpongEffectsTranscriptModule.spongEffects_run_ID.in_(spongEffects_run_IDs)) \
-        .order_by(models.SpongEffectsTranscriptModule.mean_accuracy_decrease.desc(), models.SpongEffectsTranscriptModule.mean_gini_decrease.desc())
+        .order_by(primary.desc(), secondary.desc())
+
+    if min_mean_accuracy_decrease is not None:
+        query = query.where(models.SpongEffectsTranscriptModule.mean_accuracy_decrease >= min_mean_accuracy_decrease)
+    if min_mean_gini_decrease is not None:
+        query = query.where(models.SpongEffectsTranscriptModule.mean_gini_decrease >= min_mean_gini_decrease)
 
     # Only filter by transcript if any transcript/gene identifier is provided
-    if (gene_ID is not None or ensg_number is not None or gene_symbol is not None or 
+    if (gene_ID is not None or ensg_number is not None or gene_symbol is not None or
             transcript_ID is not None or enst_number is not None):
         transcript_data = get_transcripts(gene_ID, ensg_number, gene_symbol, transcript_ID, enst_number)
         transcript_IDs = [transcript.transcript_ID for transcript in transcript_data]
@@ -556,10 +590,8 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
     :param limit: Limit for the number of results
     :param offset: Offset for the number of results
     :param sponge_db_version: Database version (defaults to most recent version)
-    :return: spongEffects transcript module members for given disease and gene identifier    
+    :return: spongEffects transcript module members for given disease and gene identifier
     """
-    limit = request.args.get('limit', default=100, type=int)
-
     # get the modules using get_transcript_modules
     modules = get_transcript_modules(
         spongEffects_transcript_module_ID=spongEffects_transcript_module_ID,
@@ -583,8 +615,10 @@ def get_transcript_module_members(spongEffects_transcript_module_ID: int = None,
         }), 400
 
     # get the members
+    # deterministic order so limit/offset pages are stable and disjoint
     query = db.select(models.SpongEffectsTranscriptModuleMembers) \
-        .where(models.SpongEffectsTranscriptModuleMembers.spongEffects_transcript_module_ID.in_(module_IDs))
+        .where(models.SpongEffectsTranscriptModuleMembers.spongEffects_transcript_module_ID.in_(module_IDs)) \
+        .order_by(models.SpongEffectsTranscriptModuleMembers.spongEffects_transcript_module_members_ID)
 
     # add limit to the query
     if limit is not None:
@@ -739,6 +773,8 @@ def generate_random_filename(length=12, extension=None):
 
 
 class Params:
+    METHODS = {"oe": "OE", "gsva": "gsva", "ssgsea": "ssgsea"}
+
     mscor: float
     fdr: float
     min_size: float
@@ -755,7 +791,11 @@ class Params:
         self.min_size = params["min_size"]
         self.max_size = params["max_size"]
         self.min_expr = params["min_expr"]
-        self.method = params["method"]
+        # SPONGE::enrichment_modules() matches these spellings exactly (case-sensitive)
+        method = self.METHODS.get(str(params["method"]).lower())
+        if method is None:
+            raise ValueError(f"Invalid method '{params['method']}': must be one of {', '.join(self.METHODS.values())}")
+        self.method = method
         # FE omits the `model` field when falsy (backend.service.predictCancerType). Use .get so a
         # missing model cleanly maps to the pancancer/auto branch (classify.R treats "None" as such)
         # instead of raising KeyError -> generic 500.
@@ -777,8 +817,6 @@ class Params:
             is_bool = isinstance(value, bool)
             if not is_bool or value is True:
                 cmd.append(f'--{name}')
-            if name == "method":
-                value = str(value).lower()
             if not is_bool:
                 cmd.append(str(value))
         return cmd
@@ -920,7 +958,16 @@ def upload_file():
     # save uploaded file
     uploaded_file = request.files['file']
     # save given parameters (includes the `subtypes`/`log` flags, passed to R via Params.get_cmd_options)
-    run_parameters: Params = Params(request.form)
+    try:
+        run_parameters: Params = Params(request.form)
+    except (KeyError, ValueError) as e:
+        detail = f"Missing parameter: {e}" if isinstance(e, KeyError) else str(e)
+        return jsonify({
+            "detail": detail,
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
     if uploaded_file.filename == '':
         return jsonify({
             "detail": "File upload failed",

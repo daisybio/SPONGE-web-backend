@@ -837,7 +837,7 @@ def run_spongEffects(file_path, out_path, params: Params = None):
         "--expr", file_path,
         "--model_path", config.MODEL_PATH,
         "--output", out_path,
-        "--local"
+        "--enrichment_cores", str(config.SPONGEFFECTS_CORES)
     ]
     if params and isinstance(params, Params):
         cmd.extend(params.get_cmd_options())

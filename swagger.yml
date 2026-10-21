@@ -3497,13 +3497,14 @@ paths:
       - $ref: '#/components/parameters/VersionParam'
       - name: level
         in: query
-        description: Level of the statistic that should be returned. If not provided, all levels will be returned.
+        description: Level of the statistic that should be returned. If not provided, defaults to "gene".
         required: false
         schema:
           type: string
           enum:
           - gene
           - transcript
+          default: gene
       responses:
         "200":
           description: Function return current statistic about database - amount of shared miRNA, significant and insignificant interactions per dataset.
@@ -4225,6 +4226,47 @@ paths:
                     psi_value:
                       type: number
                       description: Psi value of the specific event type.
+  /alternativeSplicing/checkDigger:
+    get:
+      operationId: alternativeSplicing.check_digger
+      tags:
+      - AlternativeSplicing
+      summary: Check whether a DIGGER entry exists for a given gene/transcript identifier.
+      description: Check whether a DIGGER entry exists for a given gene/transcript identifier.
+      parameters:
+      - name: identifier
+        in: query
+        description: ENSG or ENST identifier to look up in DIGGER.
+        required: true
+        schema:
+          type: string
+      - name: level
+        in: query
+        description: Whether the identifier is a gene or a transcript. Defaults to "gene".
+        required: false
+        schema:
+          type: string
+          enum:
+          - gene
+          - transcript
+          default: gene
+      responses:
+        "200":
+          description: Whether a DIGGER entry exists for the given identifier, and its URL if so.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exists:
+                    type: boolean
+                    description: Whether a DIGGER entry was found for the given identifier.
+                  url:
+                    type: string
+                    nullable: true
+                    description: The DIGGER URL for the identifier (present regardless of `exists`, unless no identifier was given).
+        "400":
+          description: No identifier was given.
   /spongEffects/getSpongEffectsRuns:
     get:
       operationId: spongEffects.get_spongeffects_runs
@@ -4674,6 +4716,25 @@ paths:
         schema:
           type: boolean
           default: true
+      - name: sort_by
+        in: query
+        description: Field to rank modules by. Defaults to meanAccuracyDecrease.
+        required: false
+        schema:
+          type: string
+          enum: [meanAccuracyDecrease, meanGiniDecrease]
+      - name: min_mean_accuracy_decrease
+        in: query
+        description: Only return modules with mean_accuracy_decrease >= this value.
+        required: false
+        schema:
+          type: number
+      - name: min_mean_gini_decrease
+        in: query
+        description: Only return modules with mean_gini_decrease >= this value.
+        required: false
+        schema:
+          type: number
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -4935,6 +4996,25 @@ paths:
         schema:
           type: boolean
           default: true
+      - name: sort_by
+        in: query
+        description: Field to rank modules by. Defaults to meanAccuracyDecrease.
+        required: false
+        schema:
+          type: string
+          enum: [meanAccuracyDecrease, meanGiniDecrease]
+      - name: min_mean_accuracy_decrease
+        in: query
+        description: Only return modules with mean_accuracy_decrease >= this value.
+        required: false
+        schema:
+          type: number
+      - name: min_mean_gini_decrease
+        in: query
+        description: Only return modules with mean_gini_decrease >= this value.
+        required: false
+        schema:
+          type: number
       responses:
         "200":
           description: Successfully extracted spongEffects module hubs for given disease
@@ -5029,6 +5109,18 @@ paths:
         required: false
         schema:
           type: string
+      - name: limit
+        in: query
+        description: Limit the number of results.
+        schema:
+          type: integer
+        required: false
+      - name: offset
+        in: query
+        description: Offset for pagination.
+        schema:
+          type: integer
+        required: false
       responses:
         "200":
           description: Successfully extracted all module members of hub node(s)
@@ -5152,7 +5244,7 @@ paths:
                   description: Minimum number of elements present in module and expression
                 method:
                   type: string
-                  description: Method to use for spongEffects enrichment (GSVA, ssGSEA, or OE)
+                  description: Method to use for spongEffects enrichment, one of OE, gsva, ssgsea (case-insensitive; any other value is rejected with 400). The stored classifiers were trained with OE.
                 model:
                   type: string
                   description: Use the model or a specific cancer type, e.g. 'breast_invasive_carcinoma' instead of first predicting types with the pancancer model.
@@ -5182,6 +5274,34 @@ paths:
                       subtype_predict:
                         type: string
                         description: Dominant subtype prediction
+                      modules_matched:
+                        type: integer
+                        nullable: true
+                        description: Number of the headline model's features (the specified type's subtype model, else the pancancer type model) present in the enriched upload
+                      modules_expected:
+                        type: integer
+                        nullable: true
+                        description: Number of features of the headline model
+                      low_coverage:
+                        type: boolean
+                        nullable: true
+                        description: True if modules_matched / modules_expected is below 0.5; the affected predictions are then returned as NA
+                      module_coverage:
+                        type: array
+                        description: Feature coverage for every model used in this prediction
+                        items:
+                          type: object
+                          properties:
+                            model:
+                              type: string
+                            modules_matched:
+                              type: integer
+                            modules_expected:
+                              type: integer
+                            coverage:
+                              type: number
+                            low_coverage:
+                              type: boolean
                   data:
                     type: object
                     properties:

@@ -215,7 +215,7 @@ def getOverallCount(sponge_db_version: int = LATEST, level: str = "gene"):
     Function return current statistic about database - amount of shared miRNA, significant and insignificant
      interactions per dataset. Handles the route /getOverallCounts/?sponge_db_version={sponge_db_version}
     :param sponge_db_version: Version of the database
-    :param level: Level of the statistic to be returned, either "gene" or "transcript"
+    :param level: Level of the statistic to be returned, either "gene" or "transcript" (defaults to "gene")
     :return: Current statistic about database
     """
 

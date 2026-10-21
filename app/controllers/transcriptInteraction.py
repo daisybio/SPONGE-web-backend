@@ -1077,10 +1077,20 @@ def get_transcript_network(dataset_ID: int = None, disease_name=None,
     )
 
     # Apply edge-specific filters
-    if minMscor:
-        edge_query = edge_query.filter(models.TranscriptInteraction.mscor >= minMscor)
-    if minCorrelation:
-        edge_query = edge_query.filter(models.TranscriptInteraction.correlation >= minCorrelation)
+    if minMscor is not None:
+        try:
+            val = float(minMscor)
+            if not math.isnan(val):
+                edge_query = edge_query.filter(models.TranscriptInteraction.mscor >= val)
+        except (ValueError, TypeError):
+            pass
+    if minCorrelation is not None:
+        try:
+            val = float(minCorrelation)
+            if not math.isnan(val):
+                edge_query = edge_query.filter(models.TranscriptInteraction.correlation >= val)
+        except (ValueError, TypeError):
+            pass
 
     # Sort edges
     if edgeSorting == "pValue":

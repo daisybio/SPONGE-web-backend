@@ -126,3 +126,10 @@ dmypy.json
 
 # Logs
 *.log
+
+# Scratch/working notes left by AI coding sessions - not canonical project docs
+# (otherStuff/critical_project_info.md is the canonical doc and stays tracked)
+about_models_rds.md
+otherStuff/node_shape_db_precomputation.md
+otherStuff/patient-specific-network-TODO.md
+None/

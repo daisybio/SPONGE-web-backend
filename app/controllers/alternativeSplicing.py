@@ -3,8 +3,9 @@ from sqlalchemy import or_
 from app.controllers.dataset import _dataset_query
 import app.models as models
 from flask import Response
-from app.config import db, LATEST, cache
+from app.config import db, LATEST, cache, logger
 import urllib.request
+import urllib.error
 
 
 @cache.cached(query_string=True)
@@ -204,7 +205,7 @@ def get_psi_values(dataset_ID: str = None, disease_name: str = None, data_origin
         }), 200
 
 
-@cache.cached(query_string=True)
+@cache.cached(timeout=60 * 60, query_string=True)
 def check_digger(identifier, level="gene"):
     """
     Check if a DIGGER entry exists for the given identifier and level.
@@ -230,8 +231,11 @@ def check_digger(identifier, level="gene"):
                 content = resp.read().decode("utf-8", errors="ignore")
                 if "No information for" not in content:
                     return jsonify({"exists": True, "url": url}), 200
-    except Exception:
-        pass
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+        # Transient network/DIGGER-side failure, not a genuine "no entry" result. Log it and keep
+        # the cache TTL short (1h, vs. the 30-day default) so an outage self-heals quickly instead
+        # of poisoning every lookup of this identifier for a month.
+        logger.warning(f"DIGGER lookup failed for identifier={identifier!r} level={level!r}: {e}")
 
     return jsonify({"exists": False, "url": url}), 200
 

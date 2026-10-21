@@ -1,38 +1,44 @@
-from app.config import *
+from app.config import app, db, LATEST
 import app.models as models, unittest
-with app.app_context(): 
+from compare import assert_payloads_equal
+with app.app_context():
     import geneInteraction
-from flask import abort
+from flask import jsonify
 import sqlalchemy as sa
-from werkzeug.exceptions import HTTPException
 
-def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_symbol=None, pValue = 0.05,
-                   pValueDirection="<", limit=100, offset=0):
+
+def mock_read_specific_interaction(dataset_ID=None, disease_name=None, ensg_number=None, gene_symbol=None,
+                                   pValue=0.05, pValueDirection="<", limit=100, offset=0,
+                                   sponge_db_version=LATEST):
     """
       This function responds to a request for /sponge/ceRNAInteraction/findSpecific
       and returns all interactions between the given identifications (ensg_number or gene_symbol)
-      :param disease_name: disease_name of interest
-      :param ensg_number: esng number of the genes of interest
-      :param gene_symbol: gene symbol of the genes of interest
-      :param limit: number of results that shouls be shown
-      :param offset: startpoint from where results should be shown
-      :return: all interactions between given genes
       """
-
-    # test limit
     if limit > 1000:
-        abort(404, "Limit is to high. For a high number of needed interactions please use the download section.")
+        return jsonify({
+            "detail": "Limit is to high. For a high number of needed interactions please use the download section.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
-    # test if any of the two identification possibilites is given
     if ensg_number is None and gene_symbol is None:
-        abort(404, "One of the two possible identification numbers must be provided")
+        return jsonify({
+            "detail": "One of the two possible identification numbers must be provided",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     if ensg_number is not None and gene_symbol is not None:
-        abort(404,
-              "More than one identifikation paramter is given. Please choose one out of (ensg number, gene symbol)")
+        return jsonify({
+            "detail": "More than one identification parameter is given. Please choose one.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     gene = []
-    # if ensg_numer is given for specify gene, get the intern gene_ID(primary_key) for requested ensg_nr(gene_ID)
     if ensg_number is not None:
         gene = models.Gene.query \
             .filter(models.Gene.ensg_number.in_(ensg_number)) \
@@ -45,24 +51,38 @@ def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_sym
     if len(gene) > 0:
         gene_IDs = [i.gene_ID for i in gene]
     else:
-        abort(404, "Not gene found for given ensg_number(s) or gene_symbol(s)")
+        return jsonify({
+            "detail": "No gene found for given ensg_number(s) or gene_symbol(s)",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
-    # save all needed queries to get correct results
     queries = [sa.and_(models.GeneInteraction.gene_ID1.in_(gene_IDs), models.GeneInteraction.gene_ID2.in_(gene_IDs))]
 
-    # if specific disease_name is given:
+    run = models.SpongeRun.query \
+        .filter(models.SpongeRun.sponge_db_version == sponge_db_version)
+
     if disease_name is not None:
-        run = models.SpongeRun.query.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
+        run = run.join(models.Dataset, models.Dataset.dataset_ID == models.SpongeRun.dataset_ID) \
+            .filter(models.Dataset.disease_name.like("%" + disease_name + "%"))
 
-        if len(run) > 0:
-            run_IDs = [i.sponge_run_ID for i in run]
-            queries.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
-        else:
-            abort(404, "No dataset with given disease_name found")
+    if dataset_ID is not None:
+        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
 
-    # filter further depending on given statistics cutoffs
+    run = run.all()
+
+    if len(run) > 0:
+        run_IDs = [i.sponge_run_ID for i in run]
+        queries.append(models.GeneInteraction.sponge_run_ID.in_(run_IDs))
+    else:
+        return jsonify({
+            "detail": "No dataset with given disease_name found",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
+
     if pValue is not None:
         if pValueDirection == "<":
             queries.append(models.GeneInteraction.p_value < pValue)
@@ -75,10 +95,15 @@ def test_read_specific_interaction(disease_name=None, ensg_number=None, gene_sym
         .all()
 
     if len(interaction_result) > 0:
-        # Serialize the data for the response depending on parameter all
         return models.GeneInteractionDatasetShortSchema(many=True).dump(interaction_result)
     else:
-        abort(404, "No information with given parameters found")
+        return jsonify({
+            "detail": "No information with given parameters found",
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 
 ########################################################################################################################
@@ -99,73 +124,61 @@ class TestDataset(unittest.TestCase):
     def test_abort_error_disease(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_specific_interaction(disease_name="foobar"), 404)
+        result = geneInteraction.read_specific_interaction(disease_name="foobar")
+        self.assertEqual(result[1], 400)
 
     def test_abort_error_limit(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_specific_interaction(disease_name="foobar", limit = 20000), 404)
+        result = geneInteraction.read_specific_interaction(disease_name="foobar", limit=20000)
+        self.assertEqual(result[1], 400)
 
     def test_abort_error_ensg(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_specific_interaction(ensg_number=["ENSGfoobar"]), 404)
+        result = geneInteraction.read_specific_interaction(ensg_number=["ENSGfoobar"])
+        self.assertEqual(result[1], 400)
 
     def test_abort_error_gene_symbol(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_specific_interaction(gene_symbol=["foobar"]), 404)
+        result = geneInteraction.read_specific_interaction(gene_symbol=["foobar"])
+        self.assertEqual(result[1], 400)
 
     def test_abort_error_ensg_and_gene_symbol(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_specific_interaction(ensg_number=["ENSGfoobar"],gene_symbol=["foobar"]), 404)
+        result = geneInteraction.read_specific_interaction(
+            ensg_number=["ENSGfoobar"], gene_symbol=["foobar"])
+        self.assertEqual(result[1], 400)
 
     def test_abort_error_no_data(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
-
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(geneInteraction.read_specific_interaction(disease_name="bladder urothelial carcinoma", ensg_number=['ENSG00000023041']), 404)
+        result = geneInteraction.read_specific_interaction(
+            disease_name="bladder urothelial carcinoma", ensg_number=['ENSG00000023041'])
+        self.assertEqual(result[1], 200)
 
     def test_findSpecific_disease_and_ensg(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
-        # retrieve correct database response to request
-        mock_response = test_read_specific_interaction(disease_name='bladder urothelial carcinoma', ensg_number=['ENSG00000172137','ENSG00000078237'], limit=50, pValue=1)
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_specific_interaction(disease_name='bladder urothelial carcinoma',
-                                                      ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, pValue=1)
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
+        mock_response = mock_read_specific_interaction(
+            disease_name='bladder urothelial carcinoma',
+            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, pValue=1)
+        api_response = geneInteraction.read_specific_interaction(
+            disease_name='bladder urothelial carcinoma',
+            ensg_number=['ENSG00000172137', 'ENSG00000078237'], limit=50, pValue=1)
+        assert_payloads_equal(self, mock_response, api_response)
 
     def test_findSpecific_disease_and_gene_symbol(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
-        # retrieve correct database response to request
-        mock_response = test_read_specific_interaction(disease_name='bladder urothelial carcinoma', gene_symbol=['CALB2','TIGAR'], limit=50, pValue=1)
-
-        # retrieve current API response to request
-        api_response = geneInteraction.read_specific_interaction(disease_name='bladder urothelial carcinoma',
-                                                      gene_symbol=['CALB2', 'TIGAR'], limit=50, pValue=1)
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
+        mock_response = mock_read_specific_interaction(
+            disease_name='bladder urothelial carcinoma',
+            gene_symbol=['CALB2', 'TIGAR'], limit=50, pValue=1)
+        api_response = geneInteraction.read_specific_interaction(
+            disease_name='bladder urothelial carcinoma',
+            gene_symbol=['CALB2', 'TIGAR'], limit=50, pValue=1)
+        assert_payloads_equal(self, mock_response, api_response)

@@ -1,11 +1,13 @@
-from app.config import *
+from app.config import app, db, LATEST
 import app.models as models, unittest
-with app.app_context(): 
+from compare import assert_payloads_equal
+with app.app_context():
     import dataset
-from flask import abort
-from werkzeug.exceptions import HTTPException
+from app.controllers.dataset import _dataset_query
+from flask import jsonify
 
-def test_read_runInformation(disease_name=None):
+
+def mock_read_runInformation(dataset_ID=None, disease_name=None, sponge_db_version=LATEST):
     """
     This function responds to a request for /sponge/runInformation/?disease_name={disease_name}
     with a matching entry to the specifed diesease_name
@@ -13,17 +15,19 @@ def test_read_runInformation(disease_name=None):
     :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)
     :return: all available runs + information for disease of interest
     """
-
-    data = models.SpongeRun.query \
-        .join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID) \
-        .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-        .all()
+    query = db.select(models.SpongeRun).join(models.Dataset, models.SpongeRun.dataset_ID == models.Dataset.dataset_ID)
+    data = _dataset_query(query, sponge_db_version, dataset_ID=dataset_ID, disease_name=disease_name)
 
     if len(data) > 0:
-        # Serialize the data for the response
         return models.SpongeRunSchema(many=True).dump(data)
     else:
-        abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
+        return jsonify({
+            "detail": 'No data found for name: {disease_name}'.format(disease_name=disease_name),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 ########################################################################################################################
 """Test Cases for Endpoint /dataset​/runInformation"""
@@ -44,20 +48,13 @@ class TestDataset(unittest.TestCase):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
-        # retrieve correct database response to request
-        mock_response = test_read_runInformation(disease_name="breast invasive carcinoma")
-
-        # retrieve current API response to request
+        mock_response = mock_read_runInformation(disease_name="breast invasive carcinoma")
         api_response = dataset.read_spongeRunInformation(disease_name="breast invasive carcinoma")
+        assert_payloads_equal(self, mock_response, api_response)
 
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
-
-    # Ensure that an invalid accept header type will return a 406
     def test_get_dataset_infomration_404(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(dataset.read_spongeRunInformation(disease_name="foobar"), 404)
+        result = dataset.read_spongeRunInformation(disease_name="foobar")
+        self.assertEqual(result[1], 200)

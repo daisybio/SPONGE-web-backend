@@ -1,11 +1,14 @@
-from app.config import *
+from app.config import app, db, LATEST
 import app.models as models, unittest
-with app.app_context(): 
+from compare import assert_payloads_equal
+with app.app_context():
     import dataset
-from flask import abort
-from werkzeug.exceptions import HTTPException
+from app.controllers.dataset import _dataset_query
+from flask import jsonify
 
-def test_read(disease_name=None):
+
+def mock_get_datasets(dataset_ID=None, disease_name=None, disease_subtype=None, data_origin=None,
+                      sponge_db_version=LATEST):
     """
        This function responds to a request for /sponge/dataset/?disease_name={disease_name}
        with one matching entry to the specifed diesease_name
@@ -13,23 +16,23 @@ def test_read(disease_name=None):
        :param disease_name:   name of the dataset to find (if not given, all available datasets will be shown)
        :return:            dataset matching ID
        """
+    query = db.select(models.Dataset)
+    data = _dataset_query(
+        query, sponge_db_version,
+        dataset_ID=dataset_ID, disease_name=disease_name,
+        disease_subtype=disease_subtype, data_origin=data_origin,
+    )
 
-    if disease_name is None:
-        # Create the list of people from our data
-        data = models.Dataset.query \
-            .all()
-    else:
-        # Get the dataset requested
-        data = models.Dataset.query \
-            .filter(models.Dataset.disease_name.like("%" + disease_name + "%")) \
-            .all()
-
-    # Did we find a dataset?
     if len(data) > 0:
-        # Serialize the data for the response
         return models.DatasetSchema(many=True).dump(data)
     else:
-        abort(404, 'No data found for name: {disease_name}'.format(disease_name=disease_name))
+        return jsonify({
+            "detail": 'No data found for name: {data_origin}'.format(data_origin=data_origin),
+            "status": 200,
+            "title": "No Content",
+            "type": "about:blank",
+            "data": []
+        }), 200
 
 ########################################################################################################################
 """Test Cases for Endpoint /dataset"""
@@ -45,46 +48,26 @@ class TestDataset(unittest.TestCase):
 
     def tearDown(self):
         self.app_context.pop()
-        
+
     def test_get_dataset_information_all(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
-        # retrieve correct database response to request
-        mock_response = test_read()
-
-        # retrieve current API response to request
-        api_response = dataset.read()
-
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
+        mock_response = mock_get_datasets()
+        api_response = dataset.get_datasets()
+        assert_payloads_equal(self, mock_response, api_response)
 
     def test_get_dataset_information_specific(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
-        # retrieve correct database response to request
-        mock_response = test_read(disease_name= "breast invasive carcinoma")
+        mock_response = mock_get_datasets(disease_name="breast invasive carcinoma")
+        api_response = dataset.get_datasets(disease_name="breast invasive carcinoma")
+        assert_payloads_equal(self, mock_response, api_response)
 
-        # retrieve current API response to request
-        api_response = dataset.read(disease_name= "breast invasive carcinoma")
-
-        # assert that the two output the same
-        self.assertEqual(mock_response, api_response)
-
-    # Ensure that an invalid accept header type will return a 406
     def test_get_dataset_infomration_404(self):
         app.config["TESTING"] = True
         self.app = app.test_client()
 
-        with self.assertRaises(HTTPException) as http_error:
-            # retrieve current API response to request
-            self.assertEqual(dataset.read(disease_name="foobar"), 404)
-
-
-
-
-
-
-
-
+        result = dataset.get_datasets(disease_name="foobar")
+        self.assertEqual(result[1], 200)

@@ -95,6 +95,23 @@ def add_header(response):
         response.headers['Cache-Control'] = 'max-age=0'
     return response
 
+# DuckDB: case-insensitive LIKE (nocase does not cover LIKE) and engine options
+import duckdb_engine
+from sqlalchemy.dialects.postgresql.base import PGCompiler
+
+class _CaseInsensitiveLikeCompiler(duckdb_engine.Dialect.statement_compiler):
+    visit_like_op_binary = PGCompiler.visit_ilike_op_binary
+    visit_not_like_op_binary = PGCompiler.visit_not_ilike_op_binary
+
+duckdb_engine.Dialect.statement_compiler = _CaseInsensitiveLikeCompiler
+
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "connect_args": {
+        "read_only": True,
+        "config": {"memory_limit": "64GB", "threads": 16, "default_collation": "nocase"},
+    }
+}
+
 # Create the SQLAlchemy db instance
 db = SQLAlchemy(app)
 

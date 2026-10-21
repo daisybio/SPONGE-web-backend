@@ -87,9 +87,12 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, disease_subtype: st
     if len(result) > 0:
         # perform hierarchical clustering on rows and columns
         if cluster:
-            # Convert result to a DataFrame for clustering
+            # Convert result to a DataFrame for clustering. Rows are keyed by Ensembl ID (two genes can
+            # share a symbol) and the symbol is carried along, so every clustered row still names its
+            # gene: rebuilding them as {gene_symbol, ensg_number: None} left clients without the ID.
+            symbols = {r.gene.ensg_number: r.gene.gene_symbol for r in result}
             data = pd.DataFrame([{
-                "gene_ID": r.gene.gene_symbol if r.gene.gene_symbol else r.gene.ensg_number,
+                "gene_ID": r.gene.ensg_number,
                 "sample_ID": r.sample_ID ,
                     # + "___" + (
                     # str(r.dataset.disease_name) if disease_name == "pancancer" else
@@ -137,7 +140,7 @@ def get_gene_expr(dataset_ID: int = None, disease_name=None, disease_subtype: st
             # } for i in disease_subtype]), on="disease_subtype", how="left")
 
             # jsonify
-            result = [models.GeneExpressionValues(gene={"gene_symbol": row['gene_ID'], "ensg_number": None}, 
+            result = [models.GeneExpressionValues(gene={"gene_symbol": symbols.get(row['gene_ID']), "ensg_number": row['gene_ID']},
                                                     expr_value=row['expression_value'],
                                                     sample_ID=row['sample_ID'], #.split('___')[0],
                                                     # note that this is 'pancancer' if the disease is 'pancancer'

@@ -158,14 +158,21 @@ def read_all_genes(dataset_ID: int = None, disease_name=None, ensg_number=None, 
             else:
                 sort.append(models.GeneInteraction.correlation.asc())
 
+    # DuckDB: LIMIT/UNION without a unique ORDER BY returns a different sample each call.
+    # Tie-breakers keep offset/limit pages stable (MySQL happened to be stable enough for tests).
+    sort.extend([
+        models.GeneInteraction.sponge_run_ID.asc(),
+        models.GeneInteraction.gene_ID1.asc(),
+        models.GeneInteraction.gene_ID2.asc(),
+    ])
+
     # interaction_result = []
 
     interaction_result = models.GeneInteraction.query \
         .filter(*queries_1) \
-        .order_by(*sort) \
         .union(models.GeneInteraction.query
-               .filter(*queries_2)
-               .order_by(*sort)) \
+               .filter(*queries_2)) \
+        .order_by(*sort) \
         .slice(offset, offset + limit) \
         .all()
 
@@ -526,10 +533,11 @@ def testGeneInteraction(dataset_ID: int = None, ensg_number=None, gene_symbol=No
         }), 400
 
     # test for each dataset if the gene(s) of interest are included in the ceRNA network
-    run = db.session.execute(text(f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"))
+    # fetchall() required: DuckDB closes the Result cursor when nested queries run on the same session
+    run = db.session.execute(text(f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}")).fetchall()
 
     if dataset_ID is not None:
-        run = run.filter(models.SpongeRun.dataset_ID == dataset_ID)
+        run = [r for r in run if r.dataset_ID == dataset_ID]
 
     result = []
     for r in run:

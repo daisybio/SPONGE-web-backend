@@ -29,7 +29,7 @@ parser <- add_argument(parser, "--min_size", help = "Minimum size for enrichment
 parser <- add_argument(parser, "--max_size", help = "Maximum size for enrichment", default = 2000)
 parser <- add_argument(parser, "--min_expr", help = "Minimum expression for enrichment", default = 10)
 parser <- add_argument(parser, "--method", help = "Method", default = "gsva")
-parser <- add_argument(parser, "--enrichment_cores", help = "Number of cores to use for enrichment", default = 25)
+parser <- add_argument(parser, "--enrichment_cores", help = "Number of cores to use for enrichment (OE is memory-bound; more than ~6 got slower in benchmarks)", default = 6)
 parser <- add_argument(parser, "--local", help = "No parallel background", flag = T)
 # parse arguments
 argv_predict <- parse_args(parser, argv = args.effects)

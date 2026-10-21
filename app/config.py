@@ -47,6 +47,10 @@ PORT = 5555
 UPLOAD_DIR = os.getenv("SPONGE_DB_UPLOAD_DIR")
 MODEL_PATH = os.getenv("SPONGEFFECTS_MODEL_PATH")
 SPONGEFFECTS_PREDICT_SCRIPT = os.getenv("SPONGEFFECTS_PREDICT_SCRIPT")
+# R worker processes per prediction request (each concurrent request starts its own). OE enrichment
+# is memory-bound (~12 bytes x upload rows x 1000 per module task), so more workers stop helping early:
+# on a 12-core M-series Mac 6 was fastest, 8 no faster, 12 three to four times slower than 6.
+SPONGEFFECTS_CORES = int(os.getenv("SPONGEFFECTS_CORES", 6))
 
 # latest database version 
 LATEST = 2

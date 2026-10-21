@@ -444,8 +444,8 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
     if gene_type is not None:
         queries.append(models.Gene.gene_type == gene_type)
 
-    # add all sorting if given:
-    sort = [models.networkAnalysis.sponge_run_ID]
+    # add all sorting if given; gene_ID tie-break keeps LIMIT stable under DuckDB 2.0
+    sort = [models.networkAnalysis.sponge_run_ID, models.networkAnalysis.gene_ID]
     if sorting is not None:
         if sorting == "betweenness":
             if descending:

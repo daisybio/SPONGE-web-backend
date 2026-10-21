@@ -93,7 +93,7 @@ def mock_read_all_gene_network_analysis(dataset_ID=None, disease_name=None, ensg
     if gene_type is not None:
         queries.append(models.Gene.gene_type == gene_type)
 
-    sort = [models.networkAnalysis.sponge_run_ID]
+    sort = [models.networkAnalysis.sponge_run_ID, models.networkAnalysis.gene_ID]
     if sorting is not None:
         if sorting == "betweenness":
             if descending:

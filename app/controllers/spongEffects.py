@@ -414,7 +414,7 @@ def get_gene_module_enrichment_score(spongEffects_gene_module_ID = None, cluster
         avg_query = db.session.query(
             models.EnrichmentScoreGene.spongEffects_gene_module_ID,
             db.func.avg(models.EnrichmentScoreGene.score_value).label('avg_score'),
-            db.func.variance(models.EnrichmentScoreGene.score_value).label('var_score')
+            db.func.var_pop(models.EnrichmentScoreGene.score_value).label('var_score')
         )
         if spongEffects_gene_module_ID:
             avg_query = avg_query.filter(models.EnrichmentScoreGene.spongEffects_gene_module_ID.in_(spongEffects_gene_module_ID))
@@ -661,7 +661,7 @@ def get_transcript_module_enrichment_score(spongEffects_transcript_module_ID = N
         avg_query = db.session.query(
             models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID,
             db.func.avg(models.EnrichmentScoreTranscript.score_value).label('avg_score'),
-            db.func.variance(models.EnrichmentScoreTranscript.score_value).label('var_score')
+            db.func.var_pop(models.EnrichmentScoreTranscript.score_value).label('var_score')
         )
         if spongEffects_transcript_module_ID:
             avg_query = avg_query.filter(models.EnrichmentScoreTranscript.spongEffects_transcript_module_ID.in_(spongEffects_transcript_module_ID))

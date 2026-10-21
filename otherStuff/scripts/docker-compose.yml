@@ -1,34 +1,15 @@
 version: '2'
 
 services:
-    mysql:
-        image: mysql:latest
-        container_name: sponge-db
-        ports:
-            - "3600:3600"
-        volumes:
-            - "./sponge-mysql-2:/docker-entrypoint-initdb.d"
-        environment:
-            - MYSQL_ROOT_PASSWORD=a6/4qpQYx]QA
-            - MYSQL_DATABASE=sponge
-        networks:
-            - back-tier
-            
-###########################################
-            
     sponge-web-backend:
         image: biomedbigdata/sponge-web-backend
         container_name: sponge-web-backend
         restart: always
         environment:
-            - SPONGE_DB_URI=mysql://root:a6/4qpQYx]QA@10.162.163.20/sponge #hier könnte es sein, dass man die Adresse von alfred noch auf localhost oder zu ändern muss, um auf den "neuen" DB container zuzugreifen -> testen!
-              #deploy:
-              #resources:
-              # limits:
-              #     memory: 64g
-              # reservations:
-              #     memory: 32g
-                
+            - SPONGE_DB_URI=duckdb:////data/sponge.duckdb
+        volumes:
+            # DuckDB file mounted read-only; host path may need adjusting per deploy host
+            - "/nfs/data2/SPONGEdb_v2/nico/sponge.duckdb:/data/sponge.duckdb:ro"
         ports:
             - "5000:5000"
         networks:

@@ -667,11 +667,12 @@ def test_transcript_interaction(dataset_ID: int = None, enst_number=None, sponge
             "type": "about:blank"
         }), 400
 
+    # fetchall() required: DuckDB closes the Result cursor when nested queries run on the same session
     run = db.session.execute(text(
-        f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}"))
+        f"SELECT * from dataset join sponge_run on dataset.dataset_ID = sponge_run.dataset_ID where dataset.sponge_db_version = {sponge_db_version}")).fetchall()
 
     if dataset_ID is not None:
-        run = run.filter(models.Dataset.dataset_ID == dataset_ID)
+        run = [r for r in run if r.dataset_ID == dataset_ID]
 
     result = []
     for r in run:

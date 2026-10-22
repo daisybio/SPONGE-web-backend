@@ -828,6 +828,9 @@ def run_spongEffects(file_path, out_path, params: Params = None):
     :param file_path: path to uploaded expression file
     :param out_path: output file path
     :param params: spongEffects run parameters (the `log`/`subtypes` flags, among others, are
+GENERIC_PREDICTION_ERROR = "Prediction failed. Please check that the uploaded file contains Ensembl gene or transcript IDs and try again with different parameters."
+
+
         passed via params.get_cmd_options() rather than as separate function arguments)
     :return: JSON object with type prediction for each sample
     """
@@ -852,11 +855,13 @@ def run_spongEffects(file_path, out_path, params: Params = None):
 
         if not os.path.exists(out_path):
              return {
-                "detail": f"Output file not found at {out_path}. R Script output: {stderr}",
+                "detail": GENERIC_PREDICTION_ERROR,
                 "status": 500,
+        # classify.R sinks its stdout+messages into <output>.log, so stderr is normally empty
                 "title": "Execution Error",
                 "type": "about:blank"
             }, 500
+             logger.error(f"spongEffects output file not found at {out_path}. Rscript stderr: {stderr}")
 
         with open(out_path, 'r') as json_file:
             return json.load(json_file), 200
@@ -895,10 +900,11 @@ def run_spongEffects(file_path, out_path, params: Params = None):
             error_msg = str(e)
             
         logger.error(f"Error running spongEffects: {e}")
-        logger.error(f"Rscript combined output: {error_msg}")
-        
+        logger.error(f"Rscript combined output: {error_msg}{log_content}")
+
+        # details stay in the server log (and the R log file next to the output); don't expose them
         return {
-            "detail": f"R Script error:\n{error_msg}{log_content}",
+            "detail": GENERIC_PREDICTION_ERROR,
             "status": 500,
             "title": "Execution Error",
             "type": "about:blank"
@@ -906,7 +912,7 @@ def run_spongEffects(file_path, out_path, params: Params = None):
     except Exception as e:
         logger.error(f"Unexpected error in run_spongEffects: {e}\n{traceback.format_exc()}")
         return {
-            "detail": f"Unexpected error: {str(e)}",
+            "detail": GENERIC_PREDICTION_ERROR,
             "status": 500,
             "title": "System Error",
             "type": "about:blank"

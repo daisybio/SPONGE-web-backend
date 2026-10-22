@@ -393,7 +393,9 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
   model <- models[[model_name]]$model$Model
   modules <- models[[model_name]]$modules
   samples <- colnames(test_expr)
-  predictions <- data.frame(sampleID = samples, typePrediction = NA, subtypePrediction = NA)
+  # the type is given, not predicted: report it per sample so consumers grouping by typePrediction
+  # (FE results barplot, classification plot) don't fall back to "Unknown" for every sample
+  predictions <- data.frame(sampleID = samples, typePrediction = argv_predict$model, subtypePrediction = NA)
 
   # do enrichment only on specified type
   message(Sys.time(), " - enriching type modules (test)")
@@ -461,7 +463,7 @@ meta <- data.frame(
   type_predict = if (length(dominant_type) == 0) "NA" else dominant_type[1],
   subtype_predict = if (length(dominant_subtype) == 0) "NA" else dominant_subtype[1],
   specified_type = argv_predict$model,
-  script_version = "0.1.4"
+  script_version = "0.1.5"
 ) # see changelog at the bottom
 
 # feature coverage: scalar fields for the model behind the headline prediction (the specified
@@ -563,6 +565,10 @@ write_json(responseObj, path = argv_predict$output)
 ##                                 Changelog                                  ##
 ################################################################################
 
+
+# 0.1.5
+# - with a specified --model, typePrediction is that model for every sample instead of NA
+#   (meta$type_predict stays NA; meta$specified_type carries the given type)
 
 # 0.1.4
 # - subtype prediction for a specified --model now uses the type-specific enrichment

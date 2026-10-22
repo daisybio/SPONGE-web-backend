@@ -51,6 +51,13 @@ SPONGEFFECTS_PREDICT_SCRIPT = os.getenv("SPONGEFFECTS_PREDICT_SCRIPT")
 # is memory-bound (~12 bytes x upload rows x 1000 per module task), so more workers stop helping early:
 # on a 12-core M-series Mac 6 was fastest, 8 no faster, 12 three to four times slower than 6.
 SPONGEFFECTS_CORES = int(os.getenv("SPONGEFFECTS_CORES", 6))
+# prediction jobs running R at the same time, across all gunicorn workers; further jobs wait queued.
+# Each uses SPONGEFFECTS_CORES workers and, for OE, ~12 bytes x upload rows x 1000 of memory per worker.
+SPONGEFFECTS_MAX_JOBS = int(os.getenv("SPONGEFFECTS_MAX_JOBS", 2))
+# seconds before a prediction's R process is killed
+SPONGEFFECTS_TIMEOUT = int(os.getenv("SPONGEFFECTS_TIMEOUT", 3600))
+# prediction job files (upload, result, log) older than this are deleted when a new job is submitted
+SPONGEFFECTS_JOB_TTL_HOURS = int(os.getenv("SPONGEFFECTS_JOB_TTL_HOURS", 24))
 
 # latest database version 
 LATEST = 2

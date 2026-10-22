@@ -17,6 +17,40 @@ components:
         type: string
         nullable: true
   schemas:
+    PredictCancerTypeForm:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: The gene/transcript expression file to upload. Row names need to be ENSG or ENST IDs. Column names need to be sample IDs.
+        subtypes:
+          type: boolean
+          description: Whether to prediction subtype level or only predict types
+        log:
+          type: boolean
+          description: Whether to apply a logarithmic scaling to the uploaded expression
+        mscor:
+          type: number
+          description: mscor threshold for filtering
+        fdr:
+          type: number
+          description: maximum FDR rate for filtering
+        min_size:
+          type: number
+          description: Minimum number of elements in a module
+        max_size:
+          type: number
+          description: Maximum number of elements in a module
+        min_expr:
+          type: number
+          description: Minimum number of elements present in module and expression
+        method:
+          type: string
+          description: Method to use for spongEffects enrichment, one of OE, gsva, ssgsea (case-insensitive; any other value is rejected with 400). The stored classifiers were trained with OE.
+        model:
+          type: string
+          description: Use the model or a specific cancer type, e.g. 'breast_invasive_carcinoma' instead of first predicting types with the pancancer model.
     TranscriptSchema:
       type: object
       properties:
@@ -5211,43 +5245,12 @@ paths:
     post:
       operationId: spongEffects.upload_file
       summary: Upload a gene/transcript expression file to predict which cancer type it originated from.
+      description: Synchronous - the request stays open until R finishes (20 s to 10+ min). Prefer POST /spongEffects/predictCancerType/jobs and poll for the result.
       requestBody:
         content:
           multipart/form-data:
             schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: The gene/transcript expression file to upload. Row names need to be ENSG or ENST IDs. Column names need to be sample IDs.
-                subtypes:
-                  type: boolean
-                  description: Whether to prediction subtype level or only predict types
-                log:
-                  type: boolean
-                  description: Whether to apply a logarithmic scaling to the uploaded expression
-                mscor:
-                  type: number
-                  description: mscor threshold for filtering
-                fdr:
-                  type: number
-                  description: maximum FDR rate for filtering
-                min_size:
-                  type: number
-                  description: Minimum number of elements in a module
-                max_size:
-                  type: number
-                  description: Maximum number of elements in a module
-                min_expr:
-                  type: number
-                  description: Minimum number of elements present in module and expression
-                method:
-                  type: string
-                  description: Method to use for spongEffects enrichment, one of OE, gsva, ssgsea (case-insensitive; any other value is rejected with 400). The stored classifiers were trained with OE.
-                model:
-                  type: string
-                  description: Use the model or a specific cancer type, e.g. 'breast_invasive_carcinoma' instead of first predicting types with the pancancer model.
+              $ref: '#/components/schemas/PredictCancerTypeForm'
       responses:
         "200":
           description: "File uploaded and processed successfully"
@@ -5316,6 +5319,65 @@ paths:
                         description: Predicted subtype
         "400":
           description: "File upload or processing failed"
+  /spongEffects/predictCancerType/jobs:
+    post:
+      operationId: spongEffects.submit_prediction_job
+      tags:
+      - spongEffects
+      summary: Start a cancer type prediction in the background.
+      description: Same form as /spongEffects/predictCancerType. Returns a job ID right away; poll GET /spongEffects/predictCancerType/jobs/{job_id} for the result. Jobs and their results are deleted after 24 hours by default.
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PredictCancerTypeForm'
+      responses:
+        "202":
+          description: Prediction job accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [queued]
+        "400":
+          description: Invalid parameters or file
+  /spongEffects/predictCancerType/jobs/{job_id}:
+    get:
+      operationId: spongEffects.get_prediction_job
+      tags:
+      - spongEffects
+      summary: Status and, once done, result of a prediction job.
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        description: ID returned when the job was submitted
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Job status. `result` is present when status is done and has the same shape as the /spongEffects/predictCancerType response; `detail` is present when status is failed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [queued, running, done, failed]
+                  result:
+                    type: object
+                  detail:
+                    type: string
+        "404":
+          description: Unknown or expired job ID
   /spongEffects/getUmapProjection:
     get:
       operationId: spongEffects.get_umap_projection_get

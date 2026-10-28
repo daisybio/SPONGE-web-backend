@@ -317,6 +317,7 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, ensg_nu
 
     interaction_result = models.GeneInteraction.query \
         .filter(*queries) \
+        .order_by(models.GeneInteraction.interactions_genegene_ID) \
         .slice(offset, offset + limit) \
         .all()
 
@@ -444,15 +445,15 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
     if gene_type is not None:
         queries.append(models.Gene.gene_type == gene_type)
 
-    # add all sorting if given; gene_ID tie-break keeps LIMIT stable under DuckDB 2.0
-    sort = [models.networkAnalysis.sponge_run_ID, models.networkAnalysis.gene_ID]
+    # add all sorting if given ("node_degree" is the value swagger.yml allows, "degree" is kept for old callers)
+    sort = [models.networkAnalysis.sponge_run_ID]
     if sorting is not None:
         if sorting == "betweenness":
             if descending:
                 sort.append(models.networkAnalysis.betweenness.desc())
             else:
                 sort.append(models.networkAnalysis.betweenness.asc())
-        if sorting == "degree":
+        if sorting in ("degree", "node_degree"):
             if descending:
                 sort.append(models.networkAnalysis.node_degree.desc())
             else:
@@ -462,6 +463,10 @@ def read_all_gene_network_analysis(dataset_ID: int = None, disease_name=None, en
                 sort.append(models.networkAnalysis.eigenvector.desc())
             else:
                 sort.append(models.networkAnalysis.eigenvector.asc())
+
+    # gene_ID tie-break keeps LIMIT/OFFSET pages stable (DuckDB 2.0). It must come AFTER the sort key: (run, gene) is
+    # unique, so anything placed behind it would never be used. Many nodes tie (betweenness 0, equal degrees).
+    sort.append(models.networkAnalysis.gene_ID)
 
     result = models.networkAnalysis.query \
         .join(models.Gene, models.Gene.gene_ID == models.networkAnalysis.gene_ID) \

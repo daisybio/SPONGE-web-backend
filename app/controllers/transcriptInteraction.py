@@ -144,11 +144,19 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
                 sort.append(models.TranscriptInteraction.correlation.asc())
 
     interaction_results = models.TranscriptInteraction.query \
+    # Tie-breakers keep offset/limit pages stable: without a unique ORDER BY, pages overlap and skip rows
+    # (same as read_all_genes).
+    sort.extend([
+        models.TranscriptInteraction.sponge_run_ID.asc(),
+        models.TranscriptInteraction.transcript_ID_1.asc(),
+        models.TranscriptInteraction.transcript_ID_2.asc(),
+    ])
+
+    # the order has to be applied to the union itself: the order of the two ordered halves is not preserved by it
         .filter(*queries_1) \
-        .order_by(*sort) \
         .union(models.TranscriptInteraction.query
-               .filter(*queries_2)
-               .order_by(*sort)) \
+               .filter(*queries_2)) \
+        .order_by(*sort) \
         .slice(offset, offset + limit) \
         .all()
 
@@ -247,6 +255,7 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
     interaction_result = models.TranscriptInteraction.query \
         .filter(*queries) \
         .slice(offset, offset + limit) \
+        .order_by(models.TranscriptInteraction.interactions_transcripttranscript_ID) \
         .all()
 
     if len(interaction_result) > 0:
@@ -345,7 +354,7 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
     if transcript_type is not None:
         queries.append(models.Transcript.transcript_type == transcript_type)
 
-    # add all sorting if given:
+    # add all sorting if given ("node_degree" is the value swagger.yml allows, "degree" is kept for old callers)
     sort = [models.networkAnalysisTranscript.sponge_run_ID]
     if sorting is not None:
         if sorting == "betweenness":
@@ -353,7 +362,7 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
                 sort.append(models.networkAnalysisTranscript.betweenness.desc())
             else:
                 sort.append(models.networkAnalysisTranscript.betweenness.asc())
-        if sorting == "degree":
+        if sorting in ("degree", "node_degree"):
             if descending:
                 sort.append(models.networkAnalysisTranscript.node_degree.desc())
             else:
@@ -365,6 +374,9 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
                 sort.append(models.networkAnalysisTranscript.eigenvector.asc())
 
     result = models.networkAnalysisTranscript.query \
+    # transcript_ID tie-break keeps LIMIT/OFFSET pages stable; it comes after the sort key (see the gene twin)
+    sort.append(models.networkAnalysisTranscript.transcript_ID)
+
         .join(models.Transcript, models.Transcript.transcript_ID == models.networkAnalysisTranscript.transcript_ID) \
         .filter(*queries) \
         .order_by(*sort) \

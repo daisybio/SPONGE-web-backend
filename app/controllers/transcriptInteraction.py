@@ -3,6 +3,7 @@ import os
 import math
 from flask import jsonify
 from sqlalchemy import desc, and_
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from app.controllers.dataset import _dataset_query
 import app.models as models
@@ -143,12 +144,20 @@ def read_all_transcripts(dataset_ID: int = None, disease_name=None, enst_number=
             else:
                 sort.append(models.TranscriptInteraction.correlation.asc())
 
+    # Tie-breakers keep offset/limit pages stable: without a unique ORDER BY, pages overlap and skip rows
+    # (same as read_all_genes).
+    sort.extend([
+        models.TranscriptInteraction.sponge_run_ID.asc(),
+        models.TranscriptInteraction.transcript_ID_1.asc(),
+        models.TranscriptInteraction.transcript_ID_2.asc(),
+    ])
+
+    # the order has to be applied to the union itself: the order of the two ordered halves is not preserved by it
     interaction_results = models.TranscriptInteraction.query \
         .filter(*queries_1) \
-        .order_by(*sort) \
         .union(models.TranscriptInteraction.query
-               .filter(*queries_2)
-               .order_by(*sort)) \
+               .filter(*queries_2)) \
+        .order_by(*sort) \
         .slice(offset, offset + limit) \
         .all()
 
@@ -246,6 +255,7 @@ def read_specific_interaction(dataset_ID: int = None, disease_name=None, enst_nu
 
     interaction_result = models.TranscriptInteraction.query \
         .filter(*queries) \
+        .order_by(models.TranscriptInteraction.interactions_transcripttranscript_ID) \
         .slice(offset, offset + limit) \
         .all()
 
@@ -345,7 +355,7 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
     if transcript_type is not None:
         queries.append(models.Transcript.transcript_type == transcript_type)
 
-    # add all sorting if given:
+    # add all sorting if given ("node_degree" is the value swagger.yml allows, "degree" is kept for old callers)
     sort = [models.networkAnalysisTranscript.sponge_run_ID]
     if sorting is not None:
         if sorting == "betweenness":
@@ -353,7 +363,7 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
                 sort.append(models.networkAnalysisTranscript.betweenness.desc())
             else:
                 sort.append(models.networkAnalysisTranscript.betweenness.asc())
-        if sorting == "degree":
+        if sorting in ("degree", "node_degree"):
             if descending:
                 sort.append(models.networkAnalysisTranscript.node_degree.desc())
             else:
@@ -363,6 +373,9 @@ def read_all_transcript_network_analysis(dataset_ID: int = None, disease_name=No
                 sort.append(models.networkAnalysisTranscript.eigenvector.desc())
             else:
                 sort.append(models.networkAnalysisTranscript.eigenvector.asc())
+
+    # transcript_ID tie-break keeps LIMIT/OFFSET pages stable; it comes after the sort key (see the gene twin)
+    sort.append(models.networkAnalysisTranscript.transcript_ID)
 
     result = models.networkAnalysisTranscript.query \
         .join(models.Transcript, models.Transcript.transcript_ID == models.networkAnalysisTranscript.transcript_ID) \
@@ -781,12 +794,22 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
     and returns transcript(s) of interest with respective counts in disease of interest.
     :param dataset_ID: dataset_ID of the dataset of interest
     :param disease_name: disease_name of interest
-    :param enst_number: enst number of the genes of interest
+    :param enst_number: enst number of the transcripts of interest; if omitted, all transcripts of the selected
+        dataset(s) are returned (like getGeneCounts without ensg_number)
     :param minCountAll: defines the minimal number of times a gene has to be involved in the complete network
     :param minCountSign: defines the minimal number of times a gene has to be involved in significant (p.adj < 0.05) interactionss
 
     :return: all transcripts with counts.
     """
+
+    # without any selector this would list the counts of every run
+    if enst_number is None and disease_name is None and dataset_ID is None:
+        return jsonify({
+            "detail": "Either enst_number, disease_name or dataset_ID must be provided.",
+            "status": 400,
+            "title": "Bad Request",
+            "type": "about:blank"
+        }), 400
 
     queries = []
 
@@ -813,21 +836,23 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
             "type": "about:blank"
         }), 400
 
-    transcript = models.Transcript.query \
-        .filter(models.Transcript.enst_number.in_(enst_number)) \
-        .all()
+    # if enst_number is given, restrict to those transcripts (otherwise every transcript of the run is returned)
+    if enst_number is not None:
+        transcript = models.Transcript.query \
+            .filter(models.Transcript.enst_number.in_(enst_number)) \
+            .all()
 
-    if len(transcript) > 0:
-        transcript_ID = [t.transcript_ID for t in transcript]
-        queries.append(models.TranscriptCounts.transcript_ID.in_(transcript_ID))
+        if len(transcript) > 0:
+            transcript_ID = [t.transcript_ID for t in transcript]
+            queries.append(models.TranscriptCounts.transcript_ID.in_(transcript_ID))
 
-    else:
-        return jsonify({
-            "detail": "No transcript found for given enst_number(s)",
-            "status": 400,
-            "title": "Bad Request",
-            "type": "about:blank"
-        }), 400
+        else:
+            return jsonify({
+                "detail": "No transcript found for given enst_number(s)",
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }), 400
 
     # add count filter if provided
     if minCountAll is not None:
@@ -835,7 +860,13 @@ def getTranscriptCounts(dataset_ID: int = None, disease_name=None, enst_number=N
     if minCountSign is not None:
         queries.append(models.TranscriptCounts.count_sign >= minCountSign)
 
+    # eager-load what the schema serializes: a whole run has tens of thousands of rows, and lazy loading would
+    # issue one query per transcript, gene and run
     results = models.TranscriptCounts.query \
+        .options(
+            joinedload(models.TranscriptCounts.transcript).joinedload(models.Transcript.gene),
+            joinedload(models.TranscriptCounts.sponge_run).joinedload(models.SpongeRun.dataset)
+        ) \
         .filter(*queries) \
         .all()
 

@@ -373,6 +373,7 @@ class SpongEffectsRun(db.Model):
     bin_size = db.Column(db.Integer)
     min_size = db.Column(db.Integer)
     max_size = db.Column(db.Integer)
+    min_expr = db.Column(db.Integer)
     method = db.Column(db.String(32))
     cv_folds = db.Column(db.Integer)
     level = db.Column(db.String(32))
@@ -1061,7 +1062,7 @@ class TranscriptCountSchema(ma.SQLAlchemyAutoSchema):
         fields = ["sponge_run", "transcript", "count_all", "count_sign"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
 
 
 class ExpressionDataTranscriptSchema(ma.SQLAlchemyAutoSchema):

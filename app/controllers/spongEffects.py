@@ -1,9 +1,15 @@
+import fcntl
+import glob
 import json
 import os
 import random
+import re
+import secrets
 import string
 import subprocess
 import tempfile
+import threading
+import time
 from flask import request, jsonify
 from sqlalchemy import and_
 import pandas as pd
@@ -822,6 +828,9 @@ class Params:
         return cmd
 
 
+GENERIC_PREDICTION_ERROR = "Prediction failed. Please check that the uploaded file contains Ensembl gene or transcript IDs and try again with different parameters."
+
+
 def run_spongEffects(file_path, out_path, params: Params = None):
     """
     Predict cancer type for an uploaded gene/transcript expression
@@ -844,15 +853,17 @@ def run_spongEffects(file_path, out_path, params: Params = None):
     try:
         # execute command
         logger.info(f"Running spongEffects with command: {' '.join(cmd)}")
-        process = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        process = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=config.SPONGEFFECTS_TIMEOUT)
 
         # get prediction output
         stderr = process.stderr
+        # classify.R sinks its stdout+messages into <output>.log, so stderr is normally empty
         logger.info(f"Rscript stderr:\n{stderr}")
 
         if not os.path.exists(out_path):
+             logger.error(f"spongEffects output file not found at {out_path}. Rscript stderr: {stderr}")
              return {
-                "detail": f"Output file not found at {out_path}. R Script output: {stderr}",
+                "detail": GENERIC_PREDICTION_ERROR,
                 "status": 500,
                 "title": "Execution Error",
                 "type": "about:blank"
@@ -895,10 +906,11 @@ def run_spongEffects(file_path, out_path, params: Params = None):
             error_msg = str(e)
             
         logger.error(f"Error running spongEffects: {e}")
-        logger.error(f"Rscript combined output: {error_msg}")
-        
+        logger.error(f"Rscript combined output: {error_msg}{log_content}")
+
+        # details stay in the server log (and the R log file next to the output); don't expose them
         return {
-            "detail": f"R Script error:\n{error_msg}{log_content}",
+            "detail": GENERIC_PREDICTION_ERROR,
             "status": 500,
             "title": "Execution Error",
             "type": "about:blank"
@@ -906,7 +918,7 @@ def run_spongEffects(file_path, out_path, params: Params = None):
     except Exception as e:
         logger.error(f"Unexpected error in run_spongEffects: {e}\n{traceback.format_exc()}")
         return {
-            "detail": f"Unexpected error: {str(e)}",
+            "detail": GENERIC_PREDICTION_ERROR,
             "status": 500,
             "title": "System Error",
             "type": "about:blank"
@@ -952,79 +964,233 @@ def _load_umap_coords(level: str):
     return _umap_coords_cache[level][0], coords_path
 
 
-def upload_file():
+def _bad_request(detail: str):
+    return jsonify({
+        "detail": detail,
+        "status": 400,
+        "title": "Bad Request",
+        "type": "about:blank"
+    }), 400
+
+
+def _parse_upload():
+    """Return (uploaded_file, Params, None) for a predictCancerType form, or (None, None, error response)."""
     if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-    # save uploaded file
+        return None, None, (jsonify({'error': 'No file part'}), 400)
     uploaded_file = request.files['file']
     # save given parameters (includes the `subtypes`/`log` flags, passed to R via Params.get_cmd_options)
     try:
         run_parameters: Params = Params(request.form)
     except (KeyError, ValueError) as e:
-        detail = f"Missing parameter: {e}" if isinstance(e, KeyError) else str(e)
-        return jsonify({
-            "detail": detail,
-            "status": 400,
-            "title": "Bad Request",
-            "type": "about:blank"
-        }), 400
+        return None, None, _bad_request(f"Missing parameter: {e}" if isinstance(e, KeyError) else str(e))
     if uploaded_file.filename == '':
-        return jsonify({
-            "detail": "File upload failed",
-            "status": 400,
-            "title": "Bad Request",
-            "type": "about:blank"
-        }), 400
-
-    # create tmp upload file
+        return None, None, _bad_request("File upload failed")
     if not os.path.exists(config.UPLOAD_DIR):
         os.makedirs(config.UPLOAD_DIR)
+    return uploaded_file, run_parameters, None
+
+
+def _add_umap_projection(response: dict):
+    """Add user_umap/tcga_umap to a successful prediction response (in place). Failures are only logged."""
+    if 'scores' not in response:
+        return
+    try:
+        meta_list = response.get('meta', [])
+        level = meta_list[0].get('level', 'gene') if isinstance(meta_list, list) and len(meta_list) > 0 else 'gene'
+        model_info, _ = _load_umap_model(level)
+        tcga_umap, _ = _load_umap_coords(level)
+
+        if model_info is not None and tcga_umap is not None:
+            import numpy as np
+            # Extract and format user scores if present
+            scores = response.get('scores')
+            user_umap = {}
+            if scores and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
+                # values: list of lists, shape (n_features, n_samples)
+                data_matrix = np.array(scores['values']).T # shape (n_samples, n_features)
+                user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
+
+                # Reindex columns to align with training features
+                user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
+
+                # Scale and transform
+                scaled_data = model_info['scaler'].transform(user_df)
+                user_embedding = model_info['reducer'].transform(scaled_data)
+
+                # Format user coordinates
+                for idx, sample in enumerate(scores['samples']):
+                    user_umap[sample] = {
+                        'x': float(user_embedding[idx, 0]),
+                        'y': float(user_embedding[idx, 1]),
+                    }
+            response['user_umap'] = user_umap
+            response['tcga_umap'] = tcga_umap
+
+    except Exception as e:
+        logger.error(f"Error calculating UMAP projection for user samples: {e}\n{traceback.format_exc()}")
+
+
+def upload_file():
+    """Synchronous prediction (blocks until R finishes). Kept for older front ends; use the jobs endpoints."""
+    uploaded_file, run_parameters, error = _parse_upload()
+    if error:
+        return error
+
+    # create tmp upload file
     tempfile.tempdir = config.UPLOAD_DIR
     tmp_file = tempfile.NamedTemporaryFile(prefix="upload_", suffix=".txt")
     # save file to uploads folder
     uploaded_file.save(tmp_file.name)
     # create random output path
     tmp_out_file = tempfile.NamedTemporaryFile(prefix="prediction_", suffix=".json")
-    # run spongEffects
-    response, status_code = run_spongEffects(tmp_file.name, os.path.join(config.UPLOAD_DIR, tmp_out_file.name), run_parameters)
-    
-    if status_code == 200 and isinstance(response, dict) and 'scores' in response:
-        try:
-            meta_list = response.get('meta', [])
-            level = meta_list[0].get('level', 'gene') if isinstance(meta_list, list) and len(meta_list) > 0 else 'gene'
-            model_info, _ = _load_umap_model(level)
-            tcga_umap, _ = _load_umap_coords(level)
+    # run spongEffects (counts against the same concurrency limit as background jobs)
+    with _acquire_job_slot():
+        response, status_code = run_spongEffects(tmp_file.name, os.path.join(config.UPLOAD_DIR, tmp_out_file.name), run_parameters)
 
-            if model_info is not None and tcga_umap is not None:
-                import numpy as np
-                # Extract and format user scores if present
-                scores = response.get('scores')
-                user_umap = {}
-                if scores and scores.get('samples') and scores.get('genes') and scores.get('values') and len(scores['samples']) > 0 and len(scores['genes']) > 0 and len(scores['values']) > 0:
-                    # values: list of lists, shape (n_features, n_samples)
-                    data_matrix = np.array(scores['values']).T # shape (n_samples, n_features)
-                    user_df = pd.DataFrame(data_matrix, index=scores['samples'], columns=scores['genes'])
-                    
-                    # Reindex columns to align with training features
-                    user_df = user_df.reindex(columns=model_info['feature_names'], fill_value=0.0)
-                    
-                    # Scale and transform
-                    scaled_data = model_info['scaler'].transform(user_df)
-                    user_embedding = model_info['reducer'].transform(scaled_data)
-                    
-                    # Format user coordinates
-                    for idx, sample in enumerate(scores['samples']):
-                        user_umap[sample] = {
-                            'x': float(user_embedding[idx, 0]),
-                            'y': float(user_embedding[idx, 1]),
-                        }
-                response['user_umap'] = user_umap
-                response['tcga_umap'] = tcga_umap
-                
-        except Exception as e:
-            logger.error(f"Error calculating UMAP projection for user samples: {e}\n{traceback.format_exc()}")
-            
+    if status_code == 200 and isinstance(response, dict):
+        _add_umap_projection(response)
+
     return jsonify(response), status_code
+
+
+# Background prediction jobs. A prediction runs R for ~20 s (gsva) to 10+ min (OE), too long to hold
+# an HTTP request. Job state lives in files in UPLOAD_DIR so any gunicorn worker can answer a poll:
+#   job_<id>.txt          uploaded expression
+#   job_<id>.json / .log  R output and log (classify.R names the log after the output)
+#   job_<id>.state.json   {"status": queued|running|done|failed, "worker_pid", "created", ...}
+#   job_<id>.result.json  final response (R output + UMAP), same shape as upload_file()'s
+# The job runs in a thread of the worker that accepted it. At most SPONGEFFECTS_MAX_JOBS run R at once
+# across all workers: each run holds an flock on one of that many slot files; the others wait queued.
+_JOB_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
+
+
+def _job_path(job_id: str, suffix: str) -> str:
+    return os.path.join(config.UPLOAD_DIR, f"job_{job_id}{suffix}")
+
+
+def _write_job_state(job_id: str, state: dict):
+    path = _job_path(job_id, ".state.json")
+    with open(path + ".tmp", "w") as f:
+        json.dump(state, f)
+    os.replace(path + ".tmp", path)
+
+
+def _read_job_state(job_id: str):
+    try:
+        with open(_job_path(job_id, ".state.json")) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _acquire_job_slot():
+    """Block until one of the SPONGEFFECTS_MAX_JOBS slots is free. The lock is held while the returned
+    file stays open, and released by the OS if the worker dies."""
+    while True:
+        for i in range(config.SPONGEFFECTS_MAX_JOBS):
+            slot = open(os.path.join(config.UPLOAD_DIR, f".predict_slot_{i}.lock"), "w")
+            try:
+                fcntl.flock(slot, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return slot
+            except BlockingIOError:
+                slot.close()
+        time.sleep(2)
+
+
+def _cleanup_old_jobs():
+    cutoff = time.time() - config.SPONGEFFECTS_JOB_TTL_HOURS * 3600
+    for path in glob.glob(os.path.join(config.UPLOAD_DIR, "job_*")):
+        try:
+            if os.path.getmtime(path) < cutoff:
+                os.remove(path)
+        except OSError:
+            pass
+
+
+def _run_prediction_job(job_id: str, params: Params, state: dict):
+    try:
+        slot = _acquire_job_slot()
+        try:
+            state.update(status="running", started=time.time())
+            _write_job_state(job_id, state)
+            response, status_code = run_spongEffects(_job_path(job_id, ".txt"), _job_path(job_id, ".json"), params)
+            if status_code == 200 and isinstance(response, dict):
+                _add_umap_projection(response)
+                result_path = _job_path(job_id, ".result.json")
+                with open(result_path + ".tmp", "w") as f:
+                    json.dump(response, f)
+                os.replace(result_path + ".tmp", result_path)
+                state.update(status="done")
+            else:
+                state.update(status="failed")
+        finally:
+            slot.close()
+    except Exception as e:
+        logger.error(f"Prediction job {job_id} failed: {e}\n{traceback.format_exc()}")
+        state.update(status="failed")
+    state.update(finished=time.time())
+    _write_job_state(job_id, state)
+
+
+def submit_prediction_job():
+    """
+    API request for POST /spongEffects/predictCancerType/jobs
+    Same form as /spongEffects/predictCancerType, but returns a job ID right away (202). Poll
+    get_prediction_job() for the result.
+    """
+    uploaded_file, run_parameters, error = _parse_upload()
+    if error:
+        return error
+
+    _cleanup_old_jobs()
+    job_id = secrets.token_urlsafe(16)
+    uploaded_file.save(_job_path(job_id, ".txt"))
+    state = {"status": "queued", "created": time.time(), "worker_pid": os.getpid()}
+    _write_job_state(job_id, state)
+    threading.Thread(target=_run_prediction_job, args=(job_id, run_parameters, state), daemon=True).start()
+    return jsonify({"job_id": job_id, "status": "queued"}), 202
+
+
+def get_prediction_job(job_id: str):
+    """
+    API request for GET /spongEffects/predictCancerType/jobs/{job_id}
+    :param job_id: ID returned by submit_prediction_job()
+    :return: {"job_id", "status"} while queued/running; with "result" (the prediction) once done,
+        with "detail" if it failed
+    """
+    state = _read_job_state(job_id) if _JOB_ID_RE.match(job_id) else None
+    if state is None:
+        return jsonify({
+            "detail": "No prediction job found for this ID (results are kept for "
+                      f"{config.SPONGEFFECTS_JOB_TTL_HOURS} hours)",
+            "status": 404,
+            "title": "Not Found",
+            "type": "about:blank"
+        }), 404
+
+    # the worker running the job was restarted or killed; its thread (and the R run) is gone
+    if state["status"] in ("queued", "running") and not _pid_alive(state["worker_pid"]):
+        logger.error(f"Prediction job {job_id} lost: worker {state['worker_pid']} is gone")
+        state.update(status="failed", finished=time.time())
+        _write_job_state(job_id, state)
+
+    body = {"job_id": job_id, "status": state["status"]}
+    if state["status"] == "done":
+        with open(_job_path(job_id, ".result.json")) as f:
+            body["result"] = json.load(f)
+    elif state["status"] == "failed":
+        body["detail"] = GENERIC_PREDICTION_ERROR
+    return jsonify(body), 200
 
 
 @cache.cached(query_string=True)

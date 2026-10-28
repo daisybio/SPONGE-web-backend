@@ -1061,7 +1061,7 @@ class TranscriptCountSchema(ma.SQLAlchemyAutoSchema):
         fields = ["sponge_run", "transcript", "count_all", "count_sign"]
 
     sponge_run = ma.Nested(lambda: SpongeRunSchema(only=("sponge_run_ID", "dataset")))
-    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", )))
+    transcript = ma.Nested(lambda: TranscriptSchema(only=("enst_number", "gene")))
 
 
 class ExpressionDataTranscriptSchema(ma.SQLAlchemyAutoSchema):

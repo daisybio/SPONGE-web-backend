@@ -2246,7 +2246,7 @@ paths:
             type: string
         - name: enst_number
           in: query
-          description: A comma-separated list of enst number(s) of the transcript(s) of interest.
+          description: A comma-separated list of enst number(s) of the transcript(s) of interest. Optional; if omitted, all transcripts of the selected dataset are returned (one of enst_number, dataset_ID or disease_name is required).
           required: false
           schema:
             type: array
@@ -2283,6 +2283,19 @@ paths:
                         enst_number:
                           type: string
                           description: Enst from Ensemble number of the transcript.
+                        gene:
+                          type: object
+                          description: The gene the transcript belongs to.
+                          properties:
+                            ensg_number:
+                              type: string
+                              description: Ensg from Ensemble number of the gene.
+                            gene_symbol:
+                              type: string
+                              description: Gene symbol, only provided if available.
+                            gene_type:
+                              type: string
+                              description: Type of the gene.
                     count_all:
                       description: Number of times the transcript is involved in the complete network (equals to degree).
                       type: string

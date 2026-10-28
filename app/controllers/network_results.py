@@ -36,7 +36,16 @@ def get_network_results(dataset_ID: int = None, disease_name="Breast invasive ca
             "type": "about:blank"
         }), 400
 
-    dataset = _dataset_query(disease_name=disease_name, sponge_db_version=sponge_db_version, dataset_ID=dataset_ID)
+    if dataset_ID is not None:
+        dataset = models.Dataset.query.filter(
+            models.Dataset.dataset_ID == dataset_ID,
+            models.Dataset.sponge_db_version == sponge_db_version
+        ).all()
+    else:
+        dataset = models.Dataset.query.filter(
+            models.Dataset.disease_name.ilike(disease_name),
+            models.Dataset.sponge_db_version == sponge_db_version
+        ).all()
 
     if len(dataset) == 0:
         return jsonify({

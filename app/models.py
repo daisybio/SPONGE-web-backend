@@ -373,6 +373,7 @@ class SpongEffectsRun(db.Model):
     bin_size = db.Column(db.Integer)
     min_size = db.Column(db.Integer)
     max_size = db.Column(db.Integer)
+    min_expr = db.Column(db.Integer)
     method = db.Column(db.String(32))
     cv_folds = db.Column(db.Integer)
     level = db.Column(db.String(32))

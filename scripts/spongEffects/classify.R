@@ -103,6 +103,83 @@ check_enrichment <- function(enriched, module_set) {
   enriched
 }
 
+# OE enrichment, same results as SPONGE::enrichment_modules(method = "OE") (SPONGE 1.22/1.24), but
+# fast: SPONGE recomputes the gene centering/binning for every module and allocates two
+# rows x 1000 matrices per module (~1.4 GB for 115k transcripts), which made OE take ~45 min
+# for a single type model. Here the per-matrix work is done once, and the random background only
+# counts how often each row was drawn. RNG use (set.seed(42) per module, sample() order) is
+# unchanged, so the same rows are drawn; only the floating-point summation order differs, which
+# does not change the scores after rounding to 2 decimals.
+oe_enrichment_modules <- function(Expr.matrix, modules, bin.size = 100, min.size = 100, max.size = 2000,
+                                  min.expr = 10, num.rounds = 1000, set_seed = 42) {
+  sequenced <- rownames(Expr.matrix)
+  centered <- Expr.matrix %>% t() %>% scale(center = T, scale = F) %>% t()
+  genes_dist <- rowMeans(Expr.matrix, na.rm = T)
+  q1 <- quantile(genes_dist, seq(from = (1 / bin.size), to = 1, by = (1 / bin.size)))
+  bins <- rep(NA_integer_, length(genes_dist))
+  for (i in 2:bin.size) {
+    bins[(genes_dist >= q1[i - 1]) & (genes_dist < q1[i])] <- i
+  }
+  bin_rows <- split(seq_along(bins), factor(bins))
+
+  sizes <- lengths(modules)
+  scorable <- which(sizes > min.size & sizes < max.size &
+    vapply(modules, function(m) sum(m %in% sequenced, na.rm = TRUE), numeric(1)) > min.expr)
+  if (length(scorable) == 0) {
+    return(NULL)
+  }
+
+  scores <- foreach(Module = scorable, .combine = "cbind") %dopar% {
+    set.seed(set_seed)
+    b_sign <- is.element(sequenced, modules[[Module]])
+    sign_q <- table(bins[b_sign])
+    # every round draws the same rows-per-bin, so the mean over rounds of each round's mean is a
+    # count-weighted mean over how often each row was drawn
+    drawn <- integer(length(sequenced))
+    for (i in seq_along(sign_q)) {
+      num_genes <- sign_q[[i]]
+      idx <- bin_rows[[names(sign_q)[i]]]
+      for (j in seq_len(num.rounds)) {
+        rows <- sample(idx, num_genes)
+        drawn[rows] <- drawn[rows] + 1L
+      }
+    }
+    hit <- which(drawn > 0)
+    rand_scores <- colSums(centered[hit, , drop = FALSE] * drawn[hit]) / (num.rounds * sum(sign_q))
+    raw_scores <- colMeans(centered[b_sign, , drop = FALSE])
+    score <- matrix(round(raw_scores - rand_scores, 2), ncol = 1, dimnames = list(NULL, names(modules)[Module]))
+    score
+  }
+  scores <- scores %>% t() %>% as.data.frame()
+  colnames(scores) <- colnames(Expr.matrix)
+  scores
+}
+
+# all enrichments of this script go through here so the OE path above is used consistently
+run_enrichment <- function(Expr.matrix, modules) {
+  if (argv_predict$method == "OE") {
+    oe_enrichment_modules(
+      Expr.matrix = Expr.matrix,
+      modules = modules,
+      bin.size = argv_predict$bin_size,
+      min.size = argv_predict$min_size,
+      max.size = argv_predict$max_size,
+      min.expr = argv_predict$min_expr
+    )
+  } else {
+    enrichment_modules(
+      Expr.matrix = Expr.matrix,
+      modules = modules,
+      bin.size = argv_predict$bin_size,
+      min.size = argv_predict$min_size,
+      max.size = argv_predict$max_size,
+      min.expr = argv_predict$min_expr,
+      method = argv_predict$method,
+      cores = argv_predict$enrichment_cores
+    )
+  }
+}
+
 predict_subtype <- function(type, sample_list, all_models, test_modules, threshold) { # nolint: line_length_linter.
   # type <- as.character(unique(df$typePrediction)) # nolint: commented_code_linter.
   type_project_style <- gsub("and", "&", gsub("_", " ", type))
@@ -179,7 +256,21 @@ read_expr <- function(path) {
   } else {
     stop("Expression file has to contain ensembl IDs in either row names, colum names, or a data column")
   }
-  # rows are IDs and expression can be used as it is
+  # strip Ensembl version suffixes (ENST00000002165.11 -> ENST00000002165, also GENCODE's
+  # ENSG...12_PAR_Y), since the model's module members are unversioned. IDs that collapse onto the
+  # same stable ID (PAR_Y copies, mixed versions) are summed.
+  ids <- sub("\\.[0-9]+(_PAR_Y)?$", "", rownames(expr))
+  n_versioned <- sum(ids != rownames(expr))
+  if (n_versioned > 0) {
+    message(Sys.time(), " - stripped version suffix from ", n_versioned, " IDs")
+  }
+  storage.mode(expr) <- "double"
+  if (anyDuplicated(ids)) {
+    message(Sys.time(), " - summing ", sum(duplicated(ids)), " rows with duplicate IDs")
+    expr <- rowsum(expr, ids, reorder = FALSE)
+  } else {
+    rownames(expr) <- ids
+  }
   return(expr)
 }
 #---------------------------PARAMETERS------------------------------------------
@@ -236,16 +327,7 @@ Sponge.modules <- models$expression_across_types$modules
 message(Sys.time(), " - number of modules to enrich: ", length(Sponge.modules))
 message(Sys.time(), " - enrichment parameters: method=", argv_predict$method, ", bin_size=", argv_predict$bin_size, ", min_size=", argv_predict$min_size, ", max_size=", argv_predict$max_size)
 
-test.modules.uploaded <- enrichment_modules(
-  Expr.matrix = test_expr,
-  modules = Sponge.modules,
-  bin.size = argv_predict$bin_size,
-  min.size = argv_predict$min_size,
-  max.size = argv_predict$max_size,
-  min.expr = argv_predict$min_expr,
-  method = argv_predict$method,
-  cores = argv_predict$enrichment_cores
-) %>% check_enrichment("pancancer")
+test.modules.uploaded <- run_enrichment(test_expr, Sponge.modules) %>% check_enrichment("pancancer")
 
 # write.table(test.modules.uploaded, file = "test_modules.tsv", sep = "\t", quote = F)
 message(Sys.time(), " - finished enriching type modules (pancancer)")
@@ -286,14 +368,14 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
   type_splits <- list()
 
 
-  #-----------------PREDICT SUB-TYPES FOR TYPE PREDICTIONS------------------------
-  # without a type prediction there is nothing to split on (split() would drop every sample)
-  if (argv_predict$subtypes && pancan_sufficient) {
+  #-----------------TYPE SCORES (AND SUB-TYPES) FOR TYPE PREDICTIONS--------------
+  # Each predicted type's enrichment scores are always returned (type_scores); subtypes are only
+  # predicted with --subtypes. Without a type prediction there is nothing to split on (split()
+  # would drop every sample).
+  if (pancan_sufficient) {
     type_splits <- split(predictions, as.vector(predictions$typePrediction))
-
-    message(Sys.time(), " - predicting subtypes for each type prediction")
-    message("type_splits heads: ", head(type_splits))
-    message("type_splits: ", type_splits)
+    message(Sys.time(), " - enriching type modules for ", length(type_splits), " predicted types: ",
+      paste0(names(type_splits), " (", vapply(type_splits, nrow, integer(1)), ")", collapse = ", "))
 
     # for each split, compute the enrichment scores: use all samples for which the type was predicted
     test.modules.updated.types <- lapply(names(type_splits), function(type) {
@@ -315,20 +397,17 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
 
       tryCatch(
         {
-          test.modules.updated <- enrichment_modules(
-            Expr.matrix = type_expression,
-            modules = type_modules,
-            bin.size = argv_predict$bin_size,
-            min.size = argv_predict$min_size,
-            max.size = argv_predict$max_size,
-            min.expr = argv_predict$min_expr,
-            method = argv_predict$method,
-            cores = argv_predict$enrichment_cores
-          ) %>% check_enrichment(type_renamed)
-          # do hierarchical clustering on enrichment scores on genes and samples
-          row_order <- hclust(dist(test.modules.updated, method = "euclidean"), method = "ward.D2")$order
-          col_order <- hclust(dist(t(test.modules.updated), method = "euclidean"), method = "ward.D2")$order
-          test.modules.updated <- test.modules.updated[row_order, col_order]
+          test.modules.updated <- run_enrichment(type_expression, type_modules) %>% check_enrichment(type_renamed)
+          # do hierarchical clustering on enrichment scores on genes and samples (hclust needs n >= 2,
+          # so a type predicted for a single sample keeps its ssgsea scores; OE/gsva cannot score one)
+          if (nrow(test.modules.updated) >= 2) {
+            row_order <- hclust(dist(test.modules.updated, method = "euclidean"), method = "ward.D2")$order
+            test.modules.updated <- test.modules.updated[row_order, , drop = FALSE]
+          }
+          if (ncol(test.modules.updated) >= 2) {
+            col_order <- hclust(dist(t(test.modules.updated), method = "euclidean"), method = "ward.D2")$order
+            test.modules.updated <- test.modules.updated[, col_order, drop = FALSE]
+          }
           message("returning enrichment scores for type: ", type, " with n modules: ", dim(test.modules.updated)[1])
           return(test.modules.updated)
         },
@@ -339,7 +418,10 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
       )
     })
     names(test.modules.updated.types) <- names(type_splits)
+  }
 
+  if (argv_predict$subtypes && pancan_sufficient) {
+    message(Sys.time(), " - predicting subtypes for each type prediction")
     # predict subtypes for samples with matching type classification
     predictions <- do.call(rbind, lapply(names(type_splits), function(type) {
       df <- type_splits[[type]]
@@ -399,16 +481,7 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
 
   # do enrichment only on specified type
   message(Sys.time(), " - enriching type modules (test)")
-  test.modules.uploaded.type <- enrichment_modules(
-    Expr.matrix = test_expr,
-    modules = modules,
-    bin.size = argv_predict$bin_size,
-    min.size = argv_predict$min_size,
-    max.size = argv_predict$max_size,
-    min.expr = argv_predict$min_expr,
-    method = argv_predict$method,
-    cores = argv_predict$enrichment_cores
-  ) %>% check_enrichment(model_name)
+  test.modules.uploaded.type <- run_enrichment(test_expr, modules) %>% check_enrichment(model_name)
 
   # do hierarchical clustering on enrichment scores on genes and samples (guarded for n >= 2)
   if (!is.null(test.modules.uploaded.type) && nrow(test.modules.uploaded.type) >= 2) {
@@ -463,7 +536,7 @@ meta <- data.frame(
   type_predict = if (length(dominant_type) == 0) "NA" else dominant_type[1],
   subtype_predict = if (length(dominant_subtype) == 0) "NA" else dominant_subtype[1],
   specified_type = argv_predict$model,
-  script_version = "0.1.5"
+  script_version = "0.1.6"
 ) # see changelog at the bottom
 
 # feature coverage: scalar fields for the model behind the headline prediction (the specified
@@ -486,71 +559,51 @@ scores_list <- list(
   })
 )
 # append type-specific scores
-# NOTE: this condition must mirror the branch condition used above (line ~218) to decide
-# between "predict pancancer + per-type enrichment" vs. "enrich only the specified type" -
-# otherwise a model of "pancancer"/"None" would incorrectly try to use
-# test.modules.uploaded.type, which is only computed in the specified-model branch.
-if (argv_predict$subtypes) {
-  if (!(is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$model == "pancancer" || argv_predict$model == "Pancancer")) {
-    type_scores <- list(
-      samples = colnames(test.modules.uploaded.type),
-      genes = rownames(test.modules.uploaded.type),
-      values = lapply(seq_len(nrow(test.modules.uploaded.type)), function(i) {
-        as.numeric(test.modules.uploaded.type[i, ])
+# - specified model: its type enrichment is always computed (specified-model branch above), so its
+#   scores are returned with or without --subtypes
+# - pancancer: each predicted type's enrichment (type_splits branch), with or without --subtypes
+# NOTE: the specified-model condition must mirror the branch condition above; for "pancancer"/"None"
+# test.modules.uploaded.type does not exist.
+if (specified_model) {
+  type_scores <- list(
+    samples = colnames(test.modules.uploaded.type),
+    genes = rownames(test.modules.uploaded.type),
+    values = lapply(seq_len(nrow(test.modules.uploaded.type)), function(i) {
+      as.numeric(test.modules.uploaded.type[i, ])
+    })
+  )
+  type_scores <- setNames(list(type_scores), argv_predict$model)
+} else if (length(type_splits) > 0) {
+  type_scores <- lapply(names(type_splits), function(type) {
+    df_type <- as.data.frame(test.modules.updated.types[[type]])
+    list(
+      samples = colnames(df_type),
+      genes = rownames(df_type), # actually modules
+      values = lapply(seq_len(nrow(df_type)), function(i) {
+        as.numeric(df_type[i, ])
       })
     )
-    type_scores <- setNames(list(type_scores), argv_predict$model)
-  } else {
-    type_scores <- lapply(names(type_splits), function(type) {
-      df_type <- as.data.frame(test.modules.updated.types[[type]])
-      list(
-        samples = colnames(df_type),
-        genes = rownames(df_type), # actually modules
-        values = lapply(seq_len(nrow(df_type)), function(i) {
-          as.numeric(df_type[i, ])
-        })
-      )
-    })
-    names(type_scores) <- names(type_splits)
-  }
+  })
+  names(type_scores) <- names(type_splits)
+  # drop types without scores (no model for the type, a single sample, or failed enrichment):
+  # empty blocks were offered as selectable scopes in the FE
+  type_scores <- type_scores[vapply(type_scores, function(b) length(b$genes) > 0 && length(b$samples) > 0, logical(1))]
 } else {
   type_scores <- NULL
 }
 
-# Build module members dictionary only for relevant scopes
-module_members <- list()
-module_members[["pancancer"]] <- models$expression_across_types$modules
-module_members[["expression_across_types"]] <- models$expression_across_types$modules
-
-relevant_types <- c()
-if (!(is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$model == "pancancer" || argv_predict$model == "Pancancer")) {
-  # Specified model
-  relevant_types <- c(relevant_types, argv_predict$model)
-}
-if (!is.null(predictions) && "typePrediction" %in% colnames(predictions)) {
-  # Predicted models
-  pred_types <- unique(predictions$typePrediction)
-  pred_types <- pred_types[!is.na(pred_types)]
-  relevant_types <- c(relevant_types, pred_types)
-}
-
-relevant_types <- unique(relevant_types)
-for (type in relevant_types) {
-  # Clean type to match models keys (underscores, "and")
+# Module members for the scopes the FE can select (predict.service availableScopes$: 'pancancer' and
+# the keys of type_scores), restricted to the modules that were actually scored: the FE only looks
+# up members of score rows (centers). The full member lists under several spellings per scope
+# made the transcript response ~170 MB. A type without scores is left out (FE falls back to the DB).
+scored_members <- function(mods, scored) mods[intersect(names(mods), scored)]
+module_members <- list(
+  pancancer = scored_members(models$expression_across_types$modules, rownames(test.modules.uploaded))
+)
+for (type in names(type_scores)) {
   type_clean <- gsub("&", "and", gsub(" ", "_", type))
-  if (type_clean %in% names(models)) {
-    mods <- models[[type_clean]]$modules
-
-    # Store under clean name
-    module_members[[type_clean]] <- mods
-
-    # Store under display name (with spaces and ampersands)
-    display_name <- gsub("and", "&", gsub("_", " ", type_clean))
-    module_members[[display_name]] <- mods
-
-    # Store under display name (with spaces and "and")
-    display_name_and <- gsub("_", " ", type_clean)
-    module_members[[display_name_and]] <- mods
+  if (type_clean %in% names(models) && length(type_scores[[type]]$genes) > 0) {
+    module_members[[type]] <- scored_members(models[[type_clean]]$modules, unlist(type_scores[[type]]$genes))
   }
 }
 
@@ -565,6 +618,15 @@ write_json(responseObj, path = argv_predict$output)
 ##                                 Changelog                                  ##
 ################################################################################
 
+
+# 0.1.6
+# - Ensembl version suffixes are stripped from uploaded IDs (duplicates summed)
+# - module_members only lists modules that were scored (response was ~170 MB for transcripts)
+# - OE enrichment via oe_enrichment_modules(): identical scores to SPONGE, ~5x faster, little memory
+# - type_scores omits types without scores instead of returning empty blocks
+# - a specified --model returns its type scores also without --subtypes (they were computed anyway)
+# - pancancer computes and returns each predicted type's scores also without --subtypes; clustering
+#   is skipped for n < 2, so a type predicted for a single sample keeps its ssgsea scores
 
 # 0.1.5
 # - with a specified --model, typePrediction is that model for every sample instead of NA

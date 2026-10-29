@@ -31,6 +31,7 @@ parser <- add_argument(parser, "--min_expr", help = "Minimum expression for enri
 parser <- add_argument(parser, "--method", help = "Method", default = "gsva")
 parser <- add_argument(parser, "--enrichment_cores", help = "Number of cores to use for enrichment (OE is memory-bound; more than ~6 got slower in benchmarks)", default = 6)
 parser <- add_argument(parser, "--local", help = "No parallel background", flag = T)
+parser <- add_argument(parser, "--params_fallback", help = "JSON with training parameters for models without $params (default: models_params_fallback.json next to this script)", default = NA)
 # parse arguments
 argv_predict <- parse_args(parser, argv = args.effects)
 
@@ -51,6 +52,21 @@ print(getwd())
 
 # write args to log file, pretty
 print(argv_predict)
+
+# Errors the user can fix (bad upload, nothing scorable, unknown model) are also written to
+# <output>.error.json; the API returns that message instead of its generic one. Everything else
+# stays in this log only.
+error_file <- sub("\\.json$", ".error.json", argv_predict$output)
+user_error <- function(...) {
+  msg <- paste0(...)
+  jsonlite::write_json(list(detail = msg), error_file, auto_unbox = TRUE)
+  stop(msg, call. = FALSE)
+}
+
+script_dir <- dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])))
+source(file.path(script_dir, "model_params.R"))
+params_fallback_path <- if (is.na(argv_predict$params_fallback)) file.path(script_dir, "models_params_fallback.json") else argv_predict$params_fallback
+params_fallback <- read_params_fallback(params_fallback_path)
 
 #---------------------------GLOBAL VARIABLES------------------------------------
 SUBTYPE_PROJECTS <- c(
@@ -90,17 +106,54 @@ record_coverage <- function(model_key, coefnames, test_modules) {
   fraction >= COVERAGE_THRESHOLD
 }
 
-# enrichment_modules() returns NULL when nothing could be scored and a printed string for an
-# unknown method; stop here so the cause reaches the API error instead of a later NA comparison.
-check_enrichment <- function(enriched, module_set) {
+# enrichment returns NULL when nothing could be scored and a printed string for an unknown method;
+# stop here so the cause reaches the API error instead of a later NA comparison.
+# fatal = FALSE for optional enrichments (a predicted type's modules): plain error, no message for the user
+check_enrichment <- function(enriched, module_set, params, fatal = TRUE) {
   if (!(is.data.frame(enriched) || is.matrix(enriched)) || nrow(enriched) == 0) {
-    stop(
-      "Enrichment with method '", argv_predict$method, "' returned no module scores for module set '", module_set,
-      "' (method must be one of OE, gsva, ssgsea; check min_size=", argv_predict$min_size, ", max_size=", argv_predict$max_size,
-      ", min_expr=", argv_predict$min_expr, " against the module sizes and the uploaded IDs)"
+    detail <- paste0(
+      "Enrichment with method '", params$method, "' returned no module scores for module set '", module_set,
+      "' (min_size=", params$min_size, ", max_size=", params$max_size, ", min_expr=", params$min_expr, ")"
+    )
+    if (!fatal) stop(detail)
+    message(detail)
+    user_error(
+      "None of the ", module_set, " modules could be scored: too few of the model's ", level,
+      "s were found in the uploaded file. Please check that it contains ", level, "-level Ensembl IDs."
     )
   }
   enriched
+}
+
+# Enrichment parameters for a model: its training parameters (model_params.R), else the request's.
+# Every model used is recorded in used_params and returned in meta$model_params.
+used_params <- list()
+enrichment_params <- function(model_key) {
+  found <- lookup_model_params(models, level, model_key, params_fallback)
+  request <- list(
+    method = argv_predict$method, bin_size = argv_predict$bin_size, min_size = argv_predict$min_size,
+    max_size = argv_predict$max_size, min_expr = argv_predict$min_expr,
+    m_scor_threshold = NA, p_adj_threshold = NA, train_split = NA
+  )
+  params <- modifyList(request, if (is.null(found$params)) list() else found$params)
+  source <- if (is.na(found$source)) "request" else found$source
+  if (source != "request" && params$method != argv_predict$method) {
+    message(Sys.time(), " - ", model_key, " was trained with method ", params$method, "; using it instead of the requested ", argv_predict$method)
+  }
+  message(Sys.time(), " - enrichment parameters for ", model_key, " (", source, "): method=", params$method,
+    ", bin_size=", params$bin_size, ", min_size=", params$min_size, ", max_size=", params$max_size, ", min_expr=", params$min_expr)
+  used_params[[model_key]] <<- data.frame(model = model_key, params[PARAM_FIELDS], source = source)
+  params
+}
+
+# Classifier input: modules x samples -> samples x modules, z-scored per module across the uploaded
+# samples (as in training). A module with the same score in every sample has sd 0 and would turn
+# into NaN, which caret silently drops (fewer predictions than samples); it carries no information
+# in this batch, so it is set to the mean (0).
+classifier_input <- function(test_modules) {
+  x <- t(test_modules) %>% scale(center = T, scale = T)
+  x[is.nan(x)] <- 0
+  x
 }
 
 # OE enrichment, same results as SPONGE::enrichment_modules(method = "OE") (SPONGE 1.22/1.24), but
@@ -155,26 +208,27 @@ oe_enrichment_modules <- function(Expr.matrix, modules, bin.size = 100, min.size
   scores
 }
 
-# all enrichments of this script go through here so the OE path above is used consistently
-run_enrichment <- function(Expr.matrix, modules) {
-  if (argv_predict$method == "OE") {
+# all enrichments of this script go through here so the OE path above is used consistently;
+# params come from enrichment_params() (the model's training parameters)
+run_enrichment <- function(Expr.matrix, modules, params) {
+  if (params$method == "OE") {
     oe_enrichment_modules(
       Expr.matrix = Expr.matrix,
       modules = modules,
-      bin.size = argv_predict$bin_size,
-      min.size = argv_predict$min_size,
-      max.size = argv_predict$max_size,
-      min.expr = argv_predict$min_expr
+      bin.size = params$bin_size,
+      min.size = params$min_size,
+      max.size = params$max_size,
+      min.expr = params$min_expr
     )
   } else {
     enrichment_modules(
       Expr.matrix = Expr.matrix,
       modules = modules,
-      bin.size = argv_predict$bin_size,
-      min.size = argv_predict$min_size,
-      max.size = argv_predict$max_size,
-      min.expr = argv_predict$min_expr,
-      method = argv_predict$method,
+      bin.size = params$bin_size,
+      min.size = params$min_size,
+      max.size = params$max_size,
+      min.expr = params$min_expr,
+      method = params$method,
       cores = argv_predict$enrichment_cores
     )
   }
@@ -223,7 +277,7 @@ predict_subtype <- function(type, sample_list, all_models, test_modules, thresho
       test_modules[missing_modules, ] <- rnorm(length(missing_modules) * ncol(test_modules), mean = median_value, sd = sd)
     }
     # build input
-    Input.test <- t(test_modules) %>% scale(center = T, scale = T)
+    Input.test <- classifier_input(test_modules)
     subtypePrediction <- as.vector(predict(model, Input.test))
     return(subtypePrediction)
   } else {
@@ -254,7 +308,7 @@ read_expr <- function(path) {
   } else if (rows_test) {
     expr <- expr %>% as.matrix()
   } else {
-    stop("Expression file has to contain ensembl IDs in either row names, colum names, or a data column")
+    user_error("The uploaded file must contain Ensembl gene (ENSG) or transcript (ENST) IDs, either in the first column or as column names.")
   }
   # strip Ensembl version suffixes (ENST00000002165.11 -> ENST00000002165, also GENCODE's
   # ENSG...12_PAR_Y), since the model's module members are unversioned. IDs that collapse onto the
@@ -264,7 +318,12 @@ read_expr <- function(path) {
   if (n_versioned > 0) {
     message(Sys.time(), " - stripped version suffix from ", n_versioned, " IDs")
   }
-  storage.mode(expr) <- "double"
+  values <- suppressWarnings(as.numeric(expr))
+  n_missing <- sum(is.na(values))
+  if (n_missing > 0) {
+    user_error("The uploaded file contains ", n_missing, " missing or non-numeric expression values. Please upload a complete numeric matrix (one ID column, one column per sample).")
+  }
+  expr <- matrix(values, nrow = nrow(expr), dimnames = dimnames(expr))
   if (anyDuplicated(ids)) {
     message(Sys.time(), " - summing ", sum(duplicated(ids)), " rows with duplicate IDs")
     expr <- rowsum(expr, ids, reorder = FALSE)
@@ -277,10 +336,24 @@ read_expr <- function(path) {
 startTime <- Sys.time()
 message(startTime, " - STARTING EXECUTION:")
 #---------------------------READ UPLOADED EXPRESSION----------------------------
-test_expr <- read_expr(argv_predict$expr)
+test_expr <- tryCatch(read_expr(argv_predict$expr), error = function(e) {
+  if (file.exists(error_file)) stop(e)
+  message("Could not read the expression file: ", conditionMessage(e))
+  user_error("The uploaded file could not be read. Please upload a comma-, tab- or semicolon-separated matrix with one ID column and one column per sample.")
+})
 message(Sys.time(), " - expression matrix loaded with ", nrow(test_expr), " rows and ", ncol(test_expr), " columns")
 
+# Scores are z-scored per module across the uploaded samples (as in training), so a single sample
+# cannot be classified (see critical_project_info.md).
+if (ncol(test_expr) < 2) {
+  user_error("The uploaded file contains ", ncol(test_expr), " sample. At least 2 samples are needed, because module scores are standardized across the uploaded samples; predictions are more reliable with more samples.")
+}
+
 if (argv_predict$log) {
+  n_negative <- sum(test_expr < 0)
+  if (n_negative > 0) {
+    user_error("The uploaded file contains ", n_negative, " negative values, so it seems to be log-transformed already. Please disable the log2 scaling option, or upload untransformed values (e.g. TPM).")
+  }
   message(Sys.time(), " - applying log2 transformation (pseudo-count: ", argv_predict$pseudo_count, ")")
   test_expr <- log2(test_expr + argv_predict$pseudo_count)
 }
@@ -292,7 +365,7 @@ if (grepl("ENSG", level_test)) {
 } else if (grepl("ENST", level_test)) {
   level <- "transcript"
 } else {
-  stop("Please provide either ensembl gene or transcript IDs in the expression")
+  user_error("The uploaded file must contain Ensembl gene (ENSG) or transcript (ENST) IDs.")
 }
 message(Sys.time(), " - using ", level, " level")
 
@@ -325,9 +398,8 @@ if (!argv_predict$local) {
 message(Sys.time(), " - enriching type modules (pancancer)")
 Sponge.modules <- models$expression_across_types$modules
 message(Sys.time(), " - number of modules to enrich: ", length(Sponge.modules))
-message(Sys.time(), " - enrichment parameters: method=", argv_predict$method, ", bin_size=", argv_predict$bin_size, ", min_size=", argv_predict$min_size, ", max_size=", argv_predict$max_size)
-
-test.modules.uploaded <- run_enrichment(test_expr, Sponge.modules) %>% check_enrichment("pancancer")
+pancan_params <- enrichment_params("expression_across_types")
+test.modules.uploaded <- run_enrichment(test_expr, Sponge.modules, pancan_params) %>% check_enrichment("pancancer", pancan_params)
 
 # write.table(test.modules.uploaded, file = "test_modules.tsv", sep = "\t", quote = F)
 message(Sys.time(), " - finished enriching type modules (pancancer)")
@@ -357,7 +429,7 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
     test.modules.uploaded.pancan[missing_modules, ] <- rnorm(length(missing_modules) * ncol(test.modules.uploaded), mean = median_value, sd = sd)
   }
   # transform new input data
-  Input.test.pancan <- t(test.modules.uploaded.pancan) %>% scale(center = T, scale = T)
+  Input.test.pancan <- classifier_input(test.modules.uploaded.pancan)
   # predict
   type_predictions <- predict(trained.model$Model, Input.test.pancan)
   if (!pancan_sufficient) {
@@ -385,6 +457,11 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
       if (!type_renamed %in% names(models)) {
         message("type not in models: ", type)
         return(NULL)
+      } else if (nrow(x) < SAMPLES_THRESHOLD) {
+        # scores are relative to the type's samples (OE centers across them: one sample scores 0
+        # everywhere) and subtypes need SAMPLES_THRESHOLD samples, so a single sample gets no type scores
+        message("skipping type ", type, ": only ", nrow(x), " sample(s)")
+        return(NULL)
       } else {
         message("running enrichment for type: ", type)
       }
@@ -397,9 +474,9 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
 
       tryCatch(
         {
-          test.modules.updated <- run_enrichment(type_expression, type_modules) %>% check_enrichment(type_renamed)
-          # do hierarchical clustering on enrichment scores on genes and samples (hclust needs n >= 2,
-          # so a type predicted for a single sample keeps its ssgsea scores; OE/gsva cannot score one)
+          type_params <- enrichment_params(type_renamed)
+          test.modules.updated <- run_enrichment(type_expression, type_modules, type_params) %>% check_enrichment(type, type_params, fatal = FALSE)
+          # do hierarchical clustering on enrichment scores on genes and samples (hclust needs n >= 2)
           if (nrow(test.modules.updated) >= 2) {
             row_order <- hclust(dist(test.modules.updated, method = "euclidean"), method = "ward.D2")$order
             test.modules.updated <- test.modules.updated[row_order, , drop = FALSE]
@@ -470,7 +547,8 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
   model_name <- gsub("&", "and", gsub(" ", "_", model_name))
   message(Sys.time(), " - selecting model: ", model_name)
   if (!model_name %in% names(models)) {
-    stop("Unknown model '", argv_predict$model, "' for ", level, " level; available: ", paste(names(models), collapse = ", "))
+    message("Unknown model '", argv_predict$model, "' for ", level, " level; available: ", paste(names(models), collapse = ", "))
+    user_error("There is no ", level, "-level model for '", argv_predict$model, "'. Please choose another reference network.")
   }
   model <- models[[model_name]]$model$Model
   modules <- models[[model_name]]$modules
@@ -481,7 +559,8 @@ if (is.null(argv_predict$model) || argv_predict$model == "None" || argv_predict$
 
   # do enrichment only on specified type
   message(Sys.time(), " - enriching type modules (test)")
-  test.modules.uploaded.type <- run_enrichment(test_expr, modules) %>% check_enrichment(model_name)
+  type_params <- enrichment_params(model_name)
+  test.modules.uploaded.type <- run_enrichment(test_expr, modules, type_params) %>% check_enrichment(argv_predict$model, type_params)
 
   # do hierarchical clustering on enrichment scores on genes and samples (guarded for n >= 2)
   if (!is.null(test.modules.uploaded.type) && nrow(test.modules.uploaded.type) >= 2) {
@@ -533,10 +612,10 @@ meta <- data.frame(
   runtime = runTime, level = level, n_samples = ncol(test_expr),
   # Collapse to a single value: ties return >1 name and an all-NA table returns character(0);
   # either would make data.frame() build a multi-row/zero-row meta (FE reads meta[0]) or throw.
-  type_predict = if (length(dominant_type) == 0) "NA" else dominant_type[1],
-  subtype_predict = if (length(dominant_subtype) == 0) "NA" else dominant_subtype[1],
+  type_predict = if (length(dominant_type) == 0 || is.na(dominant_type[1])) "NA" else dominant_type[1],
+  subtype_predict = if (length(dominant_subtype) == 0 || is.na(dominant_subtype[1])) "NA" else dominant_subtype[1],
   specified_type = argv_predict$model,
-  script_version = "0.1.6"
+  script_version = "0.2.0"
 ) # see changelog at the bottom
 
 # feature coverage: scalar fields for the model behind the headline prediction (the specified
@@ -548,6 +627,8 @@ meta$modules_matched <- if (is.null(primary_coverage)) NA else primary_coverage$
 meta$modules_expected <- if (is.null(primary_coverage)) NA else primary_coverage$modules_expected
 meta$low_coverage <- if (is.null(primary_coverage)) NA else primary_coverage$low_coverage
 meta$module_coverage <- list(if (length(module_coverage) > 0) do.call(rbind, unname(module_coverage)) else list())
+# enrichment parameters per model used (the model's training parameters, see model_params.R)
+meta$model_params <- list(if (length(used_params) > 0) do.call(rbind, unname(used_params)) else list())
 
 # return as JSON for API processing
 scores_df <- as.data.frame(test.modules.uploaded)
@@ -618,6 +699,16 @@ write_json(responseObj, path = argv_predict$output)
 ##                                 Changelog                                  ##
 ################################################################################
 
+
+# 0.2.0
+# - each model is scored with its own training parameters (method, bin/min/max size, min_expr) from
+#   models.RDS $params or models_params_fallback.json (model_params.R), the request's only as a
+#   fallback; returned per model in meta$model_params
+# - fixable input problems (no Ensembl IDs, non-numeric values, < 2 samples, negative values with
+#   --log, nothing scorable, unknown model) stop with a message in <output>.error.json for the API
+# - a module with the same score in every sample no longer turns into NaN (caret dropped those rows)
+# - predicted types with fewer than SAMPLES_THRESHOLD samples get no type scores (OE scored them 0)
+# - meta$subtype_predict is "NA" instead of missing when no subtype was predicted
 
 # 0.1.6
 # - Ensembl version suffixes are stripped from uploaded IDs (duplicates summed)

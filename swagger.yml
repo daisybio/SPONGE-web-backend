@@ -5374,7 +5374,7 @@ paths:
           type: string
       responses:
         "200":
-          description: Job status. `result` is present when status is done and has the same shape as the /spongEffects/predictCancerType response; `detail` is present when status is failed.
+          description: Job status. `result` is present when status is done and has the same shape as the /spongEffects/predictCancerType response; `detail` is present when status is failed (what to fix for problems with the upload, else a generic message).
           content:
             application/json:
               schema:
@@ -5391,6 +5391,58 @@ paths:
                     type: string
         "404":
           description: Unknown or expired job ID
+  /spongEffects/predictionModels:
+    get:
+      operationId: spongEffects.get_prediction_models
+      tags:
+      - spongEffects
+      summary: The pretrained models used for predictions, with the parameters they were trained with.
+      description: Predictions score each model with its own training parameters (`params`); request parameters only apply to models without known parameters (`params_source` null).
+      responses:
+        "200":
+          description: Models by level (gene, transcript) and model key (expression_across_types = pancancer, else the cancer type with underscores and "and").
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      params:
+                        type: object
+                        nullable: true
+                        properties:
+                          method:
+                            type: string
+                          bin_size:
+                            type: number
+                          min_size:
+                            type: number
+                          max_size:
+                            type: number
+                          min_expr:
+                            type: number
+                          m_scor_threshold:
+                            type: number
+                          p_adj_threshold:
+                            type: number
+                          train_split:
+                            type: number
+                      params_source:
+                        type: string
+                        nullable: true
+                        enum: [model, fallback]
+                      n_features:
+                        type: integer
+                      n_modules:
+                        type: integer
+                      test_accuracy:
+                        type: number
+                        nullable: true
+        "500":
+          description: The models could not be read
   /spongEffects/getUmapProjection:
     get:
       operationId: spongEffects.get_umap_projection_get

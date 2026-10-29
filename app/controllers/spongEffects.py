@@ -831,6 +831,18 @@ class Params:
 GENERIC_PREDICTION_ERROR = "Prediction failed. Please check that the uploaded file contains Ensembl gene or transcript IDs and try again with different parameters."
 
 
+def _user_error(out_path):
+    """The message classify.R wrote to <output>.error.json for a problem the user can fix (bad upload,
+    nothing scorable, unknown model), or None. Only these messages reach the client; other R errors
+    stay in the server log."""
+    try:
+        with open(os.path.splitext(out_path)[0] + ".error.json") as f:
+            detail = json.load(f).get("detail")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return detail if isinstance(detail, str) and detail else None
+
+
 def run_spongEffects(file_path, out_path, params: Params = None):
     """
     Predict cancer type for an uploaded gene/transcript expression
@@ -907,6 +919,15 @@ def run_spongEffects(file_path, out_path, params: Params = None):
             
         logger.error(f"Error running spongEffects: {e}")
         logger.error(f"Rscript combined output: {error_msg}{log_content}")
+
+        user_error = _user_error(out_path)
+        if user_error:
+            return {
+                "detail": user_error,
+                "status": 400,
+                "title": "Bad Request",
+                "type": "about:blank"
+            }, 400
 
         # details stay in the server log (and the R log file next to the output); don't expose them
         return {
@@ -1132,7 +1153,10 @@ def _run_prediction_job(job_id: str, params: Params, state: dict):
                 os.replace(result_path + ".tmp", result_path)
                 state.update(status="done")
             else:
+                # a 400 carries a message for the user (see _user_error); keep it for the poll
                 state.update(status="failed")
+                if status_code == 400 and isinstance(response, dict):
+                    state.update(detail=response.get("detail"))
         finally:
             slot.close()
     except Exception as e:
@@ -1189,8 +1213,41 @@ def get_prediction_job(job_id: str):
         with open(_job_path(job_id, ".result.json")) as f:
             body["result"] = json.load(f)
     elif state["status"] == "failed":
-        body["detail"] = GENERIC_PREDICTION_ERROR
+        body["detail"] = state.get("detail") or GENERIC_PREDICTION_ERROR
     return jsonify(body), 200
+
+
+# Model descriptions (training parameters etc., scripts/spongEffects/describe_models.R). Reading
+# models.RDS takes a few seconds, so each worker caches the result until models.RDS or the params
+# fallback file changes.
+_models_description_cache: dict = {}
+
+
+def get_prediction_models():
+    """
+    API request for GET /spongEffects/predictionModels
+    :return: the prediction models by level and model key, with their training parameters
+    """
+    script_dir = os.path.dirname(config.SPONGEFFECTS_PREDICT_SCRIPT)
+    fallback_path = os.path.join(script_dir, "models_params_fallback.json")
+    key = tuple(os.path.getmtime(p) if os.path.exists(p) else None for p in (config.MODEL_PATH, fallback_path))
+    if _models_description_cache.get("key") != key:
+        out_path = os.path.join(config.UPLOAD_DIR, f"models_description_{os.getpid()}.json")
+        cmd = ["Rscript", os.path.join(script_dir, "describe_models.R"), "--model_path", config.MODEL_PATH, "--output", out_path]
+        try:
+            subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=300)
+            with open(out_path) as f:
+                _models_description_cache.update(key=key, data=json.load(f))
+        except (subprocess.SubprocessError, OSError, ValueError) as e:
+            stderr = getattr(e, "stderr", "")
+            logger.error(f"Could not describe the prediction models: {e}\n{stderr}")
+            return jsonify({
+                "detail": "The prediction models could not be read",
+                "status": 500,
+                "title": "Internal Server Error",
+                "type": "about:blank"
+            }), 500
+    return jsonify(_models_description_cache["data"]), 200
 
 
 @cache.cached(query_string=True)

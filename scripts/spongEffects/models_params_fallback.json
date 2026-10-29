@@ -1,0 +1,27 @@
+{
+  "description": "Training parameters of the models in the production models.RDS (2026-10, trained with OE), which carries no $params of its own. Derived 2026-10-22 by matching each model's train and test accuracy against SPONGEdb_v2/model_performances.tsv (see otherStuff/critical_project_info.md). An entry only applies when n_features equals the model's length(coefnames). Models trained with $params in models.RDS do not need an entry.",
+  "models": {
+    "gene": {
+      "expression_across_types": {"n_features": 269, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.8, "spongEffects_run_ID": 1},
+      "breast_invasive_carcinoma": {"n_features": 1469, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 3},
+      "cervical_and_endocervical_cancer": {"n_features": 71, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0.1, "p_adj_threshold": 0.01, "train_split": 0.9, "spongEffects_run_ID": null},
+      "esophageal_carcinoma": {"n_features": 603, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0.1, "p_adj_threshold": 0.01, "train_split": 0.6, "spongEffects_run_ID": 8},
+      "head_and_neck_squamous_cell_carcinoma": {"n_features": 320, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 10, "m_scor_threshold": 0, "p_adj_threshold": 0.01, "train_split": 0.9, "spongEffects_run_ID": 13},
+      "brain_lower_grade_glioma": {"n_features": 907, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 15},
+      "sarcoma": {"n_features": 541, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0.1, "p_adj_threshold": 0.01, "train_split": 0.9, "spongEffects_run_ID": null},
+      "stomach_adenocarcinoma": {"n_features": 1270, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0.1, "p_adj_threshold": 0.01, "train_split": 0.9, "spongEffects_run_ID": null},
+      "testicular_germ_cell_tumor": {"n_features": 1352, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 24}
+    },
+    "transcript": {
+      "expression_across_types": {"n_features": 177, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.8, "spongEffects_run_ID": 74},
+      "breast_invasive_carcinoma": {"n_features": 1349, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 52},
+      "cervical_and_endocervical_cancer": {"n_features": 10, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 10, "m_scor_threshold": 0, "p_adj_threshold": 0.01, "train_split": 0.9, "spongEffects_run_ID": 55},
+      "esophageal_carcinoma": {"n_features": 1252, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 57},
+      "head_and_neck_squamous_cell_carcinoma": {"n_features": 1074, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 60},
+      "brain_lower_grade_glioma": {"n_features": 776, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 63},
+      "sarcoma": {"n_features": 666, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 66},
+      "stomach_adenocarcinoma": {"n_features": 1087, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0.1, "p_adj_threshold": 0.01, "train_split": 0.6, "spongEffects_run_ID": 68},
+      "testicular_germ_cell_tumor": {"n_features": 1349, "method": "OE", "bin_size": 100, "min_size": 100, "max_size": 2000, "min_expr": 0, "m_scor_threshold": 0, "p_adj_threshold": 0.05, "train_split": 0.7, "spongEffects_run_ID": 72}
+    }
+  }
+}
